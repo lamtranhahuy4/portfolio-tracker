@@ -1,3 +1,5 @@
+**🇻🇳 Tiếng Việt** | *[🇬🇧 English](README_EN.md)*
+
 # 📈 Ứng dụng Quản lý Danh mục Đầu tư (Portfolio Tracker)
 
 ## 📌 Giới thiệu
