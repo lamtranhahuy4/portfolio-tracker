@@ -672,15 +672,70 @@ else:
     st.info("Chưa có tài sản nào để hiển thị biểu đồ.")
 
 st.markdown("---")
-st.subheader("📋 Lịch sử Giao dịch (Transactions)")
+# --- PHÂN TÍCH CHI TIẾT TỪNG TÀI SẢN (DRILL-DOWN) ---
+st.header("🔍 Phân tích Chi tiết Tài sản")
+
+if not st.session_state['holdings_df'].empty:
+    # Lấy danh sách Ticker duy nhất (trừ CASH nếu muốn tập trung vào tài sản đầu tư)
+    available_tickers = st.session_state['holdings_df'][st.session_state['holdings_df']['Ticker'] != 'CASH']['Ticker'].unique().tolist()
+    
+    if available_tickers:
+        selected_ticker = st.selectbox("Chọn Mã Tài sản để xem chi tiết:", options=available_tickers)
+        
+        if selected_ticker:
+            # 1. Lấy thông tin từ Danh mục
+            asset_info = st.session_state['holdings_df'][st.session_state['holdings_df']['Ticker'] == selected_ticker].iloc[0]
+            
+            # 2. Lọc lịch sử giao dịch riêng mã này
+            asset_tx = st.session_state['transactions_df'][st.session_state['transactions_df']['Ticker'] == selected_ticker].sort_values(by='Date', ascending=False)
+            
+            # 3. Tính toán một số chỉ số nhanh
+            total_qty_bought = st.session_state['transactions_df'][(st.session_state['transactions_df']['Ticker'] == selected_ticker) & (st.session_state['transactions_df']['Type'] == 'BUY')]['Quantity'].sum()
+            total_qty_sold = st.session_state['transactions_df'][(st.session_state['transactions_df']['Ticker'] == selected_ticker) & (st.session_state['transactions_df']['Type'] == 'SELL')]['Quantity'].sum()
+            
+            unrealized_pl = asset_info['Market_Value'] - (asset_info['Total_Shares'] * asset_info['Average_Cost'])
+            roi_detail = (unrealized_pl / (asset_info['Total_Shares'] * asset_info['Average_Cost']) * 100) if (asset_info['Total_Shares'] * asset_info['Average_Cost']) > 0 else 0
+            
+            # Hiển thị Metrics
+            m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+            with m_col1:
+                st.metric("Số lượng hiện nắm giữ", f"{asset_info['Total_Shares']:.4f}")
+            with m_col2:
+                st.metric("Giá vốn Trung bình", f"{asset_info['Average_Cost']:,.2f} ₫")
+            with m_col3:
+                st.metric("Lãi/Lỗ tạm tính (Unrealized)", f"{unrealized_pl:,.0f} ₫", delta=f"{roi_detail:.2f}%")
+            with m_col4:
+                st.metric("Tổng Mua / Tổng Bán", f"{total_qty_bought:.2f} / {total_qty_sold:.2f}")
+            
+            # Hiển thị bảng giao dịch riêng
+            st.subheader(f"📜 Lịch sử Giao dịch: {selected_ticker}")
+            st.dataframe(
+                asset_tx.style.format({
+                    'Date': lambda t: t.strftime('%Y-%m-%d') if pd.notnull(t) else '',
+                    'Quantity': '{:,.4f}',
+                    'Price': '{:,.2f}',
+                    'Total_Value': '{:,.2f}'
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+    else:
+        st.info("Chưa có mã tài sản đầu tư nào trong danh mục.")
+else:
+    st.info("Danh mục hiện đang trống.")
+
+st.markdown("---")
+st.subheader("📋 Lịch sử Giao dịch Chung (All Transactions)")
 st.dataframe(
-    st.session_state['transactions_df'].style.format({
+    st.session_state['transactions_df'].sort_values(by='Date', ascending=False).style.format({
         'Date': lambda t: t.strftime('%Y-%m-%d') if pd.notnull(t) else '',
         'Quantity': '{:,.4f}',
         'Price': '{:,.2f}',
         'Total_Value': '{:,.2f}'
     }), 
-    use_container_width=True
+    use_container_width=True,
+    hide_index=True
 )
+
 
 
