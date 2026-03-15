@@ -320,10 +320,16 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                         def parse_type(text):
                             if pd.isna(text): return 'UNKNOWN'
                             t = str(text).lower()
+                            # Ưu tiên lệnh chứng khoán trước
                             if 'mua' in t: return 'BUY'
                             if 'bán' in t or 'ban' in t: return 'SELL'
-                            if any(k in t for k in ['nạp', 'nộp', 'nhận', 'deposit']): return 'DEPOSIT'
-                            if 'rút' in t or 'withdraw' in t: return 'WITHDRAW'
+                            
+                            # Nhận diện dòng tiền (Tăng/Giảm)
+                            if any(k in t for k in ['nạp', 'nộp', 'nhận', 'tăng', 'cộng', 'vào', 'thu', 'deposit']): 
+                                return 'DEPOSIT'
+                            if any(k in t for k in ['rút', 'giảm', 'trừ', 'ra', 'chi', 'withdraw']): 
+                                return 'WITHDRAW'
+                                
                             if 'cổ tức' in t or 'dividend' in t: return 'DIVIDEND'
                             return 'UNKNOWN'
                             
