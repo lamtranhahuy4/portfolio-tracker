@@ -249,15 +249,35 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
     if uploaded_file is not None:
         st.write("**Bước 1: Lọc Dữ Liệu Rác (Header Detection)**")
         st.caption("Tăng số dòng bỏ qua (Skiprows) nếu file bị dính logo hoặc thông tin tài khoản ở đầu.")
-        skiprows = st.number_input("Bỏ qua X dòng đầu tiên", min_value=0, value=0, step=1)
+        col_s1, col_s2 = st.columns([1, 1])
+        with col_s1:
+            skiprows = st.number_input("Bỏ qua X dòng đầu tiên", min_value=0, value=0, step=1)
+        with col_s2:
+            use_multi_header = st.checkbox("Tiêu đề 2 dòng (Merged Headers)", help="Bật nếu tiêu đề cột bị chia làm 2 dòng (VD: dòng 14-15), App sẽ gộp tên cả 2 dòng lại.")
         
         try:
             # Dời Uploaded Stream về vị trí 0 sau mỗi lần thay đổi Input
             uploaded_file.seek(0)
+            header_logic = [0, 1] if use_multi_header else 0
+            
             if uploaded_file.name.endswith('.csv'):
-                df_raw = pd.read_csv(uploaded_file, skiprows=skiprows)
+                df_raw = pd.read_csv(uploaded_file, skiprows=skiprows, header=header_logic)
             else:
-                df_raw = pd.read_excel(uploaded_file, skiprows=skiprows)
+                df_raw = pd.read_excel(uploaded_file, skiprows=skiprows, header=header_logic)
+            
+            # Xử lý làm phẳng MultiIndex nếu dùng Multi-Header
+            if use_multi_header and isinstance(df_raw.columns, pd.MultiIndex):
+                new_cols = []
+                for col in df_raw.columns:
+                    top = str(col[0]) if not pd.isna(col[0]) and 'Unnamed' not in str(col[0]) else ""
+                    bottom = str(col[1]) if not pd.isna(col[1]) and 'Unnamed' not in str(col[1]) else ""
+                    
+                    if top and bottom:
+                        combined = f"{top} - {bottom}"
+                    else:
+                        combined = top or bottom or "Column"
+                    new_cols.append(combined)
+                df_raw.columns = new_cols
                 
             st.write("Bản xem trước (3 dòng đầu):")
             st.dataframe(df_raw.head(3), use_container_width=True)
