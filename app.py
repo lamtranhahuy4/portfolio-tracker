@@ -286,16 +286,26 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                 st.write("**Bước 2: Ánh Xạ Cột (Column Mapping)**")
                 columns_list = df_raw.columns.astype(str).tolist()
                 
-                # Tự động đoán một số cột mặc định
-                default_date_idx = next((i for i, v in enumerate(columns_list) if any(kw in v.lower() for kw in ['ngày', 'date', 'thời gian', 'time'])), 0)
-                default_ticker_idx = next((i for i, v in enumerate(columns_list) if any(kw in v.lower() for kw in ['mã', 'ticker', 'chứng khoán'])), 0)
+                # Tùy chọn loại báo cáo
+                file_type_sel = st.radio("Loại Báo cáo:", options=["Khớp lệnh (Cổ phiếu/Tài sản)", "Sao kê Tiền (Nạp/Rút/Cổ tức)"], horizontal=True)
                 
                 with st.form("mapping_form"):
-                    map_date = st.selectbox("Cột Ngày Giao dịch (Date)", options=columns_list, index=default_date_idx)
-                    map_ticker = st.selectbox("Cột Mã Ticker", options=columns_list, index=default_ticker_idx)
-                    map_type = st.selectbox("Cột Loại Lệnh (Type | Mua, bán, nộp...)", options=columns_list)
-                    map_quantity = st.selectbox("Cột Khối lượng (Quantity)", options=columns_list)
-                    map_price = st.selectbox("Cột Đơn Giá / Số Tiền (Price / Amount)", options=columns_list)
+                    if file_type_sel == "Khớp lệnh (Cổ phiếu/Tài sản)":
+                        # Logic cũ cho khớp lệnh
+                        default_date_idx = next((i for i, v in enumerate(columns_list) if any(kw in v.lower() for kw in ['ngày', 'date', 'thời gian', 'time'])), 0)
+                        default_ticker_idx = next((i for i, v in enumerate(columns_list) if any(kw in v.lower() for kw in ['mã', 'ticker', 'chứng khoán'])), 0)
+                        
+                        map_date = st.selectbox("Cột Ngày Giao dịch (Date)", options=columns_list, index=default_date_idx)
+                        map_ticker = st.selectbox("Cột Mã Ticker", options=columns_list, index=default_ticker_idx)
+                        map_type = st.selectbox("Cột Loại Lệnh (Type | Mua, bán, nộp...)", options=columns_list)
+                        map_quantity = st.selectbox("Cột Khối lượng (Quantity)", options=columns_list)
+                        map_price = st.selectbox("Cột Đơn Giá / Số Tiền (Price / Amount)", options=columns_list)
+                    else:
+                        # Logic mới cho sao kê tiền
+                        map_date = st.selectbox("Cột Ngày Giao dịch (Date)", options=columns_list)
+                        map_desc = st.selectbox("Cột Diễn giải / Mô tả giao dịch", options=columns_list)
+                        map_inc = st.selectbox("Cột Phát sinh Tăng (Tiền vào)", options=columns_list)
+                        map_dec = st.selectbox("Cột Phát sinh Giảm (Tiền ra)", options=columns_list)
                     
                     st.markdown("---")
                     use_multiline_merge = st.checkbox("Chế độ File Đa Dòng (Merge multi-line rows)", help="Bật nếu file có cấu trúc 'bậc thang': dòng trên chứa Mã, dòng dưới chứa số liệu.")
@@ -303,103 +313,131 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                     submit_mapping = st.form_submit_button("Xác nhận Import & Chuẩn hóa")
                     
                     if submit_mapping:
-                        st.spinner("Đang chuẩn hóa dữ liệu (Fuzzy Matching)...")
-                        # 1. Trích DataFrame 5 Cột lõi
-                        mapped_df = df_raw[[map_date, map_ticker, map_type, map_quantity, map_price]].copy()
-                        mapped_df.columns = ['Date', 'Ticker', 'Type', 'Quantity', 'Price']
+                        st.spinner("Đang chuẩn hóa dữ liệu...")
                         
-                        # [MỚI] Xử lý Đa dòng: Ghép thông tin từ dòng trên xuống dòng dưới
-                        if use_multiline_merge:
-                            # Forward fill cho thông tin định danh
-                            mapped_df[['Date', 'Ticker', 'Type']] = mapped_df[['Date', 'Ticker', 'Type']].ffill()
-                        
-                        # 2. Xử lý Ngày
-                        mapped_df['Date'] = pd.to_datetime(mapped_df['Date'], dayfirst=True, errors='coerce')
-                        
-                        # 3. Chuẩn hóa Type (Fuzzy matching parser)
-                        def parse_type(text):
-                            if pd.isna(text): return 'UNKNOWN'
-                            t = str(text).lower()
-                            # Ưu tiên lệnh chứng khoán trước
-                            if 'mua' in t: return 'BUY'
-                            if 'bán' in t or 'ban' in t: return 'SELL'
+                        if file_type_sel == "Khớp lệnh (Cổ phiếu/Tài sản)":
+                            # --- LOGIC IMPORT KHỚP LỆNH (CŨ) ---
+                            mapped_df = df_raw[[map_date, map_ticker, map_type, map_quantity, map_price]].copy()
+                            mapped_df.columns = ['Date', 'Ticker', 'Type', 'Quantity', 'Price']
                             
-                            # Nhận diện dòng tiền (Tăng/Giảm)
-                            if any(k in t for k in ['nạp', 'nộp', 'nhận', 'tăng', 'cộng', 'vào', 'thu', 'deposit']): 
-                                return 'DEPOSIT'
-                            if any(k in t for k in ['rút', 'giảm', 'trừ', 'ra', 'chi', 'withdraw']): 
-                                return 'WITHDRAW'
-                                
-                            if 'cổ tức' in t or 'dividend' in t: return 'DIVIDEND'
-                            return 'UNKNOWN'
+                            if use_multiline_merge:
+                                mapped_df[['Date', 'Ticker', 'Type']] = mapped_df[['Date', 'Ticker', 'Type']].ffill()
                             
-                        mapped_df['Type'] = mapped_df['Type'].apply(parse_type)
-                        
-                        # Lọc dòng không xác định được
-                        mapped_df = mapped_df[mapped_df['Type'] != 'UNKNOWN']
-                        
-                        # 4. Gắn Asset_Class & Ticker (Tối ưu hóa dòng tiền)
-                        def parse_asset_and_ticker(row):
-                            t = str(row['Type']).upper()
-                            orig_type_text = str(df_raw.loc[row.name, map_type]).lower()
-                            tk = str(row['Ticker']).upper().strip() if (pd.notna(row['Ticker']) and str(row['Ticker']).strip() != '') else ''
+                            mapped_df['Date'] = pd.to_datetime(mapped_df['Date'], dayfirst=True, errors='coerce')
                             
-                            # Nhận diện Tiết kiệm từ diễn giải
-                            if any(kw in orig_type_text for kw in ['tiết kiệm', 'tết kiệm', 'saving', 'sổ']):
-                                return 'Tiết kiệm', (tk or 'SAVING_ACC')
-                                
-                            if t in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
-                                return 'Tiền mặt', (tk or 'CASH')
-                                
-                            return 'Cổ phiếu', (tk or 'UNK')
-                        
-                        if not mapped_df.empty:
+                            def parse_type(text):
+                                if pd.isna(text): return 'UNKNOWN'
+                                t = str(text).lower()
+                                if 'mua' in t: return 'BUY'
+                                if 'bán' in t or 'ban' in t: return 'SELL'
+                                if any(k in t for k in ['nạp', 'nộp', 'nhận', 'tăng', 'cộng', 'vào', 'thu', 'deposit']): return 'DEPOSIT'
+                                if any(k in t for k in ['rút', 'giảm', 'trừ', 'ra', 'chi', 'withdraw']): return 'WITHDRAW'
+                                if 'cổ tức' in t or 'dividend' in t: return 'DIVIDEND'
+                                return 'UNKNOWN'
+                            
+                            mapped_df['Type'] = mapped_df['Type'].apply(parse_type)
+                            mapped_df = mapped_df[mapped_df['Type'] != 'UNKNOWN']
+                            
+                            def parse_asset_and_ticker(row):
+                                t = str(row['Type']).upper()
+                                orig_type_text = str(df_raw.loc[row.name, map_type]).lower()
+                                tk = str(row['Ticker']).upper().strip() if (pd.notna(row['Ticker']) and str(row['Ticker']).strip() != '') else ''
+                                if any(kw in orig_type_text for kw in ['tiết kiệm', 'tết kiệm', 'saving', 'sổ']):
+                                    return 'Tiết kiệm', (tk or 'SAVING_ACC')
+                                if t in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
+                                    return 'Tiền mặt', (tk or 'CASH')
+                                return 'Cổ phiếu', (tk or 'UNK')
+                            
                             mapped_df[['Asset_Class', 'Ticker']] = mapped_df.apply(parse_asset_and_ticker, axis=1, result_type='expand')
-                        
-                        # 5. Xử lý Format Số
-                        def clean_numeric(val):
-                            if pd.isna(val) or val == '': return 0.0
-                            s = str(val).replace(',', '').replace('. ', '').strip()
-                            try:
-                                return float(s)
-                            except:
-                                return 0.0
-
-                        mapped_df['Quantity'] = mapped_df['Quantity'].apply(clean_numeric)
-                        mapped_df['Price'] = mapped_df['Price'].apply(clean_numeric)
-                        
-                        # [MỚI] Lọc dòng rác sau khi merge: chỉ giữ dòng có số liệu
-                        if use_multiline_merge:
-                            mapped_df = mapped_df[(mapped_df['Quantity'] > 0) | (mapped_df['Price'] > 0)]
-                        
-                        # 6. Tính Total Value (Cực kì quan trọng cho dòng tiền)
-                        def calculate_mapped_total(r):
-                            # Nếu là giao dịch tiền, số tiền có thể nằm ở cột Price hoặc Quantity tùy người dùng map
-                            if r['Type'] in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
-                                # Lấy giá trị lớn nhất vì thường nạp tiền chỉ có 1 cột số tiền
-                                return max(r['Price'], r['Quantity'])
                             
-                            # Nếu là lệnh Mua/Bán (Asset) thì bắt buộc nhân
-                            return r['Quantity'] * r['Price']
+                            def clean_numeric(val):
+                                if pd.isna(val) or val == '': return 0.0
+                                s = str(val).replace(',', '').replace('. ', '').strip()
+                                try: return float(s)
+                                except: return 0.0
+
+                            mapped_df['Quantity'] = mapped_df['Quantity'].apply(clean_numeric)
+                            mapped_df['Price'] = mapped_df['Price'].apply(clean_numeric)
+                            if use_multiline_merge:
+                                mapped_df = mapped_df[(mapped_df['Quantity'] > 0) | (mapped_df['Price'] > 0)]
+                            
+                            def calculate_mapped_total(r):
+                                if r['Type'] in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
+                                    return max(r['Price'], r['Quantity'])
+                                return r['Quantity'] * r['Price']
                                 
-                        mapped_df['Total_Value'] = mapped_df.apply(calculate_mapped_total, axis=1)
-                        mapped_df['Interest_Rate'] = 0.0
+                            mapped_df['Total_Value'] = mapped_df.apply(calculate_mapped_total, axis=1)
+                            mapped_df['Interest_Rate'] = 0.0
+                            
+                        else:
+                            # --- LOGIC IMPORT SAO KÊ TIỀN (MỚI) ---
+                            mapped_df = df_raw[[map_date, map_desc, map_inc, map_dec]].copy()
+                            mapped_df.columns = ['Date', 'Desc', 'Inc', 'Dec']
+                            
+                            if use_multiline_merge:
+                                mapped_df[['Date', 'Desc']] = mapped_df[['Date', 'Desc']].ffill()
+                                
+                            mapped_df['Date'] = pd.to_datetime(mapped_df['Date'], dayfirst=True, errors='coerce')
+                            
+                            def normalize_cash_type(text):
+                                if pd.isna(text): return 'IGNORE'
+                                t = str(text).lower()
+                                if any(kw in t for kw in ["nạp", "nộp", "nhận chuyển tiền", "lãi tiền gửi"]):
+                                    return 'DEPOSIT'
+                                if any(kw in t for kw in ["rút", "chuyển ra"]):
+                                    return 'WITHDRAW'
+                                if "cổ tức" in t:
+                                    return 'DIVIDEND'
+                                return 'IGNORE'
+                                
+                            mapped_df['Type'] = mapped_df['Desc'].apply(normalize_cash_type)
+                            mapped_df = mapped_df[mapped_df['Type'] != 'IGNORE']
+                            
+                            def clean_numeric(val):
+                                if pd.isna(val) or val == '': return 0.0
+                                s = str(val).replace(',', '').replace('. ', '').strip()
+                                try: return float(s)
+                                except: return 0.0
+                                
+                            mapped_df['Inc'] = mapped_df['Inc'].apply(clean_numeric)
+                            mapped_df['Dec'] = mapped_df['Dec'].apply(clean_numeric)
+                            
+                            def calc_cash_total(r):
+                                if r['Type'] in ['DEPOSIT', 'DIVIDEND']:
+                                    return r['Inc']
+                                if r['Type'] == 'WITHDRAW':
+                                    return abs(r['Dec'])
+                                return 0.0
+                                
+                            mapped_df['Total_Value'] = mapped_df.apply(calc_cash_total, axis=1)
+                            
+                            # Gán cứng các cột chuẩn
+                            mapped_df['Asset_Class'] = 'Tiền mặt'
+                            mapped_df['Ticker'] = 'CASH'
+                            mapped_df['Quantity'] = 0.0
+                            mapped_df['Price'] = mapped_df['Total_Value']
+                            mapped_df['Interest_Rate'] = 0.0
+                            
+                            # Loại bỏ các cột phụ
+                            mapped_df = mapped_df[['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price', 'Total_Value', 'Interest_Rate']]
                         
-                        # Nối CSDL
+                        # Kết nối và Lưu dữ liệu
                         if not mapped_df.empty:
-                            st.session_state['transactions_df'] = pd.concat([st.session_state['transactions_df'], mapped_df], ignore_index=True)
+                            # Chỉ lấy 8 cột chuẩn để tránh lỗi concat
+                            final_cols = ['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price', 'Total_Value', 'Interest_Rate']
+                            mapped_df_final = mapped_df[final_cols].copy()
+                            
+                            st.session_state['transactions_df'] = pd.concat([st.session_state['transactions_df'], mapped_df_final], ignore_index=True)
                             
                             update_holdings()
                             save_data()
                             
-                            st.success(f"Phân giải thành công {len(mapped_df)} giao dịch!")
-                            
-                            if hasattr(st, 'rerun'):
-                                st.rerun()
-                            else:
-                                st.experimental_rerun()
+                            st.success(f"Nạp thành công {len(mapped_df_final)} dòng dữ liệu!")
+                            if hasattr(st, 'rerun'): st.rerun()
+                            else: st.experimental_rerun()
                         else:
-                            st.warning("Không tìm thấy giao dịch hợp lệ sau khi lọc.")
+                            st.warning("Không có dữ liệu hợp lệ sau khi xử lý.")
+
                             
         except Exception as e:
             st.error(f"Lỗi đọc File hoặc Mapping: {e}")
