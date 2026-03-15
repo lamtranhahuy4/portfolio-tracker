@@ -18,6 +18,7 @@ The system automatically calculates Average Cost, manages CASH Flow, updates Mar
 4. **Bulk Import**: Supports importing `.csv` and `.xlsx` files. A "Confirm" button helps to completely resolve Streamlit form's Double-Import issue.
 5. **Data Persistence**: System files are immediately backed up to the `/data/` partition. Reloading the browser restores the exact portfolio state.
 6. **Account Summary Dashboard**: Calculates Net Profit/Loss, Total Balance, Total Invested, and ROI (%). Accompanied by a Donut Chart depicting risk allocation across the portfolio.
+7. **Automated Market Data (Live Price API)**: Integrates the `yfinance` library, allowing you to update the latest closing prices of Stocks, ETFs (supporting the VN market via the `.VN` suffix) and Crypto (via the `-USD` suffix) with just one click. The system automatically categorizes and **ignores** unlisted assets (Cash, Savings) to preserve internal valuation.
 
 ---
 
@@ -56,6 +57,8 @@ To use the Bulk Import feature, your file must have a Header row with exactly th
 - [x] Phase 1-7: Build Data Core, DCA, Compound Interest, and Visualization.
 - [ ] Phase 8: Integrate APIs (VNStock / yfinance) for automated real-time Market Price (Live Price) updates.
 - [ ] Phase 9: Diversify advanced Performance Analysis Charts.
+- [x] Version 1.0: Complete Data Core, Import Portal, DCA & Compound Interest Management, Cash Flow Visualization (Step-line Area Chart), and Market Price API Integration (Live Price).
+- [ ] Version 2.0 (Planned): Improve performance charts per asset ticker and Integrate Database (SQLite/PostgreSQL) for multi-user support.
 
 ---
 
@@ -63,7 +66,7 @@ To use the Bulk Import feature, your file must have a Header row with exactly th
 
 ### Install Dependencies
 ```bash
-pip install streamlit pandas numpy plotly openpyxl
+pip install streamlit pandas numpy plotly openpyxl yfinance
 ```
 
 ### Run the Application
