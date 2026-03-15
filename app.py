@@ -23,8 +23,10 @@ def load_data():
     if os.path.exists(TRANSACTIONS_FILE):
         tx_df = pd.read_csv(TRANSACTIONS_FILE)
         tx_df['Date'] = pd.to_datetime(tx_df['Date'])
+        if 'Interest_Rate' not in tx_df.columns:
+            tx_df['Interest_Rate'] = 0.0
     else:
-        tx_df = pd.DataFrame(columns=['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price', 'Total_Value'])
+        tx_df = pd.DataFrame(columns=['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price', 'Interest_Rate', 'Total_Value'])
         
     # Load holdings
     if os.path.exists(HOLDINGS_FILE):
@@ -43,6 +45,9 @@ if 'transactions_df' not in st.session_state or 'holdings_df' not in st.session_
     tx_df, h_df = load_data()
     st.session_state['transactions_df'] = tx_df
     st.session_state['holdings_df'] = h_df
+else:
+    if 'Interest_Rate' not in st.session_state['transactions_df'].columns:
+        st.session_state['transactions_df']['Interest_Rate'] = 0.0
 
 # --- HÀM TÍNH TOÁN DANH MỤC ---
 def update_holdings():
@@ -64,6 +69,7 @@ def update_holdings():
         qty = row['Quantity']
         price = row['Price']
         val = row['Total_Value']
+        interest_rate = row.get('Interest_Rate', 0.0)
         
         # --- Logic Tiền mặt (CASH) ---
         if txn_type == 'DEPOSIT':
@@ -89,25 +95,50 @@ def update_holdings():
                 'Total_Shares': 0.0,
                 'Average_Cost': 0.0,
                 'Current_Price': 0.0, # Sẽ được điền lại sau
-                'Market_Value': 0.0
+                'Market_Value': 0.0,
+                'Total_Value_Invested': 0.0 # Bổ sung để lưu gốc Tiết kiệm
             }
             
         current = holdings_dict[ticker]
         
-        # --- Logic Cổ phiếu ---
-        if txn_type == 'BUY':
-            new_total_shares = current['Total_Shares'] + qty
-            if new_total_shares > 0:
-                # Tính bình quân gia quyền
-                current['Average_Cost'] = ((current['Total_Shares'] * current['Average_Cost']) + val) / new_total_shares
-            current['Total_Shares'] = new_total_shares
+        if current['Asset_Class'] == 'Tiết kiệm':
+            days_elapsed = (pd.Timestamp.today().normalize() - pd.to_datetime(row['Date']).normalize()).days
+            if days_elapsed < 0: days_elapsed = 0
+            accrued_interest = val * (interest_rate / 100.0) * (days_elapsed / 365.0)
             
-        elif txn_type == 'SELL':
-            current['Total_Shares'] -= qty
-            # Nếu hết cổ phiếu, reset cost về 0
+            if txn_type in ['BUY', 'DEPOSIT']:
+                current['Total_Shares'] += qty
+                current['Total_Value_Invested'] += val
+                current['Market_Value'] += val + accrued_interest
+                current['Average_Cost'] = current['Total_Value_Invested']
+                current['Current_Price'] = current['Market_Value'] / current['Total_Shares'] if current['Total_Shares'] > 0 else 0
+            elif txn_type in ['SELL', 'WITHDRAW']:
+                current['Total_Shares'] -= qty
+                current['Total_Value_Invested'] -= val
+                current['Market_Value'] -= (val + accrued_interest)
+                current['Average_Cost'] = current['Total_Value_Invested']
+                current['Current_Price'] = current['Market_Value'] / current['Total_Shares'] if current['Total_Shares'] > 0 else 0
+                
             if current['Total_Shares'] <= 0:
                 current['Total_Shares'] = 0.0
                 current['Average_Cost'] = 0.0
+                current['Market_Value'] = 0.0
+                current['Current_Price'] = 0.0
+        else:
+            # --- Logic Cổ phiếu ---
+            if txn_type == 'BUY':
+                new_total_shares = current['Total_Shares'] + qty
+                if new_total_shares > 0:
+                    # Tính bình quân gia quyền
+                    current['Average_Cost'] = ((current['Total_Shares'] * current['Average_Cost']) + val) / new_total_shares
+                current['Total_Shares'] = new_total_shares
+                
+            elif txn_type == 'SELL':
+                current['Total_Shares'] -= qty
+                # Nếu hết cổ phiếu, reset cost về 0
+                if current['Total_Shares'] <= 0:
+                    current['Total_Shares'] = 0.0
+                    current['Average_Cost'] = 0.0
 
     # Chuyển đổi từ Dict sang List các Record để tạo DataFrame
     holdings_list = []
@@ -125,14 +156,25 @@ def update_holdings():
     # Thêm các cổ phiếu có số lượng > 0
     for tck, data in holdings_dict.items():
         if data['Total_Shares'] > 0:
-            # Khôi phục giá cũ, hoặc dùng Average Cost nếu mã mới
-            if tck in old_prices:
-                data['Current_Price'] = old_prices[tck]
-            else:
-                data['Current_Price'] = data['Average_Cost']
+            if data['Asset_Class'] != 'Tiết kiệm':
+                # Khôi phục giá cũ, hoặc dùng Average Cost nếu mã mới
+                if tck in old_prices:
+                    data['Current_Price'] = old_prices[tck]
+                else:
+                    data['Current_Price'] = data['Average_Cost']
+                    
+                data['Market_Value'] = data['Total_Shares'] * data['Current_Price']
                 
-            data['Market_Value'] = data['Total_Shares'] * data['Current_Price']
-            holdings_list.append(data)
+            # Tạo dictionary gọn gàng trùng schema
+            clean_data = {
+                'Asset_Class': data['Asset_Class'],
+                'Ticker': data['Ticker'],
+                'Total_Shares': data['Total_Shares'],
+                'Average_Cost': data['Average_Cost'],
+                'Current_Price': data['Current_Price'],
+                'Market_Value': data['Market_Value']
+            }
+            holdings_list.append(clean_data)
             
     # Xây dựng DataFrame mới
     if holdings_list:
@@ -148,15 +190,21 @@ def update_holdings():
 # --- SIDEBAR: FORM NHẬP GIAO DỊCH ---
 st.sidebar.header("Thêm Giao dịch Mới")
 
-with st.sidebar.form(key='transaction_form'):
-    date = st.date_input("Ngày Giao dịch")
-    txn_type = st.selectbox("Loại Giao dịch", options=["BUY", "SELL", "DEPOSIT", "WITHDRAW", "DIVIDEND"])
-    asset_class = st.selectbox("Lớp tài sản", options=["Tiền mặt", "Cổ phiếu", "Crypto", "Tiết kiệm", "Bất động sản"])
-    ticker = st.text_input("Mã Ticker", placeholder="VD: VCB, FPT, HPG").upper()
-    quantity = st.number_input("Số lượng", min_value=0.0, step=1.0, format="%.4f")
-    price = st.number_input("Giá (VND)", min_value=0.0, step=1000.0, format="%.2f")
+date = st.sidebar.date_input("Ngày Giao dịch")
+txn_type = st.sidebar.selectbox("Loại Giao dịch", options=["BUY", "SELL", "DEPOSIT", "WITHDRAW", "DIVIDEND"])
+asset_class = st.sidebar.selectbox("Lớp tài sản", options=["Tiền mặt", "Cổ phiếu", "Crypto", "Tiết kiệm", "Bất động sản"])
+ticker = st.sidebar.text_input("Mã Ticker", placeholder="VD: VCB, FPT, HPG, SAVING1").upper()
+
+if asset_class == "Tiết kiệm":
+    quantity = 1.0
+    price = st.sidebar.number_input("Số tiền gửi (VND)", min_value=0.0, step=1000.0, format="%.2f")
+    interest_rate = st.sidebar.number_input("Lãi suất (%/năm)", min_value=0.0, step=0.1, format="%.2f")
+else:
+    quantity = st.sidebar.number_input("Số lượng", min_value=0.0, step=1.0, format="%.4f")
+    price = st.sidebar.number_input("Giá (VND)", min_value=0.0, step=1000.0, format="%.2f")
+    interest_rate = 0.0
     
-    submit_button = st.form_submit_button(label="Thêm Giao dịch")
+submit_button = st.sidebar.button(label="Thêm Giao dịch")
 
 # --- XỬ LÝ SỰ KIỆN THÊM GIAO DỊCH ---
 if submit_button:
@@ -174,6 +222,7 @@ if submit_button:
             'Type': txn_type,
             'Quantity': quantity,
             'Price': price,
+            'Interest_Rate': interest_rate,
             'Total_Value': total_value
         }
         
@@ -256,7 +305,7 @@ with st.sidebar.expander("⚙️ Cài đặt & Quản lý Dữ liệu"):
             os.remove(HOLDINGS_FILE)
             
         # Reset Session State
-        st.session_state['transactions_df'] = pd.DataFrame(columns=['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price', 'Total_Value'])
+        st.session_state['transactions_df'] = pd.DataFrame(columns=['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price', 'Interest_Rate', 'Total_Value'])
         st.session_state['holdings_df'] = pd.DataFrame(columns=['Asset_Class', 'Ticker', 'Total_Shares', 'Average_Cost', 'Current_Price', 'Market_Value'])
         
         st.success("Đã xóa toàn bộ dữ liệu!")
@@ -286,10 +335,30 @@ if not st.session_state['holdings_df'].empty:
     
     # So sánh để tìm sự thay đổi
     if not edited_df.equals(st.session_state['holdings_df']):
-        # Tính toán lại Market_Value ngay tại chỗ
-        edited_df['Market_Value'] = edited_df.apply(
-            lambda row: row['Total_Shares'] if row['Ticker'] == 'CASH' else row['Total_Shares'] * row['Current_Price'], axis=1
-        )
+        def recalc_market_value(row):
+            if row['Ticker'] == 'CASH':
+                return row['Total_Shares']
+            elif row['Asset_Class'] == 'Tiết kiệm':
+                df_temp = st.session_state['holdings_df']
+                orig_rows = df_temp[df_temp['Ticker'] == row['Ticker']]
+                if orig_rows.empty: return 0.0
+                return orig_rows.iloc[0]['Market_Value']
+            else:
+                return row['Total_Shares'] * row['Current_Price']
+                
+        def recalc_current_price(row):
+            if row['Ticker'] == 'CASH':
+                return 1.0
+            elif row['Asset_Class'] == 'Tiết kiệm':
+                df_temp = st.session_state['holdings_df']
+                orig_rows = df_temp[df_temp['Ticker'] == row['Ticker']]
+                if orig_rows.empty: return 0.0
+                return orig_rows.iloc[0]['Current_Price']
+            else:
+                return row['Current_Price']
+
+        edited_df['Current_Price'] = edited_df.apply(recalc_current_price, axis=1)
+        edited_df['Market_Value'] = edited_df.apply(recalc_market_value, axis=1)
         
         # Ghi đè lại session state, Account Summary phía dưới sẽ tự động lấy data mới nhất để render
         st.session_state['holdings_df'] = edited_df
@@ -352,6 +421,65 @@ with col3:
 with col4:
     st.metric(label="Tỷ suất Sinh lời (ROI)", value=f"{roi:,.2f}%", delta=f"{roi:,.2f}%")
 
+st.markdown("---")
+
+# --- BIỂU ĐỒ DÒNG VỐN ĐẦU TƯ TÍCH LŨY ---
+st.subheader("📈 Hành trình Vốn Đầu tư Tích lũy (Cumulative Capital)")
+
+transactions_history = st.session_state['transactions_df']
+cash_flows = transactions_history[transactions_history['Type'].isin(['DEPOSIT', 'WITHDRAW', 'DIVIDEND'])].copy()
+
+if not cash_flows.empty:
+    def get_net_cash(row):
+        if row['Type'] in ['DEPOSIT', 'DIVIDEND']:
+            return row['Total_Value']
+        elif row['Type'] == 'WITHDRAW':
+            return -row['Total_Value']
+        return 0
+        
+    cash_flows['Net_Cash'] = cash_flows.apply(get_net_cash, axis=1)
+    
+    # Nhóm theo ngày và tính tổng
+    daily_cash_flow = cash_flows.groupby(cash_flows['Date'].dt.date)['Net_Cash'].sum().reset_index()
+    daily_cash_flow = daily_cash_flow.sort_values(by='Date')
+    
+    # Tính cộng dồn
+    daily_cash_flow['Cumulative_Capital'] = daily_cash_flow['Net_Cash'].cumsum()
+    
+    # Bổ sung điểm neo cho đến Ngày Hiện Tại (nếu cần thiết kéo dài đường ngang đồ thị)
+    if not daily_cash_flow.empty:
+        last_date = daily_cash_flow.iloc[-1]['Date']
+        today_date = pd.Timestamp.today().date()
+        
+        if last_date < today_date:
+            last_capital = daily_cash_flow.iloc[-1]['Cumulative_Capital']
+            anchor_row = pd.DataFrame({
+                'Date': [today_date],
+                'Net_Cash': [0.0],
+                'Cumulative_Capital': [last_capital]
+            })
+            daily_cash_flow = pd.concat([daily_cash_flow, anchor_row], ignore_index=True)
+    
+    # Vẽ biểu đồ
+    fig_area = px.area(
+        daily_cash_flow,
+        x='Date',
+        y='Cumulative_Capital',
+        title="Biểu đồ Vốn Đầu tư Tích lũy theo thời gian",
+        color_discrete_sequence=['#00C853'], # Xanh lá tăng trưởng
+        line_shape='hv'
+    )
+    
+    # Tùy chỉnh hover và trục X
+    fig_area.update_layout(
+        hovermode="x unified",
+        xaxis_tickformat="%d/%m/%Y"
+    )
+    
+    st.plotly_chart(fig_area, use_container_width=True)
+else:
+    st.info("Chưa có dữ liệu dòng vốn nạp/rút.")
+    
 st.markdown("---")
 
 # --- BIỂU ĐỒ PHÂN BỔ TÀI SẢN ---
