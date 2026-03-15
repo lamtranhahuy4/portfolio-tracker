@@ -332,17 +332,25 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                         # Lọc dòng không xác định được
                         mapped_df = mapped_df[mapped_df['Type'] != 'UNKNOWN']
                         
-                        # 4. Gắn Asset_Class
+                        # 4. Gắn Asset_Class & Ticker (Tối ưu hóa dòng tiền)
                         def parse_asset_and_ticker(row):
-                            tk = str(row['Ticker']).upper().strip() if pd.notna(row['Ticker']) else 'UNK'
-                            if row['Type'] in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
-                                return 'Tiền mặt', 'CASH'
-                            return 'Cổ phiếu', tk
+                            t = str(row['Type']).upper()
+                            orig_type_text = str(df_raw.loc[row.name, map_type]).lower()
+                            tk = str(row['Ticker']).upper().strip() if (pd.notna(row['Ticker']) and str(row['Ticker']).strip() != '') else ''
+                            
+                            # Nhận diện Tiết kiệm từ diễn giải
+                            if any(kw in orig_type_text for kw in ['tiết kiệm', 'tết kiệm', 'saving', 'sổ']):
+                                return 'Tiết kiệm', (tk or 'SAVING_ACC')
+                                
+                            if t in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
+                                return 'Tiền mặt', (tk or 'CASH')
+                                
+                            return 'Cổ phiếu', (tk or 'UNK')
                         
                         if not mapped_df.empty:
                             mapped_df[['Asset_Class', 'Ticker']] = mapped_df.apply(parse_asset_and_ticker, axis=1, result_type='expand')
                         
-                        # 5. Xử lý Format Số (Xử lý chuỗi trước khi chuyển số)
+                        # 5. Xử lý Format Số
                         def clean_numeric(val):
                             if pd.isna(val) or val == '': return 0.0
                             s = str(val).replace(',', '').replace('. ', '').strip()
@@ -358,11 +366,14 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                         if use_multiline_merge:
                             mapped_df = mapped_df[(mapped_df['Quantity'] > 0) | (mapped_df['Price'] > 0)]
                         
-                        # 6. Tính Total Value
+                        # 6. Tính Total Value (Cực kì quan trọng cho dòng tiền)
                         def calculate_mapped_total(r):
-                            # Nạp/Rút có thể người dùng map nhầm Số Tiền sang Cột Price hoặc Quantity
+                            # Nếu là giao dịch tiền, số tiền có thể nằm ở cột Price hoặc Quantity tùy người dùng map
                             if r['Type'] in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
-                                return r['Price'] if r['Price'] > 0 else (r['Quantity'] if r['Quantity'] > 0 else 0)
+                                # Lấy giá trị lớn nhất vì thường nạp tiền chỉ có 1 cột số tiền
+                                return max(r['Price'], r['Quantity'])
+                            
+                            # Nếu là lệnh Mua/Bán (Asset) thì bắt buộc nhân
                             return r['Quantity'] * r['Price']
                                 
                         mapped_df['Total_Value'] = mapped_df.apply(calculate_mapped_total, axis=1)
