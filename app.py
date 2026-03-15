@@ -277,6 +277,9 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                     map_quantity = st.selectbox("Cột Khối lượng (Quantity)", options=columns_list)
                     map_price = st.selectbox("Cột Đơn Giá / Số Tiền (Price / Amount)", options=columns_list)
                     
+                    st.markdown("---")
+                    use_multiline_merge = st.checkbox("Chế độ File Đa Dòng (Merge multi-line rows)", help="Bật nếu file có cấu trúc 'bậc thang': dòng trên chứa Mã, dòng dưới chứa số liệu.")
+                    
                     submit_mapping = st.form_submit_button("Xác nhận Import & Chuẩn hóa")
                     
                     if submit_mapping:
@@ -284,6 +287,11 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                         # 1. Trích DataFrame 5 Cột lõi
                         mapped_df = df_raw[[map_date, map_ticker, map_type, map_quantity, map_price]].copy()
                         mapped_df.columns = ['Date', 'Ticker', 'Type', 'Quantity', 'Price']
+                        
+                        # [MỚI] Xử lý Đa dòng: Ghép thông tin từ dòng trên xuống dòng dưới
+                        if use_multiline_merge:
+                            # Forward fill cho thông tin định danh
+                            mapped_df[['Date', 'Ticker', 'Type']] = mapped_df[['Date', 'Ticker', 'Type']].ffill()
                         
                         # 2. Xử lý Ngày
                         mapped_df['Date'] = pd.to_datetime(mapped_df['Date'], dayfirst=True, errors='coerce')
@@ -314,9 +322,21 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                         if not mapped_df.empty:
                             mapped_df[['Asset_Class', 'Ticker']] = mapped_df.apply(parse_asset_and_ticker, axis=1, result_type='expand')
                         
-                        # 5. Xử lý Format Số
-                        mapped_df['Quantity'] = pd.to_numeric(mapped_df['Quantity'].astype(str).str.replace(',', '').str.replace('.', ''), errors='coerce').fillna(0)
-                        mapped_df['Price'] = pd.to_numeric(mapped_df['Price'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+                        # 5. Xử lý Format Số (Xử lý chuỗi trước khi chuyển số)
+                        def clean_numeric(val):
+                            if pd.isna(val) or val == '': return 0.0
+                            s = str(val).replace(',', '').replace('. ', '').strip()
+                            try:
+                                return float(s)
+                            except:
+                                return 0.0
+
+                        mapped_df['Quantity'] = mapped_df['Quantity'].apply(clean_numeric)
+                        mapped_df['Price'] = mapped_df['Price'].apply(clean_numeric)
+                        
+                        # [MỚI] Lọc dòng rác sau khi merge: chỉ giữ dòng có số liệu
+                        if use_multiline_merge:
+                            mapped_df = mapped_df[(mapped_df['Quantity'] > 0) | (mapped_df['Price'] > 0)]
                         
                         # 6. Tính Total Value
                         def calculate_mapped_total(r):
@@ -342,7 +362,7 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                             else:
                                 st.experimental_rerun()
                         else:
-                            st.warning("Không tìm thấy giao dịch hợp lệ sau khi lọc Type.")
+                            st.warning("Không tìm thấy giao dịch hợp lệ sau khi lọc.")
                             
         except Exception as e:
             st.error(f"Lỗi đọc File hoặc Mapping: {e}")
