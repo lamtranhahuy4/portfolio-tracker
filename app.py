@@ -240,58 +240,112 @@ if submit_button:
     else:
         st.sidebar.error("Vui lòng nhập Mã Ticker!")
 
-# --- SIDEBAR: NHẬP DỮ LIỆU TỪ FILE ---
+# --- SIDEBAR: NHẬP DỮ LIỆU TỪ FILE (UNIVERSAL DATA MAPPER) ---
 st.sidebar.markdown("---")
-with st.sidebar.expander("📁 Nhập dữ liệu từ file (CSV/Excel)"):
-    uploaded_file = st.file_uploader("Chọn file dữ liệu giao dịch", type=["csv", "xlsx"])
+with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)"):
+    st.write("Hỗ trợ đọc Trực tiếp File Sao kê (.csv/.xlsx) tải từ mọi công ty chứng khoán (VPS, SSI, TCBS...).")
+    uploaded_file = st.file_uploader("Tải lên file Sao kê giao dịch", type=["csv", "xlsx"])
+    
     if uploaded_file is not None:
-        if st.button("Xác nhận Import File"):
-            try:
-                # Đọc file bằng pandas
-                if uploaded_file.name.endswith('.csv'):
-                    df_import = pd.read_csv(uploaded_file)
-                else:
-                    df_import = pd.read_excel(uploaded_file)
+        st.write("**Bước 1: Lọc Dữ Liệu Rác (Header Detection)**")
+        st.caption("Tăng số dòng bỏ qua (Skiprows) nếu file bị dính logo hoặc thông tin tài khoản ở đầu.")
+        skiprows = st.number_input("Bỏ qua X dòng đầu tiên", min_value=0, value=0, step=1)
+        
+        try:
+            # Dời Uploaded Stream về vị trí 0 sau mỗi lần thay đổi Input
+            uploaded_file.seek(0)
+            if uploaded_file.name.endswith('.csv'):
+                df_raw = pd.read_csv(uploaded_file, skiprows=skiprows)
+            else:
+                df_raw = pd.read_excel(uploaded_file, skiprows=skiprows)
+                
+            st.write("Bản xem trước (3 dòng đầu):")
+            st.dataframe(df_raw.head(3), use_container_width=True)
+            
+            if not df_raw.empty:
+                st.write("**Bước 2: Ánh Xạ Cột (Column Mapping)**")
+                columns_list = df_raw.columns.astype(str).tolist()
+                
+                # Tự động đoán một số cột mặc định
+                default_date_idx = next((i for i, v in enumerate(columns_list) if any(kw in v.lower() for kw in ['ngày', 'date', 'thời gian', 'time'])), 0)
+                default_ticker_idx = next((i for i, v in enumerate(columns_list) if any(kw in v.lower() for kw in ['mã', 'ticker', 'chứng khoán'])), 0)
+                
+                with st.form("mapping_form"):
+                    map_date = st.selectbox("Cột Ngày Giao dịch (Date)", options=columns_list, index=default_date_idx)
+                    map_ticker = st.selectbox("Cột Mã Ticker", options=columns_list, index=default_ticker_idx)
+                    map_type = st.selectbox("Cột Loại Lệnh (Type | Mua, bán, nộp...)", options=columns_list)
+                    map_quantity = st.selectbox("Cột Khối lượng (Quantity)", options=columns_list)
+                    map_price = st.selectbox("Cột Đơn Giá / Số Tiền (Price / Amount)", options=columns_list)
                     
-                # Kiểm tra các cột chuẩn
-                required_cols = ['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price']
-                if not all(col in df_import.columns for col in required_cols):
-                    st.error(f"File không đúng định dạng. Cần đủ 6 cột: {', '.join(required_cols)}")
-                else:
-                    # Ép kiểu datetime
-                    df_import['Date'] = pd.to_datetime(df_import['Date'])
+                    submit_mapping = st.form_submit_button("Xác nhận Import & Chuẩn hóa")
                     
-                    # Tính toán Total_Value
-                    def calculate_total_value(row):
-                        if row['Type'] in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
-                            return row['Price']
-                        else:
-                            return row['Quantity'] * row['Price']
+                    if submit_mapping:
+                        st.spinner("Đang chuẩn hóa dữ liệu (Fuzzy Matching)...")
+                        # 1. Trích DataFrame 5 Cột lõi
+                        mapped_df = df_raw[[map_date, map_ticker, map_type, map_quantity, map_price]].copy()
+                        mapped_df.columns = ['Date', 'Ticker', 'Type', 'Quantity', 'Price']
+                        
+                        # 2. Xử lý Ngày
+                        mapped_df['Date'] = pd.to_datetime(mapped_df['Date'], dayfirst=True, errors='coerce')
+                        
+                        # 3. Chuẩn hóa Type (Fuzzy matching parser)
+                        def parse_type(text):
+                            if pd.isna(text): return 'UNKNOWN'
+                            t = str(text).lower()
+                            if 'mua' in t: return 'BUY'
+                            if 'bán' in t or 'ban' in t: return 'SELL'
+                            if any(k in t for k in ['nạp', 'nộp', 'nhận', 'deposit']): return 'DEPOSIT'
+                            if 'rút' in t or 'withdraw' in t: return 'WITHDRAW'
+                            if 'cổ tức' in t or 'dividend' in t: return 'DIVIDEND'
+                            return 'UNKNOWN'
                             
-                    df_import['Total_Value'] = df_import.apply(calculate_total_value, axis=1)
-                    
-                    # Loại bỏ các cột thừa nếu có
-                    final_cols = ['Date', 'Asset_Class', 'Ticker', 'Type', 'Quantity', 'Price', 'Total_Value']
-                    df_import = df_import[final_cols]
-                    
-                    # Nối vào transactions_df
-                    st.session_state['transactions_df'] = pd.concat([st.session_state['transactions_df'], df_import], ignore_index=True)
-                    
-                    # Tính lại danh mục
-                    update_holdings()
-                    
-                    # Lưu toàn bộ data
-                    save_data()
-                    
-                    st.success(f"Đã import thành công {len(df_import)} giao dịch!")
-                    
-                    # Làm mới giao diện
-                    if hasattr(st, 'rerun'):
-                        st.rerun()
-                    else:
-                        st.experimental_rerun()
-            except Exception as e:
-                st.error(f"Đã xảy ra lỗi khi đọc file: {e}")
+                        mapped_df['Type'] = mapped_df['Type'].apply(parse_type)
+                        
+                        # Lọc dòng không xác định được
+                        mapped_df = mapped_df[mapped_df['Type'] != 'UNKNOWN']
+                        
+                        # 4. Gắn Asset_Class
+                        def parse_asset_and_ticker(row):
+                            tk = str(row['Ticker']).upper().strip() if pd.notna(row['Ticker']) else 'UNK'
+                            if row['Type'] in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
+                                return 'Tiền mặt', 'CASH'
+                            return 'Cổ phiếu', tk
+                        
+                        if not mapped_df.empty:
+                            mapped_df[['Asset_Class', 'Ticker']] = mapped_df.apply(parse_asset_and_ticker, axis=1, result_type='expand')
+                        
+                        # 5. Xử lý Format Số
+                        mapped_df['Quantity'] = pd.to_numeric(mapped_df['Quantity'].astype(str).str.replace(',', '').str.replace('.', ''), errors='coerce').fillna(0)
+                        mapped_df['Price'] = pd.to_numeric(mapped_df['Price'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+                        
+                        # 6. Tính Total Value
+                        def calculate_mapped_total(r):
+                            # Nạp/Rút có thể người dùng map nhầm Số Tiền sang Cột Price hoặc Quantity
+                            if r['Type'] in ['DEPOSIT', 'WITHDRAW', 'DIVIDEND']:
+                                return r['Price'] if r['Price'] > 0 else (r['Quantity'] if r['Quantity'] > 0 else 0)
+                            return r['Quantity'] * r['Price']
+                                
+                        mapped_df['Total_Value'] = mapped_df.apply(calculate_mapped_total, axis=1)
+                        mapped_df['Interest_Rate'] = 0.0
+                        
+                        # Nối CSDL
+                        if not mapped_df.empty:
+                            st.session_state['transactions_df'] = pd.concat([st.session_state['transactions_df'], mapped_df], ignore_index=True)
+                            
+                            update_holdings()
+                            save_data()
+                            
+                            st.success(f"Phân giải thành công {len(mapped_df)} giao dịch!")
+                            
+                            if hasattr(st, 'rerun'):
+                                st.rerun()
+                            else:
+                                st.experimental_rerun()
+                        else:
+                            st.warning("Không tìm thấy giao dịch hợp lệ sau khi lọc Type.")
+                            
+        except Exception as e:
+            st.error(f"Lỗi đọc File hoặc Mapping: {e}")
 
 # --- SIDEBAR: CÀI ĐẶT & RESET DỮ LIỆU ---
 st.sidebar.markdown("---")
@@ -318,23 +372,105 @@ with st.sidebar.expander("⚙️ Cài đặt & Quản lý Dữ liệu"):
 
 # --- XỬ LÝ DỮ LIỆU BẢNG DANH MỤC (DATA EDITOR) ---
 st.header("💼 Danh mục Hiện tại (Holdings)")
+
+if st.button("🔄 Cập nhật Giá Thị trường (Live)"):
+    if not st.session_state['holdings_df'].empty:
+        with st.spinner("Đang kết nối dữ liệu thị trường..."):
+            import yfinance as yf
+            
+            def fetch_live_price(ticker, asset_class, current_price):
+                if asset_class in ['Tiền mặt', 'Tiết kiệm', 'Bất động sản'] or not ticker or ticker == 'CASH':
+                    return current_price
+                
+                formatted_ticker = ticker
+                if asset_class in ['Cổ phiếu', 'Chứng chỉ quỹ']:
+                    if not formatted_ticker.endswith('.VN'):
+                        formatted_ticker += '.VN'
+                elif asset_class == 'Crypto':
+                    if not formatted_ticker.endswith('-USD'):
+                        formatted_ticker += '-USD'
+                
+                try:
+                    stock = yf.Ticker(formatted_ticker)
+                    # Lấy giá đóng cửa mới nhất
+                    hist = stock.history(period="1d")
+                    if not hist.empty:
+                        return float(hist['Close'].iloc[-1])
+                    return current_price
+                except Exception:
+                    # Nếu lỗi API, giữ nguyên giá cũ
+                    return current_price
+            
+            # Cập nhật giá mới
+            st.session_state['holdings_df']['Current_Price'] = st.session_state['holdings_df'].apply(
+                lambda row: fetch_live_price(row['Ticker'], row['Asset_Class'], row['Current_Price']), axis=1
+            )
+            
+            # Tính toán lại Market_Value
+            def recalc_mv_live(row):
+                if row['Ticker'] == 'CASH':
+                    return row['Total_Shares']
+                elif row['Asset_Class'] == 'Tiết kiệm':
+                    return row['Market_Value'] # Giữ nguyên giá trị cũ đã được cộng dồn lãi
+                else:
+                    return row['Total_Shares'] * row['Current_Price']
+
+            st.session_state['holdings_df']['Market_Value'] = st.session_state['holdings_df'].apply(recalc_mv_live, axis=1)
+            
+            save_data()
+            st.toast("Đã cập nhật giá thành công!")
+            
+            if hasattr(st, 'rerun'):
+                st.rerun()
+            else:
+                st.experimental_rerun()
+
 if not st.session_state['holdings_df'].empty:
+    display_df = st.session_state['holdings_df'].copy()
+    
+    # Tính toán ROI để tạo cột hiển thị '% Lãi/Lỗ'
+    def calc_roi(row):
+        if row['Ticker'] == 'CASH' or row['Average_Cost'] == 0:
+            return 0.0
+        if row['Asset_Class'] == 'Tiết kiệm':
+            return ((row['Market_Value'] - row['Average_Cost']) / row['Average_Cost']) * 100.0
+        return ((row['Current_Price'] - row['Average_Cost']) / row['Average_Cost']) * 100.0
+        
+    display_df['% Lãi/Lỗ'] = display_df.apply(calc_roi, axis=1)
+    
+    # Hàm gán màu theo tỷ suất sinh lời
+    def color_profit_loss(row):
+        roi = row['% Lãi/Lỗ']
+        if roi > 0:
+            return ['color: #00C853'] * len(row)  # Xanh lá cây
+        elif roi < 0:
+            return ['color: #FF1744'] * len(row)  # Đỏ
+        else:
+            return [''] * len(row)
+            
+    # Áp dụng Style lên DataFrame
+    styled_df = display_df.style.apply(color_profit_loss, axis=1)
+    
     edited_df = st.data_editor(
-        st.session_state['holdings_df'],
-        disabled=['Asset_Class', 'Ticker', 'Total_Shares', 'Average_Cost', 'Market_Value'],
+        styled_df,
+        disabled=['Asset_Class', 'Ticker', 'Total_Shares', 'Average_Cost', 'Market_Value', '% Lãi/Lỗ'],
         column_config={
             "Total_Shares": st.column_config.NumberColumn(format="%.4f"),
             "Average_Cost": st.column_config.NumberColumn(format="%.2f"),
             "Current_Price": st.column_config.NumberColumn(format="%.2f", min_value=0.0),
-            "Market_Value": st.column_config.NumberColumn(format="%.2f")
+            "Market_Value": st.column_config.NumberColumn(format="%.2f"),
+            "% Lãi/Lỗ": st.column_config.NumberColumn(format="%.2f%%")
         },
         use_container_width=True,
         hide_index=True,
-        key="portfolio_editor" # Thêm key để quản lý state tốt hơn
+        key="portfolio_editor"
     )
     
+    # Loại bỏ cột phụ trợ trước khi so sánh tránh sửa đổi Schema gốc
+    edited_core_df = edited_df.drop(columns=['% Lãi/Lỗ'])
+    
     # So sánh để tìm sự thay đổi
-    if not edited_df.equals(st.session_state['holdings_df']):
+    if not edited_core_df.equals(st.session_state['holdings_df']):
         def recalc_market_value(row):
             if row['Ticker'] == 'CASH':
                 return row['Total_Shares']
@@ -357,11 +493,11 @@ if not st.session_state['holdings_df'].empty:
             else:
                 return row['Current_Price']
 
-        edited_df['Current_Price'] = edited_df.apply(recalc_current_price, axis=1)
-        edited_df['Market_Value'] = edited_df.apply(recalc_market_value, axis=1)
+        edited_core_df['Current_Price'] = edited_core_df.apply(recalc_current_price, axis=1)
+        edited_core_df['Market_Value'] = edited_core_df.apply(recalc_market_value, axis=1)
         
         # Ghi đè lại session state, Account Summary phía dưới sẽ tự động lấy data mới nhất để render
-        st.session_state['holdings_df'] = edited_df
+        st.session_state['holdings_df'] = edited_core_df
         
         # Lưu Backup state
         save_data()
@@ -490,7 +626,7 @@ if not st.session_state['holdings_df'].empty:
     df_chart = st.session_state['holdings_df'][st.session_state['holdings_df']['Market_Value'] > 0]
     
     if not df_chart.empty:
-        col_chart, col_empty = st.columns([1, 1]) # Chia cột để biểu đồ không quá to
+        col_chart, col_perf = st.columns([1, 1]) # Chia cột để hiển thị 2 biểu đồ
         with col_chart:
             # Vẽ biểu đồ Donut
             fig = px.pie(
@@ -503,6 +639,33 @@ if not st.session_state['holdings_df'].empty:
             # Tùy chỉnh hover
             fig.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig, use_container_width=True)
+            
+        with col_perf:
+            # Vẽ biểu đồ Hiệu suất Sinh lời
+            perf_df = st.session_state['holdings_df'].copy()
+            perf_df = perf_df[perf_df['Ticker'] != 'CASH']
+            
+            if not perf_df.empty:
+                # Tính Lãi/Lỗ ròng
+                perf_df['Profit_Loss'] = perf_df['Market_Value'] - (perf_df['Total_Shares'] * perf_df['Average_Cost'])
+                perf_df = perf_df.sort_values(by='Profit_Loss', ascending=True)
+                
+                # Tạo màu phân biệt Lãi/Lỗ
+                perf_df['Color'] = perf_df['Profit_Loss'].apply(lambda x: '#00C853' if x >= 0 else '#FF1744')
+                
+                fig_bar = px.bar(
+                    perf_df,
+                    x='Profit_Loss',
+                    y='Ticker',
+                    orientation='h',
+                    title="Hiệu suất Lãi/Lỗ theo Tài sản"
+                )
+                
+                # Gán trực tiếp màu
+                fig_bar.update_traces(marker_color=perf_df['Color'])
+                st.plotly_chart(fig_bar, use_container_width=True)
+            else:
+                st.info("Chưa có hiệu suất tài sản chi tiết.")
     else:
         st.info("Chưa có tài sản nào để hiển thị biểu đồ.")
 else:
