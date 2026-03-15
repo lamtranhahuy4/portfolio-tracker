@@ -19,6 +19,9 @@ The system automatically calculates Average Cost, manages CASH Flow, updates Mar
 5. **Data Persistence**: System files are immediately backed up to the `/data/` partition. Reloading the browser restores the exact portfolio state.
 6. **Account Summary Dashboard**: Calculates Net Profit/Loss, Total Balance, Total Invested, and ROI (%). Accompanied by a Donut Chart depicting risk allocation across the portfolio.
 7. **Automated Market Data (Live Price API)**: Integrates the `yfinance` library, allowing you to update the latest closing prices of Stocks, ETFs (supporting the VN market via the `.VN` suffix) and Crypto (via the `-USD` suffix) with just one click. The system automatically categorizes and **ignores** unlisted assets (Cash, Savings) to preserve internal valuation.
+8. **Universal Data Mapper (Smart Import)**: A flexible import portal that supports raw `.csv`/`.xlsx` files from any broker. It features "Header Detection" to skip junk rows and "Fuzzy Text Matching" to automatically convert various broker-specific terms (buy/sell/deposit) into system-standard actions.
+9. **Performance Bar Chart**: A horizontal bar chart visualizing the net profit/loss of each individual asset ticker, color-coded (Green for profit, Red for loss), helping you identify your best and worst performers at a glance.
+10. **Conditional Formatting**: The holdings table features real-time color-coding. Rows change color dynamically based on ROI (Green for growth, Red for loss), providing a professional trading-desk experience.
 
 ---
 
@@ -55,8 +58,8 @@ To use the Bulk Import feature, your file must have a Header row with exactly th
 ---
 ## 🗺️ Development Roadmap
 - [x] Phase 1-7: Build Data Core, DCA, Compound Interest, and Visualization.
-- [ ] Phase 8: Integrate APIs (VNStock / yfinance) for automated real-time Market Price (Live Price) updates.
-- [ ] Phase 9: Diversify advanced Performance Analysis Charts.
+- [x] Phase 8: Integrate API (yfinance) for automated real-time Market Price (Live Price).
+- [x] Phase 9: Diversify advanced Performance Analysis Charts (Bar Chart & Conditional Formatting).
 - [x] Version 1.0: Complete Data Core, Import Portal, DCA & Compound Interest Management, Cash Flow Visualization (Step-line Area Chart), and Market Price API Integration (Live Price).
 - [ ] Version 2.0 (Planned): Improve performance charts per asset ticker and Integrate Database (SQLite/PostgreSQL) for multi-user support.
 
