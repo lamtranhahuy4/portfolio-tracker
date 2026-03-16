@@ -192,7 +192,7 @@ def update_holdings():
 st.sidebar.header("Thêm Giao dịch Mới")
 
 date = st.sidebar.date_input("Ngày Giao dịch")
-txn_type = st.sidebar.selectbox("Loại Giao dịch", options=["BUY", "SELL", "DEPOSIT", "WITHDRAW", "DIVIDEND"])
+txn_type = st.sidebar.selectbox("Loại Giao dịch", options=["BUY", "SELL", "DEPOSIT", "WITHDRAW", "DIVIDEND", "STOCK_DIVIDEND"])
 asset_class = st.sidebar.selectbox("Lớp tài sản", options=["Tiền mặt", "Cổ phiếu", "Crypto", "Tiết kiệm", "Bất động sản"])
 ticker = st.sidebar.text_input("Mã Ticker", placeholder="VD: VCB, FPT, HPG, SAVING1").upper()
 
@@ -202,15 +202,22 @@ if asset_class == "Tiết kiệm":
     interest_rate = st.sidebar.number_input("Lãi suất (%/năm)", min_value=0.0, step=0.1, format="%.2f")
 else:
     quantity = st.sidebar.number_input("Số lượng", min_value=0.0, step=1.0, format="%.4f")
-    price = st.sidebar.number_input("Giá (VND)", min_value=0.0, step=1000.0, format="%.2f")
+    if txn_type == "STOCK_DIVIDEND":
+        st.sidebar.info("Cổ tức bằng cổ phiếu / Cổ phiếu thưởng sẽ có Giá vốn = 0 ₫")
+        price = 0.0
+    else:
+        price = st.sidebar.number_input("Giá (VND)", min_value=0.0, step=1000.0, format="%.2f")
     interest_rate = 0.0
     
 submit_button = st.sidebar.button(label="Thêm Giao dịch")
 
 # --- XỬ LÝ SỰ KIỆN THÊM GIAO DỊCH ---
 if submit_button:
-    if ticker or txn_type in ["DEPOSIT", "WITHDRAW"]: # Ticker can be empty if it's a deposit/withdraw cash flow
-        if txn_type in ["DEPOSIT", "WITHDRAW", "DIVIDEND"]:
+    # Quyết định Loại Mapped Type đẩy vào hệ thống
+    mapped_type = 'BUY' if txn_type == 'STOCK_DIVIDEND' else txn_type
+
+    if ticker or mapped_type in ["DEPOSIT", "WITHDRAW"]: # Ticker can be empty if it's a deposit/withdraw cash flow
+        if mapped_type in ["DEPOSIT", "WITHDRAW", "DIVIDEND"]:
             total_value = price # Đối với loại giao dịch này lượng tiền = Price nhập vào, không nhân theo Quantity
         else:
             total_value = quantity * price
@@ -220,7 +227,7 @@ if submit_button:
             'Date': pd.to_datetime(date),
             'Asset_Class': asset_class,
             'Ticker': ticker,
-            'Type': txn_type,
+            'Type': mapped_type,
             'Quantity': quantity,
             'Price': price,
             'Interest_Rate': interest_rate,
@@ -442,90 +449,6 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                             
         except Exception as e:
             st.error(f"Lỗi đọc File hoặc Mapping: {e}")
-
-# --- SIDEBAR: NẠP QUYỀN & CỔ TỨC BẰNG COPY/PASTE ---
-st.sidebar.markdown("---")
-with st.sidebar.expander("📋 Nạp Quyền & Cổ tức (Copy/Paste)"):
-    st.write("Bôi đen bảng Sự kiện quyền trên web -> Ctrl+C -> Dán vào đây:")
-    pasted_data = st.text_area("Dữ liệu Clipboard (Tab-separated):", height=150)
-    
-    if st.button("Xử lý Sự kiện Quyền"):
-        if pasted_data.strip():
-            try:
-                # Tách toàn bộ văn bản thành danh sách các dòng, bỏ dòng trống
-                lines = [line.strip() for line in pasted_data.strip().split('\n') if line.strip()]
-                added_count = 0
-                
-                # Duyệt qua từng dòng để tìm điểm neo là "Đã hoàn tất"
-                for i in range(len(lines)):
-                    if lines[i] == 'Đã hoàn tất':
-                        try:
-                            # Đếm ngược lên để lấy dữ liệu tương ứng (Dựa theo format thực tế của DNSE có cột ĐK cuối cùng)
-                            date_str = lines[i-1] # Ngày thực hiện (VD: 27/01/26)
-                            qty_str = lines[i-2]  # Được nhận (VD: 6 CP)
-                            # lines[i-3] là Tỷ lệ (bỏ qua)
-                            # lines[i-4] là ĐK cuối cùng (bỏ qua)
-                            event_str = lines[i-5].lower() # Sự kiện (VD: Cổ phiếu thưởng)
-                            ticker = lines[i-6].upper()    # Ticker (VD: POW)
-                            
-                            # Chỉ lấy Cổ tức cổ phiếu hoặc Cổ phiếu thưởng
-                            if 'cổ tức cổ phiếu' in event_str or 'cổ phiếu thưởng' in event_str:
-                                # Lọc bỏ chữ "CP" và các ký tự thừa
-                                qty_clean = qty_str.upper().replace('CP', '').strip()
-                                qty = float(qty_clean)
-                                
-                                # Xử lý ngày tháng (chuyển DD/MM/YY thành YYYY-MM-DD)
-                                date_obj = pd.to_datetime(date_str, format='%d/%m/%y', errors='coerce')
-                                if pd.isnull(date_obj):
-                                    date_obj = pd.Timestamp.today()
-                                
-                                date_formatted = date_obj.strftime('%Y-%m-%d')
-                                    
-                                if qty > 0:
-                                    # Kiểm tra xem quyền này đã được nạp chưa (chống Duplicate)
-                                    is_duplicate = False
-                                    if not st.session_state['transactions_df'].empty:
-                                        # Lọc các giao dịch của Ticker này, Type BUY, Số lượng bằng đúng qty và Price = 0
-                                        tx_df = st.session_state['transactions_df']
-                                        dups = tx_df[
-                                            (tx_df['Ticker'] == ticker) & 
-                                            (tx_df['Type'] == 'BUY') & 
-                                            (tx_df['Quantity'] == qty) & 
-                                            (tx_df['Price'] == 0.0) &
-                                            (tx_df['Date'].astype(str).str.startswith(date_formatted))
-                                        ]
-                                        if not dups.empty:
-                                            is_duplicate = True
-                                            
-                                    if not is_duplicate:
-                                        new_tx = {
-                                            'Date': date_formatted,
-                                            'Asset_Class': 'Cổ phiếu',
-                                            'Ticker': ticker,
-                                            'Type': 'BUY',
-                                            'Quantity': qty,
-                                            'Price': 0.0, # Giá vốn bằng 0 cho Cổ tức CP / CP Thưởng
-                                            'Total_Value': 0.0,
-                                            'Interest_Rate': 0.0
-                                        }
-                                        new_df = pd.DataFrame([new_tx])
-                                        st.session_state['transactions_df'] = pd.concat([st.session_state['transactions_df'], new_df], ignore_index=True)
-                                        added_count += 1
-                        except Exception as inner_e:
-                            continue # Bỏ qua block lỗi, đọc block tiếp theo
-                            
-                if added_count > 0:
-                    update_holdings()
-                    save_data()
-                    st.success(f"Phép thuật thành công! Đã nạp {added_count} lô Cổ phiếu thưởng/Cổ tức với giá 0đ.")
-                    if hasattr(st, 'rerun'): st.rerun()
-                    else: st.experimental_rerun()
-                else:
-                    st.warning("Không tìm thấy quyền nào hợp lệ hoặc đã nạp rồi.")
-            except Exception as e:
-                st.error(f"Lỗi hệ thống: {e}")
-        else:
-            st.warning("Vui lòng dán dữ liệu vào ô.")
 
 # --- SIDEBAR: CÀI ĐẶT & RESET DỮ LIỆU ---
 st.sidebar.markdown("---")
