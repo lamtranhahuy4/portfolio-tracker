@@ -121,7 +121,7 @@ def update_holdings():
                 current['Average_Cost'] = current['Total_Value_Invested']
                 current['Current_Price'] = current['Market_Value'] / current['Total_Shares'] if current['Total_Shares'] > 0 else 0
                 
-            if current['Total_Shares'] <= 0:
+            if current['Total_Shares'] < 1e-4:
                 current['Total_Shares'] = 0.0
                 current['Average_Cost'] = 0.0
                 current['Market_Value'] = 0.0
@@ -130,7 +130,7 @@ def update_holdings():
             # --- Logic Cổ phiếu ---
             if txn_type == 'BUY':
                 new_total_shares = current['Total_Shares'] + qty
-                if new_total_shares > 0:
+                if new_total_shares > 1e-4:
                     # Tính bình quân gia quyền
                     current['Average_Cost'] = ((current['Total_Shares'] * current['Average_Cost']) + val) / new_total_shares
                 current['Total_Shares'] = new_total_shares
@@ -138,7 +138,7 @@ def update_holdings():
             elif txn_type == 'SELL':
                 current['Total_Shares'] -= qty
                 # Nếu hết cổ phiếu, reset cost về 0
-                if current['Total_Shares'] <= 0:
+                if current['Total_Shares'] < 1e-4:
                     current['Total_Shares'] = 0.0
                     current['Average_Cost'] = 0.0
 
@@ -155,9 +155,9 @@ def update_holdings():
         'Market_Value': total_cash
     })
     
-    # Thêm các cổ phiếu có số lượng > 0
+    # Thêm các cổ phiếu có số lượng > 0 (bỏ qua sai số phẩy động)
     for tck, data in holdings_dict.items():
-        if data['Total_Shares'] > 0:
+        if data['Total_Shares'] >= 1e-4:
             if data['Asset_Class'] != 'Tiết kiệm':
                 # Khôi phục giá cũ, hoặc dùng Average Cost nếu mã mới
                 if tck in old_prices:
@@ -727,28 +727,34 @@ if not st.session_state['holdings_df'].empty:
             st.plotly_chart(fig, use_container_width=True)
             
         with col_perf:
-            # Vẽ biểu đồ Hiệu suất Sinh lời
+            # Vẽ biểu đồ Hiệu suất Lãi/Lỗ (Unrealized PnL)
             perf_df = st.session_state['holdings_df'].copy()
             perf_df = perf_df[perf_df['Ticker'] != 'CASH']
             
             if not perf_df.empty:
                 # Tính Lãi/Lỗ ròng
-                perf_df['Profit_Loss'] = perf_df['Market_Value'] - (perf_df['Total_Shares'] * perf_df['Average_Cost'])
-                perf_df = perf_df.sort_values(by='Profit_Loss', ascending=True)
+                perf_df['PnL'] = perf_df['Market_Value'] - (perf_df['Total_Shares'] * perf_df['Average_Cost'])
+                perf_df = perf_df.sort_values(by='PnL', ascending=True)
                 
                 # Tạo màu phân biệt Lãi/Lỗ
-                perf_df['Color'] = perf_df['Profit_Loss'].apply(lambda x: '#00C853' if x >= 0 else '#FF1744')
+                perf_df['Color'] = perf_df['PnL'].apply(lambda x: '#00C853' if x >= 0 else '#FF5252')
                 
                 fig_bar = px.bar(
                     perf_df,
-                    x='Profit_Loss',
+                    x='PnL',
                     y='Ticker',
                     orientation='h',
                     title="Hiệu suất Lãi/Lỗ theo Tài sản"
                 )
                 
-                # Gán trực tiếp màu
-                fig_bar.update_traces(marker_color=perf_df['Color'])
+                # Gán màu và format tooltip (Tiền tệ VND)
+                fig_bar.update_traces(
+                    marker_color=perf_df['Color'],
+                    hovertemplate='Mã tài sản: %{y}<br>Lãi/Lỗ: %{x:,.0f} ₫<extra></extra>'
+                )
+                # Chỉnh sửa Layout để dễ nhìn hơn
+                fig_bar.update_layout(xaxis_tickformat=',')
+                
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
                 st.info("Chưa có hiệu suất tài sản chi tiết.")
