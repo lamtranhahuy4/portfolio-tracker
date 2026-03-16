@@ -450,78 +450,63 @@ with st.sidebar.expander("📋 Nạp Quyền & Cổ tức (Copy/Paste)"):
     pasted_data = st.text_area("Dữ liệu Clipboard (Tab-separated):", height=150)
     
     if st.button("Xử lý Sự kiện Quyền"):
-        if pasted_data:
+        if pasted_data.strip():
             try:
-                df_events = pd.read_csv(io.StringIO(pasted_data), sep='\t')
-                
-                # Lọc theo Trạng thái nếu có
-                if 'Trạng thái' in df_events.columns:
-                    df_events = df_events[df_events['Trạng thái'].astype(str).str.contains("Đã hoàn tất", na=False)]
-                
+                # Tách toàn bộ văn bản thành danh sách các dòng, bỏ dòng trống
+                lines = [line.strip() for line in pasted_data.strip().split('\n') if line.strip()]
                 added_count = 0
-                for _, row in df_events.iterrows():
-                    # Đọc và tách "Mã / Loại sự kiện"
-                    if 'Mã / Loại sự kiện' not in row:
-                        continue
-                        
-                    event_info = str(row['Mã / Loại sự kiện']).strip().split(' ', 1)
-                    if len(event_info) < 2:
-                        continue
-                    
-                    ticker = event_info[0].strip()
-                    event_type = event_info[1].lower()
-                    
-                    # Chỉ lấy cổ tức cổ phiếu / cổ phiếu thưởng
-                    if not any(kw in event_type for kw in ["cổ tức cổ phiếu", "cổ phiếu thưởng"]):
-                        continue
-                    
-                    # Đọc Số lượng từ cột "Được nhận"
-                    if 'Được nhận' not in row:
-                        continue
-                    qty_str = str(row['Được nhận']).replace('CP', '').replace(' ', '').replace(',', '').strip()
-                    try:
-                        qty = float(qty_str)
-                    except ValueError:
-                        qty = 0.0
-                        
-                    # Đọc Ngày từ cột "Thực hiện"
-                    if 'Thực hiện' not in row:
-                        continue
-                    date_str = str(row['Thực hiện']).strip()
-                    try:
-                        date_obj = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
-                    except Exception:
-                        date_obj = pd.NaT
-                        
-                    if qty > 0 and pd.notna(date_obj):
-                        new_tx = {
-                            'Date': date_obj,
-                            'Asset_Class': 'Cổ phiếu',
-                            'Ticker': ticker,
-                            'Type': 'BUY',
-                            'Quantity': qty,
-                            'Price': 0.0,
-                            'Total_Value': 0.0,
-                            'Interest_Rate': 0.0
-                        }
-                        
-                        st.session_state['transactions_df'] = pd.concat([
-                            st.session_state['transactions_df'],
-                            pd.DataFrame([new_tx])
-                        ], ignore_index=True)
-                        added_count += 1
-                        
+                
+                # Duyệt qua từng dòng để tìm điểm neo là "Đã hoàn tất"
+                for i in range(len(lines)):
+                    if lines[i] == 'Đã hoàn tất':
+                        try:
+                            # Đếm ngược lên để lấy dữ liệu tương ứng
+                            date_str = lines[i-1] # Ngày thực hiện (VD: 27/01/26)
+                            qty_str = lines[i-2]  # Được nhận (VD: 6 CP)
+                            # line[i-3] là Tỷ lệ (bỏ qua)
+                            event_str = lines[i-4].lower() # Sự kiện (VD: Cổ phiếu thưởng11/12/25)
+                            ticker = lines[i-5].upper()    # Ticker (VD: POW)
+                            
+                            # Chỉ lấy Cổ tức cổ phiếu hoặc Cổ phiếu thưởng
+                            if 'cổ tức' in event_str or 'cổ phiếu thưởng' in event_str:
+                                # Lọc bỏ chữ "CP" và các ký tự thừa
+                                qty_clean = qty_str.upper().replace('CP', '').strip()
+                                qty = float(qty_clean)
+                                
+                                # Xử lý ngày tháng (chuyển DD/MM/YY thành YYYY-MM-DD)
+                                date_obj = pd.to_datetime(date_str, format='%d/%m/%y', errors='coerce')
+                                if pd.isnull(date_obj):
+                                    date_obj = pd.Timestamp.today()
+                                    
+                                if qty > 0:
+                                    new_tx = {
+                                        'Date': date_obj.strftime('%Y-%m-%d'),
+                                        'Asset_Class': 'Cổ phiếu',
+                                        'Ticker': ticker,
+                                        'Type': 'BUY',
+                                        'Quantity': qty,
+                                        'Price': 0.0, # Giá vốn bằng 0
+                                        'Interest_Rate': 0.0,
+                                        'Total_Value': 0.0
+                                    }
+                                    new_df = pd.DataFrame([new_tx])
+                                    st.session_state['transactions_df'] = pd.concat([st.session_state['transactions_df'], new_df], ignore_index=True)
+                                    added_count += 1
+                        except Exception as inner_e:
+                            continue # Bỏ qua block lỗi, đọc block tiếp theo
+                            
                 if added_count > 0:
                     update_holdings()
                     save_data()
-                    st.success(f"Nạp thành công {added_count} sự kiện (quyền/cổ tức)!")
+                    st.success(f"Phép thuật thành công! Đã nạp {added_count} lô Cổ phiếu thưởng/Cổ tức với giá 0đ.")
                     if hasattr(st, 'rerun'): st.rerun()
                     else: st.experimental_rerun()
                 else:
-                    st.warning("Không tìm thấy sự kiện quyền (Cổ phiếu thưởng/Cổ tức cổ phiếu) hợp lệ hoặc trạng thái chưa Đã hoàn tất.")
-                    
+                    st.warning("Không tìm thấy quyền nào hợp lệ hoặc đã nạp rồi.")
             except Exception as e:
-                st.error(f"Lỗi Parse dữ liệu: {e}")
+                st.error(f"Lỗi hệ thống: {e}")
+        else:
+            st.warning("Vui lòng dán dữ liệu vào ô.")
 
 # --- SIDEBAR: CÀI ĐẶT & RESET DỮ LIỆU ---
 st.sidebar.markdown("---")
