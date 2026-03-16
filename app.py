@@ -9,6 +9,7 @@ st.title("📈 Ứng dụng Quản lý Danh mục Đầu tư (Portfolio Tracker)
 
 import os
 import io
+import yfinance as yf
 
 # --- CẤU HÌNH THƯ MỤC DATA ---
 DATA_DIR = "data"
@@ -476,57 +477,39 @@ with st.sidebar.expander("⚙️ Cài đặt & Quản lý Dữ liệu"):
 # --- XỬ LÝ DỮ LIỆU BẢNG DANH MỤC (DATA EDITOR) ---
 st.header("💼 Danh mục Hiện tại (Holdings)")
 
-if st.button("🔄 Cập nhật Giá Thị trường (Live)"):
-    if not st.session_state['holdings_df'].empty:
-        with st.spinner("Đang kết nối dữ liệu thị trường..."):
-            import yfinance as yf
-            
-            def fetch_live_price(ticker, asset_class, current_price):
-                if asset_class in ['Tiền mặt', 'Tiết kiệm', 'Bất động sản'] or not ticker or ticker == 'CASH':
-                    return current_price
-                
-                formatted_ticker = ticker
-                if asset_class in ['Cổ phiếu', 'Chứng chỉ quỹ']:
-                    if not formatted_ticker.endswith('.VN'):
-                        formatted_ticker += '.VN'
-                elif asset_class == 'Crypto':
-                    if not formatted_ticker.endswith('-USD'):
-                        formatted_ticker += '-USD'
-                
-                try:
-                    stock = yf.Ticker(formatted_ticker)
-                    # Lấy giá đóng cửa mới nhất
-                    hist = stock.history(period="1d")
-                    if not hist.empty:
-                        return float(hist['Close'].iloc[-1])
-                    return current_price
-                except Exception:
-                    # Nếu lỗi API, giữ nguyên giá cũ
-                    return current_price
-            
-            # Cập nhật giá mới
-            st.session_state['holdings_df']['Current_Price'] = st.session_state['holdings_df'].apply(
-                lambda row: fetch_live_price(row['Ticker'], row['Asset_Class'], row['Current_Price']), axis=1
-            )
-            
-            # Tính toán lại Market_Value
-            def recalc_mv_live(row):
-                if row['Ticker'] == 'CASH':
-                    return row['Total_Shares']
-                elif row['Asset_Class'] == 'Tiết kiệm':
-                    return row['Market_Value'] # Giữ nguyên giá trị cũ đã được cộng dồn lãi
-                else:
-                    return row['Total_Shares'] * row['Current_Price']
+col_header, col_btn = st.columns([2, 1])
+with col_btn:
+    update_price_btn = st.button("🔄 Cập nhật Giá (Live yfinance)", use_container_width=True)
 
-            st.session_state['holdings_df']['Market_Value'] = st.session_state['holdings_df'].apply(recalc_mv_live, axis=1)
-            
+if update_price_btn and not st.session_state['holdings_df'].empty:
+    with st.spinner("Đang tải dữ liệu giá từ thị trường..."):
+        df_temp = st.session_state['holdings_df'].copy()
+        updated_count = 0
+        
+        for index, row in df_temp.iterrows():
+            if row['Asset_Class'] == 'Cổ phiếu' and row['Total_Shares'] > 0:
+                ticker = row['Ticker']
+                try:
+                    # Gắn đuôi .VN cho chứng khoán Việt Nam
+                    symbol = f"{ticker}.VN"
+                    ticker_data = yf.Ticker(symbol)
+                    hist = ticker_data.history(period="1d")
+                    
+                    if not hist.empty:
+                        live_price = float(hist['Close'].iloc[-1])
+                        # Cập nhật giá và tính lại Market Value
+                        df_temp.at[index, 'Current_Price'] = live_price
+                        df_temp.at[index, 'Market_Value'] = live_price * row['Total_Shares']
+                        updated_count += 1
+                except Exception as e:
+                    pass # Bỏ qua nếu lỗi mạng hoặc mã không tồn tại trên yfinance
+                    
+        if updated_count > 0:
+            st.session_state['holdings_df'] = df_temp
             save_data()
-            st.toast("Đã cập nhật giá thành công!")
-            
-            if hasattr(st, 'rerun'):
-                st.rerun()
-            else:
-                st.experimental_rerun()
+            st.success(f"Đã cập nhật giá Live cho {updated_count} mã cổ phiếu!")
+        else:
+            st.warning("Không thể lấy giá lúc này hoặc không có mã cổ phiếu hợp lệ.")
 
 if not st.session_state['holdings_df'].empty:
     display_df = st.session_state['holdings_df'].copy()
