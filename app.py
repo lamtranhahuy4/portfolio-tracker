@@ -23,7 +23,7 @@ def load_data():
     # Load transactions
     if os.path.exists(TRANSACTIONS_FILE):
         tx_df = pd.read_csv(TRANSACTIONS_FILE)
-        tx_df['Date'] = pd.to_datetime(tx_df['Date'])
+        tx_df['Date'] = pd.to_datetime(tx_df['Date'], errors='coerce', dayfirst=True)
         if 'Interest_Rate' not in tx_df.columns:
             tx_df['Interest_Rate'] = 0.0
     else:
