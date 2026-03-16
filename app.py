@@ -8,6 +8,7 @@ st.set_page_config(page_title="My Streamlit App", page_icon="📈", layout="wide
 st.title("📈 Ứng dụng Quản lý Danh mục Đầu tư (Portfolio Tracker)")
 
 import os
+import io
 
 # --- CẤU HÌNH THƯ MỤC DATA ---
 DATA_DIR = "data"
@@ -441,6 +442,86 @@ with st.sidebar.expander("📁 Trình Ánh xạ Dữ liệu (Universal Mapper)")
                             
         except Exception as e:
             st.error(f"Lỗi đọc File hoặc Mapping: {e}")
+
+# --- SIDEBAR: NẠP QUYỀN & CỔ TỨC BẰNG COPY/PASTE ---
+st.sidebar.markdown("---")
+with st.sidebar.expander("📋 Nạp Quyền & Cổ tức (Copy/Paste)"):
+    st.write("Bôi đen bảng Sự kiện quyền trên web -> Ctrl+C -> Dán vào đây:")
+    pasted_data = st.text_area("Dữ liệu Clipboard (Tab-separated):", height=150)
+    
+    if st.button("Xử lý Sự kiện Quyền"):
+        if pasted_data:
+            try:
+                df_events = pd.read_csv(io.StringIO(pasted_data), sep='\t')
+                
+                # Lọc theo Trạng thái nếu có
+                if 'Trạng thái' in df_events.columns:
+                    df_events = df_events[df_events['Trạng thái'].astype(str).str.contains("Đã hoàn tất", na=False)]
+                
+                added_count = 0
+                for _, row in df_events.iterrows():
+                    # Đọc và tách "Mã / Loại sự kiện"
+                    if 'Mã / Loại sự kiện' not in row:
+                        continue
+                        
+                    event_info = str(row['Mã / Loại sự kiện']).strip().split(' ', 1)
+                    if len(event_info) < 2:
+                        continue
+                    
+                    ticker = event_info[0].strip()
+                    event_type = event_info[1].lower()
+                    
+                    # Chỉ lấy cổ tức cổ phiếu / cổ phiếu thưởng
+                    if not any(kw in event_type for kw in ["cổ tức cổ phiếu", "cổ phiếu thưởng"]):
+                        continue
+                    
+                    # Đọc Số lượng từ cột "Được nhận"
+                    if 'Được nhận' not in row:
+                        continue
+                    qty_str = str(row['Được nhận']).replace('CP', '').replace(' ', '').replace(',', '').strip()
+                    try:
+                        qty = float(qty_str)
+                    except ValueError:
+                        qty = 0.0
+                        
+                    # Đọc Ngày từ cột "Thực hiện"
+                    if 'Thực hiện' not in row:
+                        continue
+                    date_str = str(row['Thực hiện']).strip()
+                    try:
+                        date_obj = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
+                    except Exception:
+                        date_obj = pd.NaT
+                        
+                    if qty > 0 and pd.notna(date_obj):
+                        new_tx = {
+                            'Date': date_obj,
+                            'Asset_Class': 'Cổ phiếu',
+                            'Ticker': ticker,
+                            'Type': 'BUY',
+                            'Quantity': qty,
+                            'Price': 0.0,
+                            'Total_Value': 0.0,
+                            'Interest_Rate': 0.0
+                        }
+                        
+                        st.session_state['transactions_df'] = pd.concat([
+                            st.session_state['transactions_df'],
+                            pd.DataFrame([new_tx])
+                        ], ignore_index=True)
+                        added_count += 1
+                        
+                if added_count > 0:
+                    update_holdings()
+                    save_data()
+                    st.success(f"Nạp thành công {added_count} sự kiện (quyền/cổ tức)!")
+                    if hasattr(st, 'rerun'): st.rerun()
+                    else: st.experimental_rerun()
+                else:
+                    st.warning("Không tìm thấy sự kiện quyền (Cổ phiếu thưởng/Cổ tức cổ phiếu) hợp lệ hoặc trạng thái chưa Đã hoàn tất.")
+                    
+            except Exception as e:
+                st.error(f"Lỗi Parse dữ liệu: {e}")
 
 # --- SIDEBAR: CÀI ĐẶT & RESET DỮ LIỆU ---
 st.sidebar.markdown("---")
