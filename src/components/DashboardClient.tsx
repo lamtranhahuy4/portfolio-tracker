@@ -87,8 +87,15 @@ export default function DashboardClient() {
           </p>
         </div>
 
-        {/* --- KHU VỰC UPLOAD DỮ LIỆU --- */}
-        <CsvUploader />
+        {/* --- DÒNG 2: THỊ TRƯỜNG & UPLOAD CSV --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-4 flex flex-col items-stretch">
+            <CsvUploader />
+          </div>
+          <div className="lg:col-span-8 flex flex-col items-stretch">
+            <MarketOverview />
+          </div>
+        </div>
 
         {/* --- KHU VỰC LỊCH SỬ GIAO DỊCH --- */}
         <div className="flex flex-col gap-4 mb-4">
