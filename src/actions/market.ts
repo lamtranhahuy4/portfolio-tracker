@@ -4,8 +4,8 @@ import yahooFinance from 'yahoo-finance2';
 
 export async function fetchMarketIndices() {
   try {
-    const symbols = ['^VNINDEX.VN', '^GSPC', 'BTC-USD', 'GC=F'];
-    
+    const symbols = ['^VNINDEX', '^GSPC', 'BTC-USD', 'GC=F'];
+
     // Yêu cầu lấy dữ liệu song song cho tất cả các chỉ số (VN-Index, S&P 500, Crypto, Vàng)
     const results = await Promise.allSettled(
       symbols.map(symbol => yahooFinance.quote(symbol))
@@ -15,9 +15,9 @@ export async function fetchMarketIndices() {
       if (result.status === 'fulfilled' && result.value) {
         const quote = result.value;
         const symbol = symbols[index];
-        
+
         let name = symbol;
-        if (name === '^VNINDEX.VN') name = 'VN-INDEX';
+        if (name === '^VNINDEX') name = 'VN-INDEX';
         if (name === '^GSPC') name = 'S&P 500';
         if (name === 'BTC-USD') name = 'BITCOIN';
         if (name === 'GC=F') name = 'GOLD (Oz)';
