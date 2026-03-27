@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { parseCSVToTransactions } from '@/lib/csvMapper';
+import { parseFileToTransactions } from '@/lib/csvMapper';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { saveTransactionsBatch } from '@/actions/transaction';
 import { toast } from 'sonner';
+import { FileSpreadsheet } from 'lucide-react';
 
 export default function CsvUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -17,56 +18,48 @@ export default function CsvUploader() {
 
     setIsUploading(true);
     try {
-      // 1. Phân giải tệp CSV trên Client
-      const transactions = await parseCSVToTransactions(file);
+      const transactions = await parseFileToTransactions(file);
       
       if (transactions.length > 0) {
-        // 2. Gửi tệp lên Backend via Server Actions (Postgres thông qua Drizzle)
         await saveTransactionsBatch(transactions);
-
-        // 3. Nếu thành công, chèn liền vào Zustand UI để Instant Display
         addTransactions(transactions);
-        toast.success(`Lưu DB thành công! Đã nạp ${transactions.length} dòng dữ liệu an toàn.`);
+        toast.success(`Nạp thành công ${transactions.length} giao dịch.`);
       } else {
-        toast.warning('Cảnh báo: Không có giao dịch hợp lệ nào được tìm thấy trong file.');
+        toast.warning('File không hợp lệ hoặc dữ liệu trống.');
       }
     } catch (error) {
-      console.error(error);
-      toast.error('Lưu thất bại: ' + (error as Error).message);
+      toast.error('Lỗi phân tích: ' + (error as Error).message);
     } finally {
       setIsUploading(false);
-      // Xóa value đảm bảo input file chịu phản hồi upload lần sau
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <label className={`flex flex-col items-center justify-center flex-1 w-full cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition-all ${
-        isUploading ? 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700' : 'border-indigo-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-      }`}>
-        <div className="flex flex-col items-center justify-center gap-2">
+    <div className="w-full h-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col justify-center items-center transition-all hover:shadow-md h-[100%] min-h-[160px]">
+      <div className="flex flex-col items-center justify-center w-full h-full">
+        <label className={`flex flex-col items-center justify-center w-full h-full cursor-pointer rounded-xl border-2 border-dashed transition-all ${
+          isUploading ? 'bg-indigo-50/50 dark:bg-gray-800 border-indigo-200' : 'border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/10'
+        }`}>
           {isUploading ? (
-             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600 mb-2 mt-4"></div>
           ) : (
-            <svg className="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <FileSpreadsheet className="w-6 h-6 text-indigo-500 mb-2 mt-4" />
           )}
-          <span className="text-gray-600 dark:text-gray-300 font-medium text-lg">
-            {isUploading ? 'Đang gửi dữ liệu lưu trữ...' : 'Nhấn vào đây để Upload file báo cáo CSV'}
+          <span className="text-xs font-bold text-gray-700 dark:text-gray-300 text-center uppercase tracking-wide">
+            {isUploading ? 'Đang đọc...' : 'Tải lên Dữ liệu'}
           </span>
-          <span className="text-sm text-gray-500">Hỗ trợ các hệ bảng: Asset, Type, Quantity, Price...</span>
-        </div>
-        <input 
-          ref={fileInputRef}
-          type="file" 
-          accept=".csv" 
-          className="hidden" 
-          onChange={handleFileChange}
-          disabled={isUploading}
-        />
-      </label>
+          <span className="text-[10px] text-gray-400 mt-1 mb-4">.CSV, .XLSX</span>
+          <input 
+            ref={fileInputRef}
+            type="file" 
+            accept=".csv, .xlsx, .xls" 
+            className="hidden" 
+            onChange={handleFileChange}
+            disabled={isUploading}
+          />
+        </label>
+      </div>
     </div>
   );
 }

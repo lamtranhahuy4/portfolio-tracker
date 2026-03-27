@@ -66,47 +66,20 @@ export default function DashboardClient() {
       <main className="max-w-[1600px] w-[95%] mx-auto py-6 space-y-8">
         
         {/* --- HERO BANNER --- */}
-        <header className="h-64 w-full rounded-2xl overflow-hidden relative mb-8 shadow-lg group">
+        <header className="h-64 w-full rounded-2xl overflow-hidden relative mb-4 shadow-lg group">
           <img src="/hero-banner.jpg" alt="Portfolio Oasis" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/40 to-transparent flex flex-col justify-end p-8">
             <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-md">
               My Portfolio Oasis
             </h1>
             <p className="text-gray-200 mt-2 text-lg font-medium opacity-90 drop-shadow">
-              Quản lý tài sản an toàn, thanh thoát và tự động hóa cao.
+              Quản lý tài sản an toàn, thanh thoát và theo dõi thời gian thực.
             </p>
           </div>
         </header>
 
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            📊 Tổng quan Danh mục
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">
-            Hệ thống Quản lý và Tự động định giá Mark-to-Market.
-          </p>
-        </div>
-
-        {/* --- DÒNG 2: THỊ TRƯỜNG & UPLOAD CSV --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-4 flex flex-col items-stretch">
-            <CsvUploader />
-          </div>
-          <div className="lg:col-span-8 flex flex-col items-stretch">
-            <MarketOverview />
-          </div>
-        </div>
-
-        {/* --- KHU VỰC LỊCH SỬ GIAO DỊCH --- */}
-        <div className="flex flex-col gap-4 mb-4">
-          <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            🗒️ Lịch sử Giao dịch
-          </h2>
-          <TransactionHistoryTable />
-        </div>
-
-        {/* --- HÀNG 1: 4 THẺ THỐNG KÊ (AGGREGATE STATS) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* --- HÀNG 1: 4 THẺ THỐNG KÊ (AGGREGATE STATS) ĐƯỢC CHUYỂN LÊN ĐẦU TIÊN --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-2">
           <StatCard 
             title="Tổng Tài Sản" 
             value={formatCurrency(totalMarketValue)} 
@@ -131,13 +104,11 @@ export default function DashboardClient() {
           />
         </div>
 
-        {/* --- HÀNG 2 & 3: BIỂU ĐỒ VÀ BẢNG DATA --- */}
+        {/* --- HÀNG 2: BIỂU ĐỒ VÀ BẢNG DATA TRỌNG TÂM --- */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          
-          <div className="xl:col-span-1 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm flex flex-col">
+          <div className="xl:col-span-1 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm flex flex-col min-h-[420px]">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6">Cơ cấu Trọng số Tài sản</h2>
-            
-            <div className="flex-1 min-h-[320px] w-full relative">
+            <div className="flex-1 w-full relative">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -145,8 +116,8 @@ export default function DashboardClient() {
                       data={chartData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={75}
-                      outerRadius={110}
+                      innerRadius={85}
+                      outerRadius={130}
                       paddingAngle={4}
                       dataKey="value"
                       stroke="none"
@@ -178,13 +149,32 @@ export default function DashboardClient() {
               )}
             </div>
           </div>
-
           <div className="xl:col-span-2 flex flex-col gap-4">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Định giá Mark-to-Market</h2>
-            <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} />
+            <div className="h-full">
+              <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} />
+            </div>
           </div>
-
         </div>
+
+        {/* --- HÀNG 3: API THỊ TRƯỜNG LIVE (80%) VÀ UPLOAD CSV/EXCEL (20%) --- */}
+        <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
+          <div className="xl:col-span-8 flex flex-col h-full">
+            <MarketOverview />
+          </div>
+          <div className="xl:col-span-2 flex flex-col h-full">
+            <CsvUploader />
+          </div>
+        </div>
+
+        {/* --- HÀNG 4 (CUỐI CÙNG): LỊCH SỬ GIAO DỊCH DƯỚI ĐÁY --- */}
+        <div className="flex flex-col gap-4 pt-8 border-t border-gray-200 dark:border-gray-800">
+          <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            🗒️ Lịch sử Giao dịch Gốc
+          </h2>
+          <TransactionHistoryTable />
+        </div>
+
       </main>
     </div>
   );
