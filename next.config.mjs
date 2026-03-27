@@ -1,17 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // Tạm bỏ qua cảnh báo ESLint trong lúc build trên cloud
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // Tạm bỏ qua lỗi check kiểu ts strict để ưu tiên deploy UI lên trước
-    ignoreBuildErrors: true, 
-  },
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   experimental: {
     serverComponentsExternalPackages: ['yahoo-finance2'],
   },
-  serverExternalPackages: ['yahoo-finance2'],
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      "@std/testing/mock": false,
+      "@std/testing/bdd": false,
+      "@gadicc/fetch-mock-cache/runtimes/deno.ts": false,
+      "@gadicc/fetch-mock-cache/stores/fs.ts": false,
+    };
+    return config;
+  },
 };
-
 export default nextConfig;
