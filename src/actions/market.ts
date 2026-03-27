@@ -4,40 +4,32 @@ import yahooFinance from 'yahoo-finance2';
 
 export async function fetchMarketIndices() {
   try {
-    const symbols = ['^VNINDEX', '^GSPC', 'BTC-USD', 'GC=F'];
+    const symbols = ['^VNINDEX.VN', '^GSPC', 'BTC-USD', 'GC=F'];
 
-    // Yêu cầu lấy dữ liệu song song cho tất cả các chỉ số (VN-Index, S&P 500, Crypto, Vàng)
-    const results = await Promise.allSettled(
-      symbols.map(symbol => yahooFinance.quote(symbol))
-    );
+    // Yêu cầu lấy dữ liệu cho tất cả các chỉ số (gộp thành 1 request duy nhất để tránh bị rate limit)
+    const quotes = await yahooFinance.quote(symbols);
 
-    const formattedData = results.map((result, index) => {
-      if (result.status === 'fulfilled' && result.value) {
-        const quote = result.value;
-        const symbol = symbols[index];
+    const formattedData = quotes.map((quote) => {
+      let name = quote.symbol;
+      if (name === '^VNINDEX.VN') name = 'VN-INDEX';
+      if (name === '^GSPC') name = 'S&P 500';
+      if (name === 'BTC-USD') name = 'BITCOIN';
+      if (name === 'GC=F') name = 'GOLD (Oz)';
 
-        let name = symbol;
-        if (name === '^VNINDEX') name = 'VN-INDEX';
-        if (name === '^GSPC') name = 'S&P 500';
-        if (name === 'BTC-USD') name = 'BITCOIN';
-        if (name === 'GC=F') name = 'GOLD (Oz)';
+      const price = quote.regularMarketPrice || 0;
+      const change = quote.regularMarketChange || 0;
+      const percent = quote.regularMarketChangePercent || 0;
 
-        const price = quote.regularMarketPrice || 0;
-        const change = quote.regularMarketChange || 0;
-        const percent = quote.regularMarketChangePercent || 0;
-
-        return {
-          name,
-          price: new Intl.NumberFormat('en-US').format(price),
-          change: change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2),
-          percent: percent > 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
-          up: change >= 0
-        };
-      }
-      return null;
+      return {
+        name,
+        price: new Intl.NumberFormat('en-US').format(price),
+        change: change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2),
+        percent: percent > 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
+        up: change >= 0
+      };
     });
 
-    return formattedData.filter(Boolean);
+    return formattedData;
   } catch (error) {
     console.error('Yahoo Finance API Error:', error);
     return [];
