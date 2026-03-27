@@ -1,41 +1,33 @@
-# 🐍 Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
+# dependencies
+node_modules
+.pnp
+.pnp.js
 
-# 📊 Streamlit
-.streamlit/
-secrets.toml
+# testing
+coverage
 
-# 📂 Private Data & Settings
-data/
-*.csv
-*.xlsx
+# next.js
+.next/
+out/
+build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*.local
 .env
 
-# 🧠 IDE & OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# vercel
+.vercel
 
-node_modules/
-.next/
-.env*
+# typescript
+*.tsbuildinfo
+next-env.d.ts
