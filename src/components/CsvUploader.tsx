@@ -43,8 +43,8 @@ export default function CsvUploader() {
   };
 
   return (
-    <div className="w-full mb-6">
-      <label className={`block w-full cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+    <div className="w-full h-full flex flex-col">
+      <label className={`flex flex-col items-center justify-center flex-1 w-full cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition-all ${
         isUploading ? 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700' : 'border-indigo-300 hover:bg-gray-100 dark:hover:bg-gray-800'
       }`}>
         <div className="flex flex-col items-center justify-center gap-2">

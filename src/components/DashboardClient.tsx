@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePortfolioStore, useHoldings } from '@/store/usePortfolioStore';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import CsvUploader from '@/components/CsvUploader';
+import MarketOverview from '@/components/MarketOverview';
 import TransactionHistoryTable from '@/components/TransactionHistoryTable';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { DollarSign, PieChart as PieChartIcon, TrendingUp, Activity } from 'lucide-react';
@@ -62,7 +63,7 @@ export default function DashboardClient() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+      <main className="max-w-[1600px] w-[95%] mx-auto py-6 space-y-8">
         
         {/* --- HERO BANNER --- */}
         <header className="h-64 w-full rounded-2xl overflow-hidden relative mb-8 shadow-lg group">
