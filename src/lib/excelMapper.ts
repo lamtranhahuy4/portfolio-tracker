@@ -28,22 +28,23 @@ export async function parseExcelToTransactions(file: File): Promise<any[]> {
           
           const rowStr = row.join(' ').toLowerCase();
           
-          // Nhánh 1: Khớp lệnh
-          const hasAsset = rowStr.includes('mã ck');
-          const hasVol = rowStr.includes('khối lượng') || rowStr.includes('kl khớp');
-          const hasPrice = rowStr.includes('giá khớp');
-          const hasAction = rowStr.includes('loại gd') || rowStr.includes('mua/bán');
+          console.log("DEBUG ROW:", rowStr); // Thêm theo yêu cầu để debug
 
-          if (hasAsset && hasVol && hasPrice && hasAction) {
+          // Nhánh 1: Khớp lệnh
+          const hasAsset = rowStr.includes('mã');
+          const hasVol = rowStr.includes('lượng') || rowStr.includes('kl');
+          const hasPrice = rowStr.includes('giá');
+
+          if (hasAsset && hasVol && hasPrice) {
             headerRowIndex = i;
             flowType = 'TRADE';
             
             row.forEach((cell: string, colIdx: number) => {
               const val = String(cell).toLowerCase();
-              if (val.includes('mã ck')) colAsset = colIdx;
-              else if (val.includes('khối lượng') || val.includes('kl khớp')) colAmount = colIdx;
-              else if (val.includes('giá khớp')) colPrice = colIdx;
-              else if (val.includes('loại gd') || val.includes('mua') || val.includes('bán')) colType = colIdx;
+              if (val.includes('mã')) colAsset = colIdx;
+              else if (val.includes('lượng') || val.includes('kl')) colAmount = colIdx;
+              else if (val.includes('giá')) colPrice = colIdx;
+              else if (val.includes('mua') || val.includes('bán') || val.includes('loại') || val.includes('gd')) colType = colIdx;
               else if (val.includes('ngày')) colDate = colIdx;
             });
             break;
