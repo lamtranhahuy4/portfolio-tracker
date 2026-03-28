@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CashLedgerEvent, Holding, PortfolioMetrics, Transaction } from '@/types/portfolio';
+import { CashImportSummaryState, CashLedgerEvent, Holding, PortfolioMetrics, Transaction } from '@/types/portfolio';
 import { calculatePortfolioMetrics } from '@/lib/portfolioMetrics';
 
 interface PortfolioState {
@@ -13,6 +13,8 @@ interface PortfolioState {
   addCashEvents: (events: CashLedgerEvent[]) => void;
   lastImportResult: (import('@/types/portfolio').ImportParseResult & { importedAt: Date }) | null;
   setLastImportResult: (result: (import('@/types/portfolio').ImportParseResult & { importedAt: Date }) | null) => void;
+  lastCashImportSummary: CashImportSummaryState | null;
+  setLastCashImportSummary: (summary: CashImportSummaryState | null) => void;
 }
 
 function sortTransactions(txs: Transaction[]) {
@@ -24,8 +26,10 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
   cashEvents: [],
   currentPrices: {},
   lastImportResult: null,
+  lastCashImportSummary: null,
 
   setLastImportResult: (result) => set({ lastImportResult: result }),
+  setLastCashImportSummary: (summary) => set({ lastCashImportSummary: summary }),
 
   setTransactions: (txs) => set({ transactions: sortTransactions(txs) }),
   

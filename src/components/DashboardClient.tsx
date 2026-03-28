@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { DollarSign, PieChart as PieChartIcon, TrendingUp, Activity } from 'lucide-react';
+import CashLedgerStatusCard from '@/components/CashLedgerStatusCard';
 import CsvUploader from '@/components/CsvUploader';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
@@ -138,6 +139,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             <div className="flex-1 max-h-[160px]">
               <CsvUploader />
             </div>
+            <CashLedgerStatusCard />
             <ImportWarningsPanel />
           </div>
           <div className="xl:col-span-8 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">

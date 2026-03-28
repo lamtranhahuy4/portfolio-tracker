@@ -27,7 +27,15 @@ export async function saveCashEventsBatch(data: CashLedgerEvent[]) {
     referenceTradeDate: evt.referenceTradeDate ? new Date(evt.referenceTradeDate) : null,
   }));
 
-  await db.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({ target: cashLedgerEvents.id });
+  await db.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({
+    target: [
+      cashLedgerEvents.userId,
+      cashLedgerEvents.date,
+      cashLedgerEvents.description,
+      cashLedgerEvents.amount,
+      cashLedgerEvents.balanceAfter,
+    ],
+  });
   revalidatePath('/');
 }
 

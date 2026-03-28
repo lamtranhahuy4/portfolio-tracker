@@ -1,4 +1,4 @@
-import { pgTable, varchar, numeric, timestamp, uuid, text, uniqueIndex } from 'drizzle-orm/pg-core';
+import { index, numeric, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -37,5 +37,14 @@ export const cashLedgerEvents = pgTable('cash_ledger_events', {
   referenceTicker: varchar('reference_ticker', { length: 32 }),
   referenceQuantity: numeric('reference_quantity'),
   referenceTradeDate: timestamp('reference_trade_date', { mode: 'date' }),
-});
+}, (table) => ({
+  userDateIdx: index('cash_ledger_events_user_date_idx').on(table.userId, table.date),
+  dedupeIdx: uniqueIndex('cash_ledger_events_dedupe_idx').on(
+    table.userId,
+    table.date,
+    table.description,
+    table.amount,
+    table.balanceAfter
+  ),
+}));
 

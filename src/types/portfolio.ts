@@ -171,3 +171,7 @@ export interface ImportCashParseResult {
   events: CashLedgerEvent[];
   summary: CashLedgerSummary;
 }
+
+export interface CashImportSummaryState extends CashLedgerSummary {
+  importedAt: Date;
+}

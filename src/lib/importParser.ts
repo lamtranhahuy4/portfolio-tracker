@@ -401,25 +401,44 @@ export async function parseImportFile(file: File): Promise<ImportParseResult> {
 }
 
 function findDnseCashHeader(rows: string[][]) {
-  for (let i = 0; i < Math.min(20, rows.length); i += 1) {
-    const row = rows[i] || [];
-    const normalizedRow = row.map((c) => normalizeText(c));
-    const rowStr = normalizedRow.join(' ');
-    
-    if (rowStr.includes('ngay gd') && rowStr.includes('phat sinh tang') && rowStr.includes('phat sinh giam') && rowStr.includes('so du')) {
+  for (let i = 0; i < Math.min(20, rows.length - 1); i += 1) {
+    const top = (rows[i] || []).map((c) => normalizeText(c));
+    const bottom = (rows[i + 1] || []).map((c) => normalizeText(c));
+    const topStr = top.join(' ');
+
+    const hasTopHeader = topStr.includes('ngay gd')
+      && topStr.includes('phat sinh')
+      && topStr.includes('so du')
+      && topStr.includes('mo ta');
+    const hasBottomHeader = bottom.includes('tang') && bottom.includes('giam');
+
+    if (hasTopHeader && hasBottomHeader) {
       return {
         headerRow: i,
         columns: {
-          date: normalizedRow.indexOf('ngay gd'),
-          inflow: normalizedRow.findIndex((c) => c.includes('phat sinh tang')),
-          outflow: normalizedRow.findIndex((c) => c.includes('phat sinh giam')),
-          balance: normalizedRow.indexOf('so du'),
-          desc: normalizedRow.indexOf('mo ta'),
+          date: top.indexOf('ngay gd'),
+          inflow: bottom.indexOf('tang'),
+          outflow: bottom.indexOf('giam'),
+          balance: top.indexOf('so du'),
+          desc: top.indexOf('mo ta'),
         },
       };
     }
   }
   return null;
+}
+
+function extractReferenceTradeMetadata(description: string) {
+  const tradePattern = /(mua|ban)\s+([\d.,]+)\s+([A-Z0-9]+)/i;
+  const datePattern = /ngay\s+(\d{1,2}[/-]\d{1,2}[/-]\d{4})/i;
+  const tradeMatch = description.match(tradePattern);
+  const dateMatch = description.match(datePattern);
+
+  return {
+    referenceQuantity: tradeMatch?.[2] ? parseNumber(tradeMatch[2]) : undefined,
+    referenceTicker: tradeMatch?.[3] ? tradeMatch[3].toUpperCase() : undefined,
+    referenceTradeDate: dateMatch?.[1] ? (parseViDate(dateMatch[1]) ?? undefined) : undefined,
+  };
 }
 
 export async function parseImportCashFile(file: File): Promise<ImportCashParseResult> {
@@ -440,11 +459,15 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
 
   const events: CashLedgerEvent[] = [];
   const { columns, headerRow } = header;
+  const firstDatedEvent = rows
+    .slice(headerRow + 2)
+    .map((row) => parseViDate(row?.[columns.date]))
+    .find((value): value is Date => Boolean(value));
   
   let totalEvents = 0;
   let unclassifiedEvents = 0;
 
-  for (let i = headerRow + 1; i < rows.length; i += 1) {
+  for (let i = headerRow + 2; i < rows.length; i += 1) {
     const row = rows[i];
     if (!row || row.every((cell) => normalizeText(cell) === '')) continue;
     
@@ -452,16 +475,18 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
     if (/ngay\s+\d+\s+thang\s+\d+\s+nam\s+\d+/.test(rowText)) continue;
     if (rowText.includes('tong cong')) continue;
 
+    const descText = String(row[columns.desc] ?? '').trim();
+    const descLower = normalizeText(descText);
     const dateStr = String(row[columns.date] ?? '').trim();
-    if (!dateStr || dateStr.toLowerCase().includes('ngay gd')) continue;
-    
-    const parsedDate = parseViDate(dateStr) || new Date(); 
-    
+    if (dateStr.toLowerCase().includes('ngay gd')) continue;
+
+    const parsedDate = parseViDate(dateStr)
+      ?? (descLower.includes('du dau ky') ? firstDatedEvent : null)
+      ?? new Date();
+
     const rawInflow = parseNumber(row[columns.inflow]);
     const rawOutflow = parseNumber(row[columns.outflow]);
     const rawBalance = parseNumber(row[columns.balance]);
-    const descText = String(row[columns.desc] ?? '').trim();
-    const descLower = normalizeText(descText);
 
     if (Number.isNaN(rawInflow) && Number.isNaN(rawOutflow) && Number.isNaN(rawBalance)) {
        continue;
@@ -470,12 +495,12 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
     let direction: 'INFLOW' | 'OUTFLOW' = 'INFLOW';
     let amount = 0;
 
-    if (!Number.isNaN(rawInflow) && rawInflow > 0) {
-      direction = 'INFLOW';
-      amount = rawInflow;
-    } else if (!Number.isNaN(rawOutflow) && rawOutflow > 0) {
-      direction = 'OUTFLOW';
-      amount = rawOutflow;
+    if (!Number.isNaN(rawInflow) && rawInflow !== 0) {
+      direction = rawInflow > 0 ? 'INFLOW' : 'OUTFLOW';
+      amount = Math.abs(rawInflow);
+    } else if (!Number.isNaN(rawOutflow) && rawOutflow !== 0) {
+      direction = rawOutflow < 0 ? 'OUTFLOW' : 'INFLOW';
+      amount = Math.abs(rawOutflow);
     }
 
     if (amount === 0 && !descLower.includes('du dau ky')) {
@@ -500,12 +525,16 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
       eventType = 'TRADE_SETTLEMENT_BUY';
     } else if (descLower.includes('thu phi tra so')) {
       eventType = 'EXCHANGE_FEE';
-    } else if (descLower.includes('thu phi mua') || descLower.includes('thu phi ban')) {
+    } else if (descLower.includes('thu phi mua') || descLower.includes('thu phi ban') || descLower.includes('thu phi ckck')) {
       eventType = 'TRADE_FEE';
     } else if (descLower.includes('thue tncn')) {
       eventType = 'SELL_TAX';
     } else if (descLower.includes('co tuc')) {
       eventType = 'DIVIDEND_CASH';
+    } else if (descLower.includes('nop tien') || descLower.includes('chuyen tien vao')) {
+      eventType = 'DEPOSIT';
+    } else if (descLower.includes('rut tien') || descLower.includes('chuyen tien ra')) {
+      eventType = 'WITHDRAW';
     }
 
     if (eventType === 'OTHER_ADJUSTMENT') {
@@ -530,8 +559,11 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
       source: 'dnse-cash-xlsx',
       referenceTicker,
       referenceQuantity,
+      referenceTradeDate: extractReferenceTradeMetadata(descText).referenceTradeDate,
     });
   }
+
+  events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return {
     events,

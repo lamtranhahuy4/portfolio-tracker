@@ -14,6 +14,7 @@ export default function CsvUploader() {
   const addTransactions = usePortfolioStore((state) => state.addTransactions);
   const addCashEvents = usePortfolioStore((state) => state.addCashEvents);
   const setLastImportResult = usePortfolioStore((state) => state.setLastImportResult);
+  const setLastCashImportSummary = usePortfolioStore((state) => state.setLastCashImportSummary);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -30,7 +31,13 @@ export default function CsvUploader() {
           if (result.events.length > 0) {
             await saveCashEventsBatch(result.events);
             addCashEvents(result.events);
+            setLastCashImportSummary({ ...result.summary, importedAt: new Date() });
             toast.success(`Nạp thành công ${result.events.length} sự kiện dòng tiền.`);
+            if (result.summary.coverageStart && result.summary.coverageEnd) {
+              toast.message(
+                `Coverage ${new Intl.DateTimeFormat('vi-VN').format(result.summary.coverageStart)} - ${new Intl.DateTimeFormat('vi-VN').format(result.summary.coverageEnd)}`
+              );
+            }
             if (result.summary.unclassifiedEvents > 0) {
               toast.warning(`Có ${result.summary.unclassifiedEvents} sự kiện chưa được phân loại rõ ràng.`);
             }
