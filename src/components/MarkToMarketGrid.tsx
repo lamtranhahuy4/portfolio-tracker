@@ -28,7 +28,7 @@ const formatCurrency = (value: number) => {
 
 // Format giá mua trung bình chuẩn DNSE (bước giá 10đ)
 const formatGrossPrice = (value: number) => {
-  const step10 = Math.round(value / 10) * 10;
+  const step10 = Math.floor(value / 10) * 10;
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',

@@ -205,7 +205,7 @@ function buildHoldingsFromState(
     
     const currentPrice = ticker === 'CASH_VND'
       ? 1
-      : (valuationMode ? (fallbackPrice ?? costPrice) : (currentPrices[ticker] ?? fallbackPrice ?? costPrice));
+      : (currentPrices[ticker] ?? fallbackPrice ?? costPrice);
       
     const marketValue = holding.totalShares * currentPrice;
     const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining + holding.allocatedBuyFeesRemaining;
