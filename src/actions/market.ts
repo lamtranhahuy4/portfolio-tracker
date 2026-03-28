@@ -1,39 +1,22 @@
 'use server';
 
 import yahooFinance from 'yahoo-finance2';
-
-import fs from 'fs';
-import path from 'path';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export async function fetchMarketIndices() {
+  noStore(); // Bắt buộc Vercel bỏ qua Cache, luôn luôn lấy dữ liệu mới hổi từ Yahoo!
   const symbols = ['^VNINDEX', '^GSPC', 'BTC-USD', 'GC=F'];
-  const logPath = path.join(process.cwd(), 'yahoo-debug.log');
 
   try {
-    fs.writeFileSync(logPath, 'Starting fetch...\n', { flag: 'a' });
-    
-    // Check if yahooFinance has quote
-    if (!yahooFinance || !yahooFinance.quote) {
-      fs.writeFileSync(logPath, `yahooFinance is invalid. Type: ${typeof yahooFinance}, Object hooks: ${Object.keys(yahooFinance || {})}\n`, { flag: 'a' });
-      // Thử dùng default
-      // @ts-ignore
-      if (yahooFinance && yahooFinance.default && yahooFinance.default.quote) {
-        fs.writeFileSync(logPath, `Found via default!\n`, { flag: 'a' });
-      }
-    }
-
-    // Fetch từng symbol riêng biệt để nếu 1 cái lỗi, các cái khác vẫn hoạt động
     const promises = symbols.map(symbol => 
       // @ts-ignore
       yahooFinance.quote(symbol).catch(err => {
-        fs.writeFileSync(logPath, `Error fetching ${symbol}: ${err.message}\n`, { flag: 'a' });
         console.error(`Error fetching ${symbol}:`, err.message);
         return null; // Trả về null nếu symbol này lỗi
       })
     );
     
     const results = await Promise.all(promises);
-    fs.writeFileSync(logPath, `Results length: ${results.length}. Valid results: ${results.filter(r => r !== null).length}\n`, { flag: 'a' });
     
     // Lọc bỏ những kết quả null (do lỗi)
     const validQuotes = results.filter(quote => quote !== null);
@@ -58,11 +41,63 @@ export async function fetchMarketIndices() {
       };
     });
 
-    fs.writeFileSync(logPath, `Success: returned ${formattedData.length} items.\n`, { flag: 'a' });
     return formattedData;
   } catch (error: any) {
-    fs.writeFileSync(logPath, `Outer Error: ${error.message}\n${error.stack}\n`, { flag: 'a' });
     console.error('Yahoo Finance API Error:', error);
     return [];
   }
 }
+
+export async function fetchTrendingAssets() {
+  noStore();
+  const symbols = ['FPT.VN', 'VCB.VN', 'NVDA'];
+  
+  try {
+    const promises = symbols.map(symbol => 
+      // @ts-ignore
+      yahooFinance.quote(symbol).catch(err => {
+        console.error(`Error fetching ${symbol}:`, err.message);
+        return null;
+      })
+    );
+    const results = await Promise.all(promises);
+    const validQuotes = results.filter(quote => quote !== null);
+
+    const formattedData = validQuotes.map((quote: any) => {
+      let ticker = quote.symbol;
+      let name = quote.shortName || quote.longName || ticker;
+      
+      if (ticker === 'FPT.VN') {
+        ticker = 'FPT';
+        name = 'Công ty Cổ phần FPT';
+      }
+      if (ticker === 'VCB.VN') {
+        ticker = 'VCB';
+        name = 'Ngân hàng Vietcombank';
+      }
+      if (ticker === 'NVDA') {
+        name = 'Nvidia Corp';
+      }
+
+      const price = quote.regularMarketPrice || 0;
+      const change = quote.regularMarketChange || 0;
+      const percent = quote.regularMarketChangePercent || 0;
+      
+      const isVND = ticker === 'FPT' || ticker === 'VCB';
+
+      return {
+        ticker,
+        name,
+        price: isVND ? `${new Intl.NumberFormat('vi-VN').format(price)} ₫` : `$${new Intl.NumberFormat('en-US').format(price)}`,
+        change: percent > 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
+        up: change >= 0
+      };
+    });
+
+    return formattedData;
+  } catch (error) {
+    console.error('Yahoo Finance API Error (Trending):', error);
+    return [];
+  }
+}
+

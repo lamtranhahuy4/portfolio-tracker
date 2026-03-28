@@ -2,22 +2,27 @@
 
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Clock, Activity, Globe, AlertCircle, RefreshCw } from 'lucide-react';
-import { fetchMarketIndices } from '@/actions/market';
+import { fetchMarketIndices, fetchTrendingAssets } from '@/actions/market';
 
 const TRENDING_ASSETS = [
-  { ticker: 'FPT', name: 'Công ty Cổ phần FPT', price: '115,000 ₫', change: '+2.5%' },
-  { ticker: 'VCB', name: 'Ngân hàng Vietcombank', price: '95,400 ₫', change: '+1.2%' },
-  { ticker: 'NVDA', name: 'Nvidia Corp', price: '$850.50', change: '+3.8%' },
+  { ticker: 'FPT', name: 'Công ty Cổ phần FPT', price: '115,000 ₫', change: '+2.5%', up: true },
+  { ticker: 'VCB', name: 'Ngân hàng Vietcombank', price: '95,400 ₫', change: '+1.2%', up: true },
+  { ticker: 'NVDA', name: 'Nvidia Corp', price: '$850.50', change: '+3.8%', up: true },
 ];
 
 export default function MarketOverview() {
   const [indices, setIndices] = useState<any[]>([]);
+  const [trending, setTrending] = useState<any[]>(TRENDING_ASSETS);
   const [loading, setLoading] = useState(true);
   
   const refreshData = () => {
     setLoading(true);
-    fetchMarketIndices().then(data => {
-      setIndices(data);
+    Promise.all([
+      fetchMarketIndices(),
+      fetchTrendingAssets()
+    ]).then(([indicesData, trendingData]) => {
+      if (indicesData) setIndices(indicesData);
+      if (trendingData && trendingData.length > 0) setTrending(trendingData);
       setLoading(false);
     });
   };
@@ -78,7 +83,7 @@ export default function MarketOverview() {
           <h3 className="text-sm font-bold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Tài sản Đặc trưng</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {TRENDING_ASSETS.map((asset, i) => (
+          {trending.map((asset, i) => (
             <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm hover:ring-1 hover:ring-indigo-500/20 transition-all group">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shadow-inner group-hover:scale-105 transition-transform">
@@ -91,7 +96,7 @@ export default function MarketOverview() {
               </div>
               <div className="flex flex-col items-end gap-1">
                 <span className="font-bold text-gray-900 dark:text-white text-[13px]">{asset.price}</span>
-                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-[2px] rounded tracking-wide">{asset.change}</span>
+                <span className={`text-[10px] font-bold px-2 py-[2px] rounded tracking-wide ${asset.up ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40' : 'text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/40'}`}>{asset.change}</span>
               </div>
             </div>
           ))}
