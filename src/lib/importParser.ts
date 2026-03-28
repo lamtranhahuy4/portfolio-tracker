@@ -275,6 +275,26 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
     if (!row || row.every((cell) => normalizeText(cell) === '')) {
       continue;
     }
+
+    const rowText = row.map((cell) => normalizeText(cell)).join(' ');
+
+    if (rowText.includes('tong cong')) {
+      continue;
+    }
+    
+    if (/ngay\s+\d+\s+thang\s+\d+\s+nam\s+\d+/.test(rowText)) {
+      continue;
+    }
+
+    const hasTicker = Boolean(String(row[columns.ticker] ?? '').trim());
+    const hasType = Boolean(String(row[columns.type] ?? '').trim());
+    const hasQuantity = Boolean(String(row[columns.quantity] ?? '').trim());
+    const hasPrice = Boolean(String(row[columns.price] ?? '').trim());
+
+    if (!hasTicker && !hasType && !hasQuantity && !hasPrice) {
+      continue;
+    }
+
     totalRows++;
 
     const rowNumber = i + 1;
@@ -301,13 +321,18 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
       rejectedRows++;
     };
 
-    if (!type) {
+    if (!ticker && hasType) {
+      pushWarning('Thiếu mã chứng khoán.');
+      continue;
+    }
+
+    if (!type && hasTicker) {
       pushWarning('Không nhận diện được loại lệnh từ file DNSE.');
       continue;
     }
 
-    if (!ticker) {
-      pushWarning('Thiếu mã chứng khoán.');
+    if (!type && !ticker) {
+      pushWarning('Thiếu cả mã chứng khoán và loại lệnh.');
       continue;
     }
 
