@@ -1,45 +1,68 @@
-'use server';
+﻿'use server';
 
-import { db } from '../db/index';
-import { transactions } from '../db/schema';
-import { desc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { db } from '@/db/index';
+import { transactions } from '@/db/schema';
+import { requireUser } from '@/lib/auth';
+import { NormalizedTransaction } from '@/types/portfolio';
 
-export async function saveTransactionsBatch(data: any[]) {
+export async function saveTransactionsBatch(data: NormalizedTransaction[]) {
   if (!data || data.length === 0) return;
-  
-  // Chuẩn hóa dữ liệu từ Format của UI (ticker, quantity) sang Format của DB (asset, amount)
-  const mappedData = data.map(tx => ({
+
+  const user = await requireUser();
+
+  const mappedData = data.map((tx) => ({
     id: tx.id,
+    userId: user.id,
+    assetClass: tx.assetClass,
     asset: tx.ticker,
     type: tx.type,
     amount: tx.quantity.toString(),
     price: tx.price.toString(),
-    date: new Date(tx.date)
+    fee: tx.fee.toString(),
+    tax: tx.tax.toString(),
+    notes: tx.notes ?? null,
+    source: tx.source ?? null,
+    date: new Date(tx.date),
   }));
 
-  // Bulk insert ignore duplicates via primary key conflict mechanism
   await db.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
-  
-  // Yêu cầu Next.js xóa cache và re-render trang dashboard gốc
   revalidatePath('/');
 }
 
 export async function fetchTransactions() {
+  const user = await requireUser();
+
   const dbTxs = await db.query.transactions.findMany({
-    orderBy: [desc(transactions.date)],
+    where: eq(transactions.userId, user.id),
+    orderBy: [asc(transactions.date)],
   });
 
-  // Ánh xạ phản ngược lại: Từ DB (asset, amount) sang chuẩn giao diện dùng cho Zustand (ticker, quantity)
-  return dbTxs.map(tx => ({
-    id: tx.id,
-    date: tx.date,
-    assetClass: 'STOCK', // Default fallback vì DB mới không lưu cột này
-    ticker: tx.asset,
-    type: tx.type,
-    quantity: Number(tx.amount),
-    price: Number(tx.price),
-    fee: 0,
-    totalValue: Number(tx.amount) * Number(tx.price),
-  }));
+  return dbTxs.map((tx) => {
+    const quantity = Number(tx.amount);
+    const price = Number(tx.price);
+    const fee = Number(tx.fee);
+    const tax = Number(tx.tax);
+    const grossValue = quantity * price;
+    const totalValue = tx.type === 'SELL'
+      ? grossValue - fee - tax
+      : grossValue + fee + tax;
+
+    return {
+      id: tx.id,
+      date: tx.date,
+      assetClass: tx.assetClass as 'STOCK' | 'CASH' | 'SAVING',
+      ticker: tx.asset,
+      type: tx.type as NormalizedTransaction['type'],
+      quantity,
+      price,
+      fee,
+      tax,
+      totalValue,
+      notes: tx.notes ?? undefined,
+      source: tx.source ?? undefined,
+    };
+  });
 }
+

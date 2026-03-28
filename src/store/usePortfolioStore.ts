@@ -1,37 +1,38 @@
-import { create } from 'zustand';
-import { Transaction, Holding } from '../types/portfolio';
-import { calculateHoldings } from '../lib/portfolioEngine';
+﻿import { create } from 'zustand';
+import { Holding, Transaction } from '@/types/portfolio';
+import { calculateHoldings } from '@/lib/portfolioEngine';
 
 interface PortfolioState {
   transactions: Transaction[];
   currentPrices: Record<string, number>;
-  
   setTransactions: (txs: Transaction[]) => void;
-  // Bổ sung addTransactions để merge dữ liệu
   addTransactions: (newTransactions: Transaction[]) => void;
   updatePrice: (ticker: string, newPrice: number) => void;
+}
+
+function sortTransactions(txs: Transaction[]) {
+  return [...txs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 export const usePortfolioStore = create<PortfolioState>((set) => ({
   transactions: [],
   currentPrices: {},
 
-  setTransactions: (txs) => set({ transactions: txs }),
-  
+  setTransactions: (txs) => set({ transactions: sortTransactions(txs) }),
+
   addTransactions: (newTransactions) => set((state) => {
-    // Merge và filter loại bỏ các giao dịch bị trùng UUID
-    const existingIds = new Set(state.transactions.map(t => t.id));
-    const uniqueNew = newTransactions.filter(t => !existingIds.has(t.id));
+    const existingIds = new Set(state.transactions.map((tx) => tx.id));
+    const uniqueNew = newTransactions.filter((tx) => !existingIds.has(tx.id));
     return {
-      transactions: [...state.transactions, ...uniqueNew]
+      transactions: sortTransactions([...state.transactions, ...uniqueNew]),
     };
   }),
 
   updatePrice: (ticker, newPrice) => set((state) => ({
     currentPrices: {
       ...state.currentPrices,
-      [ticker]: newPrice
-    }
+      [ticker]: newPrice,
+    },
   })),
 }));
 
@@ -41,3 +42,4 @@ export const useHoldings = (): Holding[] => {
 
   return calculateHoldings(transactions, currentPrices);
 };
+

@@ -1,22 +1,30 @@
-import { fetchTransactions } from '@/actions/transaction';
-import StoreInitializer from '@/components/StoreInitializer';
+﻿import { fetchTransactions } from '@/actions/transaction';
+import AuthPanel from '@/components/AuthPanel';
 import DashboardClient from '@/components/DashboardClient';
+import StoreInitializer from '@/components/StoreInitializer';
+import { getCurrentUser } from '@/lib/auth';
 
-export const dynamic = 'force-dynamic'; // Tắt cache mặc định để fetch db trực tiếp mỗi lượt truy cập mới
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  // Lấy dữ liệu qua hệ thống Server Actions (Drizzle truy vấn DB Neon)
-  let initialTransactions: any[] = [];
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return <AuthPanel />;
+  }
+
+  let initialTransactions = [];
   try {
     initialTransactions = await fetchTransactions();
   } catch (error) {
-    console.error("Failed to connect to Neon Database internally or variables not set.");
+    console.error('Failed to load transactions for current user.', error);
   }
-  
+
   return (
     <>
       <StoreInitializer initialTransactions={initialTransactions} />
-      <DashboardClient />
+      <DashboardClient userEmail={user.email} />
     </>
   );
 }
+

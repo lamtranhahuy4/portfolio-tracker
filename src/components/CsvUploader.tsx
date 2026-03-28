@@ -1,12 +1,11 @@
-'use client';
+﻿'use client';
 
 import React, { useRef, useState } from 'react';
-import { parseFileToTransactions } from '@/lib/csvMapper';
-import { parseExcelToTransactions } from '@/lib/excelMapper';
-import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { saveTransactionsBatch } from '@/actions/transaction';
-import { toast } from 'sonner';
 import { FileSpreadsheet } from 'lucide-react';
+import { toast } from 'sonner';
+import { saveTransactionsBatch } from '@/actions/transaction';
+import { parseImportFile } from '@/lib/importParser';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function CsvUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -19,23 +18,23 @@ export default function CsvUploader() {
 
     setIsUploading(true);
     try {
-      let transactions: any[] = [];
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      if (ext === 'xlsx' || ext === 'xls') {
-        transactions = await parseExcelToTransactions(file);
+      const result = await parseImportFile(file);
+
+      if (result.transactions.length > 0) {
+        await saveTransactionsBatch(result.transactions);
+        addTransactions(result.transactions);
+        toast.success(`N?p thành công ${result.transactions.length} giao d?ch.`);
+
+        if (result.warnings.length > 0) {
+          toast.warning(`${result.warnings.length} dòng b? b? qua. Ki?m tra l?i file import.`);
+        }
+      } else if (result.warnings.length > 0) {
+        toast.warning(result.warnings[0].message);
       } else {
-        transactions = await parseFileToTransactions(file);
-      }
-      
-      if (transactions.length > 0) {
-        await saveTransactionsBatch(transactions);
-        addTransactions(transactions);
-        toast.success(`Nạp thành công ${transactions.length} giao dịch.`);
-      } else {
-        toast.warning('File không hợp lệ hoặc dữ liệu trống.');
+        toast.warning('File không h?p l? ho?c d? li?u tr?ng.');
       }
     } catch (error) {
-      toast.error('Lỗi phân tích: ' + (error as Error).message);
+      toast.error('L?i phân tích: ' + (error as Error).message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -54,14 +53,14 @@ export default function CsvUploader() {
             <FileSpreadsheet className="w-6 h-6 text-indigo-500 mb-2 mt-4" />
           )}
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 text-center uppercase tracking-wide">
-            {isUploading ? 'Đang đọc...' : 'Tải lên Dữ liệu'}
+            {isUploading ? 'Ðang d?c...' : 'T?i lên d? li?u'}
           </span>
           <span className="text-[10px] text-gray-400 mt-1 mb-4">.CSV, .XLSX, .XLS</span>
-          <input 
+          <input
             ref={fileInputRef}
-            type="file" 
-            accept=".csv, .xlsx, .xls" 
-            className="hidden" 
+            type="file"
+            accept=".csv, .xlsx, .xls"
+            className="hidden"
             onChange={handleFileChange}
             disabled={isUploading}
           />
@@ -70,3 +69,4 @@ export default function CsvUploader() {
     </div>
   );
 }
+

@@ -45,8 +45,12 @@ export function calculateHoldings(
     return holdingsMap.get(ticker)!;
   };
 
-  // 1. Duyệt qua mảng giao dịch và tính toán số lượng/giá vốn
-  for (const tx of transactions) {
+  // 1. Duyệt qua mảng giao dịch (đã được clone và kiểm soát luôn tăng dần theo Timeline)
+  const sortedTx = [...transactions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  for (const tx of sortedTx) {
     if (tx.assetClass === 'STOCK') {
       const stock = getStockHolding(tx.ticker);
       const cash = getCashHolding();
@@ -67,7 +71,7 @@ export function calculateHoldings(
         case 'SELL': {
           // Khi SELL: Giữ nguyên Average Cost. Cập nhật số lượng và Realized PnL.
           stock.totalShares -= tx.quantity;
-          stock.realizedPnL += (tx.price - stock.averageCost) * tx.quantity - tx.fee;
+          stock.realizedPnL += (tx.price - stock.averageCost) * tx.quantity - tx.fee - tx.tax;
 
           // Cộng lại vào quỹ tiền mặt
           cash.totalShares += tx.totalValue;

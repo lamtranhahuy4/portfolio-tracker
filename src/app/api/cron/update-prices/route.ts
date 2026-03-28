@@ -19,26 +19,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: "Không có tài sản nào để cập nhật." });
     }
 
-    // 3. Giả lập logic lấy giá API (VD: CoinGecko/Binance/yfinance) và cập nhật giá mới
-    for (const assetName of uniqueAssets) {
-      const currentAssetTxs = allTxs.filter(tx => tx.asset === assetName);
-      if (currentAssetTxs.length === 0) continue;
-      
-      // Lấy giá price hiện tại làm tham chiếu
-      const referencePrice = Number(currentAssetTxs[0].price);
-      
-      // Giả lập giá dao động ngẫu nhiên +- 5%
-      const volatility = 0.05;
-      const change = 1 + (Math.random() * volatility * 2 - volatility);
-      const newPrice = referencePrice * change;
+    // [REMOVED] Logic đè price trực tiếp lên lịch sử giao dịch ở đây đã bị bỏ theo yêu cầu P0
+    // Để có giá thị trường mới nhất, tương lai sẽ phát triển bảng Market Price riêng.
+    console.log(`Cron runs but skips overriding transactions price. Unique assets found: ${uniqueAssets.length}`);
 
-      // Cập nhật giá cho tất cả transactions của asset này bằng Drizzle (.env)
-      await db.update(transactions)
-        .set({ price: newPrice.toString() })
-        .where(eq(transactions.asset, assetName));
-    }
-
-    return NextResponse.json({ success: true, message: "Đã cập nhật giá thị trường thành công!" });
+    return NextResponse.json({ success: true, message: "Đã rà soát cron thành công (bỏ qua update lịch sử để bảo toàn dữ liệu)!" });
   } catch (error: any) {
     console.error("Cron Job Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

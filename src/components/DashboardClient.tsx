@@ -5,6 +5,7 @@ import { usePortfolioStore, useHoldings } from '@/store/usePortfolioStore';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import CsvUploader from '@/components/CsvUploader';
 import MarketOverview from '@/components/MarketOverview';
+import LogoutButton from '@/components/LogoutButton';
 import TransactionHistoryTable from '@/components/TransactionHistoryTable';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { DollarSign, PieChart as PieChartIcon, TrendingUp, Activity } from 'lucide-react';
@@ -27,7 +28,7 @@ const formatPercent = (value: number) => {
   }).format(value);
 };
 
-export default function DashboardClient() {
+export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [isMounted, setIsMounted] = useState(false);
   
   const holdings = useHoldings();
@@ -69,6 +70,13 @@ export default function DashboardClient() {
         <header className="h-64 w-full rounded-2xl overflow-hidden relative mb-4 shadow-lg group">
           <img src="/hero-banner.jpg" alt="Portfolio Oasis" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/40 to-transparent flex flex-col justify-end p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div />
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline text-sm text-white/80">{userEmail}</span>
+                <LogoutButton />
+              </div>
+            </div>
             <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-md">
               My Portfolio Oasis
             </h1>

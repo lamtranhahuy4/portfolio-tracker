@@ -29,8 +29,10 @@ export default function TransactionHistoryTable() {
         let bValue = b[sortConfig.key];
 
         // Ép kiểu Date sang int để sort chính xác
-        if (aValue instanceof Date) aValue = aValue.getTime();
-        if (bValue instanceof Date) bValue = bValue.getTime();
+        if (sortConfig.key === 'date') {
+          aValue = new Date(aValue as Date | string).getTime();
+          bValue = new Date(bValue as Date | string).getTime();
+        }
 
         if (aValue < bValue) {
           return sortConfig.direction === 'asc' ? -1 : 1;
@@ -75,9 +77,10 @@ export default function TransactionHistoryTable() {
 
   // 3. Formatters
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(val);
-  const formatDate = (date: Date) => {
-    if (!(date instanceof Date) || isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('vi-VN', {
+  const formatDate = (date: Date | string) => {
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) return '-';
+    return parsedDate.toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

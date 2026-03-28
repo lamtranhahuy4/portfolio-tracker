@@ -36,10 +36,24 @@ export interface Transaction {
   price: number;
   /** Phí giao dịch (thuế, phí sàn...) */
   fee: number;
+  tax: number;
   /** Tổng giá trị của giao dịch = (quantity * price) + fee (đối với mua) hoặc - fee (đối với bán) */
   totalValue: number;
   /** Ghi chú người dùng tự nhập (không bắt buộc) */
   notes?: string;
+  source?: string;
+}
+
+export interface NormalizedTransaction extends Transaction {}
+
+export interface ImportWarning {
+  row: number;
+  message: string;
+}
+
+export interface ImportParseResult {
+  transactions: NormalizedTransaction[];
+  warnings: ImportWarning[];
 }
 
 /**
