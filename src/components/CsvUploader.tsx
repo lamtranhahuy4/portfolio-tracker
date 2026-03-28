@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useRef, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
@@ -23,18 +23,18 @@ export default function CsvUploader() {
       if (result.transactions.length > 0) {
         await saveTransactionsBatch(result.transactions);
         addTransactions(result.transactions);
-        toast.success(`N?p thành công ${result.transactions.length} giao d?ch.`);
+        toast.success(`Nạp thành công ${result.transactions.length} giao dịch.`);
 
         if (result.warnings.length > 0) {
-          toast.warning(`${result.warnings.length} dòng b? b? qua. Ki?m tra l?i file import.`);
+          toast.warning(`${result.warnings.length} dòng bị bỏ qua. Kiểm tra lại file import.`);
         }
       } else if (result.warnings.length > 0) {
         toast.warning(result.warnings[0].message);
       } else {
-        toast.warning('File không h?p l? ho?c d? li?u tr?ng.');
+        toast.warning('File không hợp lệ hoặc dữ liệu trống.');
       }
     } catch (error) {
-      toast.error('L?i phân tích: ' + (error as Error).message);
+      toast.error('Lỗi phân tích: ' + (error as Error).message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -53,7 +53,7 @@ export default function CsvUploader() {
             <FileSpreadsheet className="w-6 h-6 text-indigo-500 mb-2 mt-4" />
           )}
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 text-center uppercase tracking-wide">
-            {isUploading ? 'Ðang d?c...' : 'T?i lên d? li?u'}
+            {isUploading ? 'Đang đọc...' : 'Tải lên Dữ liệu'}
           </span>
           <span className="text-[10px] text-gray-400 mt-1 mb-4">.CSV, .XLSX, .XLS</span>
           <input
