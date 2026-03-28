@@ -2,6 +2,9 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import {
   AssetClass,
+  CashLedgerEvent,
+  CashLedgerEventType,
+  ImportCashParseResult,
   ImportParseResult,
   ImportWarning,
   NormalizedTransaction,
@@ -395,4 +398,150 @@ export async function parseImportFile(file: File): Promise<ImportParseResult> {
   }
 
   return parseCsv(file);
+}
+
+function findDnseCashHeader(rows: string[][]) {
+  for (let i = 0; i < Math.min(20, rows.length); i += 1) {
+    const row = rows[i] || [];
+    const normalizedRow = row.map((c) => normalizeText(c));
+    const rowStr = normalizedRow.join(' ');
+    
+    if (rowStr.includes('ngay gd') && rowStr.includes('phat sinh tang') && rowStr.includes('phat sinh giam') && rowStr.includes('so du')) {
+      return {
+        headerRow: i,
+        columns: {
+          date: normalizedRow.indexOf('ngay gd'),
+          inflow: normalizedRow.findIndex((c) => c.includes('phat sinh tang')),
+          outflow: normalizedRow.findIndex((c) => c.includes('phat sinh giam')),
+          balance: normalizedRow.indexOf('so du'),
+          desc: normalizedRow.indexOf('mo ta'),
+        },
+      };
+    }
+  }
+  return null;
+}
+
+export async function parseImportCashFile(file: File): Promise<ImportCashParseResult> {
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (ext !== 'xlsx' && ext !== 'xls') {
+    throw new Error('Định dạng báo cáo tiền phải là Excel (.xlsx, .xls)');
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '' }) as string[][];
+  
+  const header = findDnseCashHeader(rows);
+  if (!header) {
+    throw new Error('Không tìm thấy header báo cáo tiền DNSE hợp lệ trong file Excel.');
+  }
+
+  const events: CashLedgerEvent[] = [];
+  const { columns, headerRow } = header;
+  
+  let totalEvents = 0;
+  let unclassifiedEvents = 0;
+
+  for (let i = headerRow + 1; i < rows.length; i += 1) {
+    const row = rows[i];
+    if (!row || row.every((cell) => normalizeText(cell) === '')) continue;
+    
+    const rowText = row.map((cell) => normalizeText(cell)).join(' ');
+    if (/ngay\s+\d+\s+thang\s+\d+\s+nam\s+\d+/.test(rowText)) continue;
+    if (rowText.includes('tong cong')) continue;
+
+    const dateStr = String(row[columns.date] ?? '').trim();
+    if (!dateStr || dateStr.toLowerCase().includes('ngay gd')) continue;
+    
+    const parsedDate = parseViDate(dateStr) || new Date(); 
+    
+    const rawInflow = parseNumber(row[columns.inflow]);
+    const rawOutflow = parseNumber(row[columns.outflow]);
+    const rawBalance = parseNumber(row[columns.balance]);
+    const descText = String(row[columns.desc] ?? '').trim();
+    const descLower = normalizeText(descText);
+
+    if (Number.isNaN(rawInflow) && Number.isNaN(rawOutflow) && Number.isNaN(rawBalance)) {
+       continue;
+    }
+
+    let direction: 'INFLOW' | 'OUTFLOW' = 'INFLOW';
+    let amount = 0;
+
+    if (!Number.isNaN(rawInflow) && rawInflow > 0) {
+      direction = 'INFLOW';
+      amount = rawInflow;
+    } else if (!Number.isNaN(rawOutflow) && rawOutflow > 0) {
+      direction = 'OUTFLOW';
+      amount = rawOutflow;
+    }
+
+    if (amount === 0 && !descLower.includes('du dau ky')) {
+      continue;
+    }
+
+    totalEvents++;
+
+    let eventType: CashLedgerEventType = 'OTHER_ADJUSTMENT';
+    let referenceTicker: string | undefined;
+    let referenceQuantity: number | undefined;
+
+    if (descLower.includes('du dau ky')) {
+      eventType = 'OPENING_BALANCE';
+    } else if (descLower.includes('lai tien gui')) {
+      eventType = 'INTEREST';
+    } else if (descLower.includes('phi luu ky')) {
+      eventType = 'DEPOSITORY_FEE';
+    } else if (descLower.includes('nhan tien ban')) {
+      eventType = 'TRADE_SETTLEMENT_SELL';
+    } else if (descLower.includes('tra tien mua')) {
+      eventType = 'TRADE_SETTLEMENT_BUY';
+    } else if (descLower.includes('thu phi tra so')) {
+      eventType = 'EXCHANGE_FEE';
+    } else if (descLower.includes('thu phi mua') || descLower.includes('thu phi ban')) {
+      eventType = 'TRADE_FEE';
+    } else if (descLower.includes('thue tncn')) {
+      eventType = 'SELL_TAX';
+    } else if (descLower.includes('co tuc')) {
+      eventType = 'DIVIDEND_CASH';
+    }
+
+    if (eventType === 'OTHER_ADJUSTMENT') {
+       unclassifiedEvents++;
+    }
+
+    const tradeMatch = descText.match(/bán\s+(\d+(?:[.,]\d+)?|\d+)\s+([A-Z0-9]+)/i) || 
+                       descText.match(/mua\s+(\d+(?:[.,]\d+)?|\d+)\s+([A-Z0-9]+)/i);
+    if (tradeMatch && tradeMatch[1] && tradeMatch[2]) {
+      referenceQuantity = parseFloat(tradeMatch[1].replace(/,/g, ''));
+      referenceTicker = tradeMatch[2].toUpperCase();
+    }
+
+    events.push({
+      id: crypto.randomUUID(),
+      date: parsedDate,
+      direction,
+      amount,
+      balanceAfter: Number.isNaN(rawBalance) ? 0 : rawBalance,
+      eventType,
+      description: descText,
+      source: 'dnse-cash-xlsx',
+      referenceTicker,
+      referenceQuantity,
+    });
+  }
+
+  return {
+    events,
+    summary: {
+      fileName: file.name,
+      source: 'dnse-cash-xlsx',
+      totalEvents,
+      unclassifiedEvents,
+      coverageStart: events.length > 0 ? events[0].date : undefined,
+      coverageEnd: events.length > 0 ? events[events.length - 1].date : undefined,
+    }
+  };
 }

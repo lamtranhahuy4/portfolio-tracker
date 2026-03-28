@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -57,6 +57,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
               <div />
               <div className="flex items-center gap-3">
                 <span className="hidden sm:inline text-sm text-white/80">{userEmail}</span>
+                {metrics.cashBalanceSource === 'ledger' ? (
+                  <span className="bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 px-3 py-1 py-1.5 text-xs rounded-xl font-medium tracking-wide">Cash: Ledger Mode</span>
+                ) : (
+                  <span className="bg-orange-500/20 text-orange-200 border border-orange-500/30 px-3 py-1.5 text-xs rounded-xl font-medium tracking-wide">Cash: Derived Mode</span>
+                )}
                 <Link href="/account" className="text-white hover:text-indigo-200 text-sm font-medium transition-colors bg-white/10 hover:bg-white/20 px-4 py-1.5 rounded-xl backdrop-blur-sm border border-white/10">
                   Tài khoản
                 </Link>

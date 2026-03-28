@@ -4,13 +4,15 @@ import React, { useRef, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveTransactionsBatch } from '@/actions/transaction';
-import { parseImportFile } from '@/lib/importParser';
+import { saveCashEventsBatch } from '@/actions/cashLedger';
+import { parseImportCashFile, parseImportFile } from '@/lib/importParser';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function CsvUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const addTransactions = usePortfolioStore((state) => state.addTransactions);
+  const addCashEvents = usePortfolioStore((state) => state.addCashEvents);
   const setLastImportResult = usePortfolioStore((state) => state.setLastImportResult);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,27 +21,56 @@ export default function CsvUploader() {
 
     setIsUploading(true);
     try {
-      const result = await parseImportFile(file);
-      setLastImportResult({ ...result, importedAt: new Date() });
+      const fileNameLower = file.name.toLowerCase();
+      const isLikelyCashReport = fileNameLower.includes('tiền') || fileNameLower.includes('tien') || fileNameLower.includes('cash');
 
-      if (result.transactions.length > 0) {
-        await saveTransactionsBatch(result.transactions);
-        addTransactions(result.transactions);
-        toast.success(`Nạp thành công ${result.transactions.length} giao dịch.`);
-
-        if (result.warnings.length > 0) {
-          toast.warning(`${result.warnings.length} dòng bị bỏ qua. Kiểm tra lại file import.`);
+      if (isLikelyCashReport) {
+        try {
+          const result = await parseImportCashFile(file);
+          if (result.events.length > 0) {
+            await saveCashEventsBatch(result.events);
+            addCashEvents(result.events);
+            toast.success(`Nạp thành công ${result.events.length} sự kiện dòng tiền.`);
+            if (result.summary.unclassifiedEvents > 0) {
+              toast.warning(`Có ${result.summary.unclassifiedEvents} sự kiện chưa được phân loại rõ ràng.`);
+            }
+          } else {
+            toast.warning('File dòng tiền không hợp lệ hoặc dữ liệu trống.');
+          }
+        } catch (err: any) {
+          if (err.message?.includes('Không tìm thấy header')) {
+            await handleTradeFile(file);
+          } else {
+            throw err;
+          }
         }
-      } else if (result.warnings.length > 0) {
-        toast.warning(result.warnings[0].message);
       } else {
-        toast.warning('File không hợp lệ hoặc dữ liệu trống.');
+        await handleTradeFile(file);
       }
     } catch (error) {
       toast.error('Lỗi phân tích: ' + (error as Error).message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleTradeFile = async (file: File) => {
+    const result = await parseImportFile(file);
+    setLastImportResult({ ...result, importedAt: new Date() });
+
+    if (result.transactions.length > 0) {
+      await saveTransactionsBatch(result.transactions);
+      addTransactions(result.transactions);
+      toast.success(`Nạp thành công ${result.transactions.length} giao dịch.`);
+
+      if (result.warnings.length > 0) {
+        toast.warning(`${result.warnings.length} dòng bị bỏ qua. Kiểm tra lại file import.`);
+      }
+    } else if (result.warnings.length > 0) {
+      toast.warning(result.warnings[0].message);
+    } else {
+      toast.warning('File không hợp lệ hoặc dữ liệu trống.');
     }
   };
 

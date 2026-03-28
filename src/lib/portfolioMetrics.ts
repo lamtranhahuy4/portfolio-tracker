@@ -1,4 +1,4 @@
-import { GroupedTransactionsByDay, Holding, NavPoint, PortfolioMetrics, Transaction } from '@/types/portfolio';
+import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, PortfolioMetrics, Transaction } from '@/types/portfolio';
 
 type HoldingState = {
   assetClass: Holding['assetClass'];
@@ -83,7 +83,7 @@ function getLots(lotsMap: Map<string, Lot[]>, ticker: string) {
   return lotsMap.get(ticker)!;
 }
 
-function applyTransaction(state: ReplayState, tx: Transaction) {
+function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boolean) {
   const cash = getCashHolding(state.holdingsMap);
   const parsedDate = new Date(tx.date);
   const dateLabel = Number.isNaN(parsedDate.getTime()) ? String(tx.date) : parsedDate.toISOString();
@@ -101,7 +101,7 @@ function applyTransaction(state: ReplayState, tx: Transaction) {
         remainingQty: tx.quantity,
         unitCostNet: tx.totalValue / tx.quantity,
       });
-      cash.totalShares -= tx.totalValue;
+      if (!ledgerMode) cash.totalShares -= tx.totalValue;
       state.lastKnownPrices.set(tx.ticker, tx.price);
       return;
     }
@@ -136,7 +136,7 @@ function applyTransaction(state: ReplayState, tx: Transaction) {
 
       const fifoNetProceeds = tx.price * quantityToSell - tx.fee - tx.tax;
       stock.fifoRealizedPnL += fifoNetProceeds - fifoCostBasis;
-      cash.totalShares += fifoNetProceeds;
+      if (!ledgerMode) cash.totalShares += fifoNetProceeds;
       state.lastKnownPrices.set(tx.ticker, tx.price);
       return;
     }
@@ -153,25 +153,29 @@ function applyTransaction(state: ReplayState, tx: Transaction) {
     }
 
     if (tx.type === 'DIVIDEND') {
-      cash.totalShares += tx.totalValue;
+      if (!ledgerMode) cash.totalShares += tx.totalValue;
       return;
     }
   }
 
   if (tx.type === 'DEPOSIT') {
-    cash.totalShares += tx.totalValue;
-    state.netContributions += tx.totalValue;
+    if (!ledgerMode) {
+      cash.totalShares += tx.totalValue;
+      state.netContributions += tx.totalValue;
+    }
     return;
   }
 
   if (tx.type === 'INTEREST') {
-    cash.totalShares += tx.totalValue;
+    if (!ledgerMode) cash.totalShares += tx.totalValue;
     return;
   }
 
   if (tx.type === 'WITHDRAW') {
-    cash.totalShares -= tx.totalValue;
-    state.netContributions -= tx.totalValue;
+    if (!ledgerMode) {
+      cash.totalShares -= tx.totalValue;
+      state.netContributions -= tx.totalValue;
+    }
   }
 }
 
@@ -217,27 +221,53 @@ function buildHoldingsFromState(
 
 export function buildDailyNavSeries(
   transactions: Transaction[],
-  currentPrices: Record<string, number>
+  currentPrices: Record<string, number>,
+  cashEvents: CashLedgerEvent[]
 ): NavPoint[] {
   const sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  if (sortedTx.length === 0) return [];
+  const sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const ledgerMode = sortedCashEvents.length > 0;
+
+  if (sortedTx.length === 0 && sortedCashEvents.length === 0) return [];
 
   const state = createEmptyState();
   const navSeries: NavPoint[] = [];
   let txIndex = 0;
+  let cashIndex = 0;
 
-  const startDate = new Date(sortedTx[0].date);
+  const firstDateTx = sortedTx.length > 0 ? new Date(sortedTx[0].date).getTime() : Infinity;
+  const firstDateCash = sortedCashEvents.length > 0 ? new Date(sortedCashEvents[0].date).getTime() : Infinity;
+  const startDate = new Date(Math.min(firstDateTx, firstDateCash));
   const endDate = new Date();
   startDate.setHours(0, 0, 0, 0);
   endDate.setHours(0, 0, 0, 0);
+  
+  let currentLedgerBalance = 0;
+  let currentNetContributionsLedger = 0;
 
   for (const cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
     while (txIndex < sortedTx.length) {
       const txDate = new Date(sortedTx[txIndex].date);
       txDate.setHours(0, 0, 0, 0);
       if (txDate.getTime() > cursor.getTime()) break;
-      applyTransaction(state, sortedTx[txIndex]);
+      applyTransaction(state, sortedTx[txIndex], ledgerMode);
       txIndex += 1;
+    }
+
+    while (cashIndex < sortedCashEvents.length) {
+      const evt = sortedCashEvents[cashIndex];
+      const evtDate = new Date(evt.date);
+      evtDate.setHours(0, 0, 0, 0);
+      if (evtDate.getTime() > cursor.getTime()) break;
+      
+      currentLedgerBalance = evt.balanceAfter;
+      if (evt.eventType === 'DEPOSIT') {
+        currentNetContributionsLedger += evt.amount;
+      } else if (evt.eventType === 'WITHDRAW') {
+        currentNetContributionsLedger -= evt.amount;
+      }
+      
+      cashIndex += 1;
     }
 
     const dayKey = getDateKey(cursor);
@@ -249,7 +279,14 @@ export function buildDailyNavSeries(
     }
 
     const holdings = buildHoldingsFromState(state, currentPrices, dayPriceOverrides);
-    const cashValue = holdings.find((holding) => holding.ticker === 'CASH_VND')?.marketValue ?? 0;
+    let cashValue = 0;
+    
+    if (ledgerMode) {
+      cashValue = currentLedgerBalance;
+    } else {
+      cashValue = holdings.find((holding) => holding.ticker === 'CASH_VND')?.marketValue ?? 0;
+    }
+
     const investedMarketValue = holdings
       .filter((holding) => holding.ticker !== 'CASH_VND')
       .reduce((sum, holding) => sum + holding.marketValue, 0);
@@ -258,8 +295,9 @@ export function buildDailyNavSeries(
       date: dayKey,
       netAssetValue: cashValue + investedMarketValue,
       cashValue,
+      cashValueSource: ledgerMode ? 'ledger' : 'derived',
       investedMarketValue,
-      netContributions: state.netContributions,
+      netContributions: ledgerMode ? currentNetContributionsLedger : state.netContributions,
     });
   }
 
@@ -268,14 +306,47 @@ export function buildDailyNavSeries(
 
 export function calculatePortfolioMetrics(
   transactions: Transaction[],
-  currentPrices: Record<string, number>
+  currentPrices: Record<string, number>,
+  cashEvents: CashLedgerEvent[]
 ): PortfolioMetrics {
   const sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const ledgerMode = sortedCashEvents.length > 0;
+  
   const state = createEmptyState();
 
-  sortedTx.forEach((tx) => applyTransaction(state, tx));
+  sortedTx.forEach((tx) => applyTransaction(state, tx, ledgerMode));
+
+  let finalLedgerBalance = 0;
+  let finalNetContributionsLedger = 0;
+  sortedCashEvents.forEach((evt) => {
+    finalLedgerBalance = evt.balanceAfter;
+    if (evt.eventType === 'DEPOSIT') finalNetContributionsLedger += evt.amount;
+    if (evt.eventType === 'WITHDRAW') finalNetContributionsLedger -= evt.amount;
+  });
 
   const holdings = buildHoldingsFromState(state, currentPrices);
+  
+  if (ledgerMode) {
+    const cashHolding = holdings.find(h => h.ticker === 'CASH_VND');
+    if (cashHolding) {
+      cashHolding.totalShares = finalLedgerBalance;
+      cashHolding.marketValue = finalLedgerBalance;
+    } else {
+      holdings.push({
+        assetClass: 'CASH',
+        ticker: 'CASH_VND',
+        totalShares: finalLedgerBalance,
+        averageCost: 1,
+        currentPrice: 1,
+        marketValue: finalLedgerBalance,
+        averageCostRealizedPnL: 0,
+        fifoRealizedPnL: 0,
+        unrealizedPnL: 0,
+      });
+    }
+  }
+
   const totalMarketValue = holdings.reduce((sum, holding) => sum + holding.marketValue, 0);
   const currentCostBasis = holdings.reduce((sum, holding) => {
     if (holding.ticker === 'CASH_VND') return sum + holding.marketValue;
@@ -285,6 +356,7 @@ export function calculatePortfolioMetrics(
   const fifoRealizedPnL = holdings.reduce((sum, holding) => sum + holding.fifoRealizedPnL, 0);
   const totalUnrealizedPnL = holdings.reduce((sum, holding) => sum + holding.unrealizedPnL, 0);
   const netPnL = totalUnrealizedPnL + averageCostRealizedPnL;
+  const activeNetContributions = ledgerMode ? finalNetContributionsLedger : state.netContributions;
 
   return {
     holdings,
@@ -293,10 +365,14 @@ export function calculatePortfolioMetrics(
     averageCostRealizedPnL,
     fifoRealizedPnL,
     totalUnrealizedPnL,
-    netContributions: state.netContributions,
-    returnVsCostBasis: state.netContributions !== 0 ? netPnL / state.netContributions : 0,
-    navSeries: buildDailyNavSeries(sortedTx, currentPrices),
+    netContributions: activeNetContributions,
+    returnVsCostBasis: activeNetContributions !== 0 ? netPnL / activeNetContributions : 0,
+    navSeries: buildDailyNavSeries(sortedTx, currentPrices, cashEvents),
     calculationWarnings: state.calculationWarnings,
+    cashBalanceSource: ledgerMode ? 'ledger' : 'derived',
+    cashBalanceEOD: ledgerMode ? finalLedgerBalance : undefined,
+    cashLedgerCoverageStart: ledgerMode && sortedCashEvents.length > 0 ? sortedCashEvents[0].date.toISOString() : undefined,
+    cashLedgerCoverageEnd: ledgerMode && sortedCashEvents.length > 0 ? sortedCashEvents[sortedCashEvents.length - 1].date.toISOString() : undefined,
   };
 }
 

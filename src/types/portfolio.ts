@@ -98,8 +98,10 @@ export interface NavPoint {
   date: string;
   netAssetValue: number;
   cashValue: number;
+  cashValueSource?: 'derived' | 'ledger';
   investedMarketValue: number;
   netContributions: number;
+  reconciled?: boolean;
 }
 
 export interface PortfolioMetrics {
@@ -113,6 +115,10 @@ export interface PortfolioMetrics {
   returnVsCostBasis: number;
   navSeries: NavPoint[];
   calculationWarnings: string[];
+  cashBalanceSource?: 'derived' | 'ledger';
+  cashBalanceEOD?: number;
+  cashLedgerCoverageStart?: string;
+  cashLedgerCoverageEnd?: string;
 }
 
 export interface GroupedTransactionsByDay {
@@ -121,4 +127,47 @@ export interface GroupedTransactionsByDay {
   items: Transaction[];
   count: number;
   dayGrossValue: number;
+}
+
+export type CashLedgerEventType =
+  | 'OPENING_BALANCE'
+  | 'TRADE_SETTLEMENT_BUY'
+  | 'TRADE_SETTLEMENT_SELL'
+  | 'TRADE_FEE'
+  | 'EXCHANGE_FEE'
+  | 'DEPOSITORY_FEE'
+  | 'SELL_TAX'
+  | 'INTEREST'
+  | 'DEPOSIT'
+  | 'WITHDRAW'
+  | 'DIVIDEND_CASH'
+  | 'OTHER_ADJUSTMENT';
+
+export interface CashLedgerEvent {
+  id: string;
+  userId?: string;
+  date: Date;
+  direction: 'INFLOW' | 'OUTFLOW';
+  amount: number;
+  balanceAfter: number;
+  eventType: CashLedgerEventType;
+  description: string;
+  source: string;
+  referenceTicker?: string;
+  referenceQuantity?: number;
+  referenceTradeDate?: Date;
+}
+
+export interface CashLedgerSummary {
+  fileName: string;
+  source: string;
+  totalEvents: number;
+  unclassifiedEvents: number;
+  coverageStart?: Date;
+  coverageEnd?: Date;
+}
+
+export interface ImportCashParseResult {
+  events: CashLedgerEvent[];
+  summary: CashLedgerSummary;
 }

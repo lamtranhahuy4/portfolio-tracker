@@ -1,16 +1,25 @@
-﻿'use client';
+'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { Transaction } from '@/types/portfolio';
+import { CashLedgerEvent, Transaction } from '@/types/portfolio';
 
-export default function StoreInitializer({ initialTransactions }: { initialTransactions: Transaction[] }) {
+export default function StoreInitializer({ 
+  initialTransactions,
+  initialCashEvents = []
+}: { 
+  initialTransactions: Transaction[],
+  initialCashEvents?: CashLedgerEvent[]
+}) {
   const setTransactions = usePortfolioStore((state) => state.setTransactions);
+  const setCashEvents = usePortfolioStore((state) => state.setCashEvents);
+  const initialized = useRef(false);
 
-  useEffect(() => {
+  if (!initialized.current) {
     setTransactions(initialTransactions);
-  }, [initialTransactions, setTransactions]);
+    setCashEvents(initialCashEvents);
+    initialized.current = true;
+  }
 
   return null;
 }
-

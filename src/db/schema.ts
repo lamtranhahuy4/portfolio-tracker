@@ -1,4 +1,4 @@
-﻿import { pgTable, varchar, numeric, timestamp, uuid, text, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, numeric, timestamp, uuid, text, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -22,5 +22,20 @@ export const transactions = pgTable('transactions', {
   notes: text('notes'),
   source: varchar('source', { length: 32 }),
   date: timestamp('date', { mode: 'date' }).notNull(),
+});
+
+export const cashLedgerEvents = pgTable('cash_ledger_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  date: timestamp('date', { mode: 'date' }).notNull(),
+  direction: varchar('direction', { length: 16 }).notNull(),
+  amount: numeric('amount').notNull(),
+  balanceAfter: numeric('balance_after').notNull(),
+  eventType: varchar('event_type', { length: 32 }).notNull(),
+  description: text('description').notNull(),
+  source: varchar('source', { length: 32 }).notNull(),
+  referenceTicker: varchar('reference_ticker', { length: 32 }),
+  referenceQuantity: numeric('reference_quantity'),
+  referenceTradeDate: timestamp('reference_trade_date', { mode: 'date' }),
 });
 
