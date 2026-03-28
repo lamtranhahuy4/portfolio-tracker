@@ -284,7 +284,7 @@ export function buildDailyNavSeries(
       currentLedgerBalance = evt.balanceAfter;
       if (evt.eventType === 'DEPOSIT') {
         currentNetContributionsLedger += evt.amount;
-      } else if (evt.eventType === 'WITHDRAW') {
+      } else if (evt.eventType === 'WITHDRAW' || evt.eventType === 'BANK_TRANSFER_OUT') {
         currentNetContributionsLedger -= evt.amount;
       }
       
@@ -352,7 +352,7 @@ export function calculatePortfolioMetrics(
   sortedCashEvents.forEach((evt) => {
     finalLedgerBalance = evt.balanceAfter;
     if (evt.eventType === 'DEPOSIT') finalNetContributionsLedger += evt.amount;
-    if (evt.eventType === 'WITHDRAW') finalNetContributionsLedger -= evt.amount;
+    if (evt.eventType === 'WITHDRAW' || evt.eventType === 'BANK_TRANSFER_OUT') finalNetContributionsLedger -= evt.amount;
   });
 
   const holdings = buildHoldingsFromState(state, currentPrices, !!valuationDate);

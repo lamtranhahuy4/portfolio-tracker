@@ -531,9 +531,15 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
       eventType = 'SELL_TAX';
     } else if (descLower.includes('co tuc')) {
       eventType = 'DIVIDEND_CASH';
+    } else if (descLower.includes('hoan tra uttb')) {
+      eventType = 'SELL_ADVANCE_REPAYMENT';
+    } else if (descLower.includes('uttb ngay gd') || descLower.startsWith('uttb')) {
+      eventType = 'SELL_ADVANCE';
+    } else if (descLower.includes('chuyen tien cho') || descLower.includes('chuyen tien ra')) {
+      eventType = 'BANK_TRANSFER_OUT';
     } else if (descLower.includes('nop tien') || descLower.includes('chuyen tien vao')) {
       eventType = 'DEPOSIT';
-    } else if (descLower.includes('rut tien') || descLower.includes('chuyen tien ra')) {
+    } else if (descLower.includes('rut tien')) {
       eventType = 'WITHDRAW';
     }
 

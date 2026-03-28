@@ -144,6 +144,9 @@ export type CashLedgerEventType =
   | 'DEPOSIT'
   | 'WITHDRAW'
   | 'DIVIDEND_CASH'
+  | 'SELL_ADVANCE'
+  | 'SELL_ADVANCE_REPAYMENT'
+  | 'BANK_TRANSFER_OUT'
   | 'OTHER_ADJUSTMENT';
 
 export interface CashLedgerEvent {
