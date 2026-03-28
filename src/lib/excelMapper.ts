@@ -30,23 +30,24 @@ export async function parseExcelToTransactions(file: File): Promise<any[]> {
           
           console.log("DEBUG ROW:", rowStr); // Thêm theo yêu cầu để debug
 
-          // Nhánh 1: Khớp lệnh
+          // Nhánh 1: Khớp lệnh (DNSE Form: Header 2 dòng)
+          const hasDate = rowStr.includes('ngày gd');
+          const hasAction = rowStr.includes('loại lệnh');
           const hasAsset = rowStr.includes('mã');
-          const hasVol = rowStr.includes('lượng') || rowStr.includes('kl');
-          const hasPrice = rowStr.includes('giá');
+          const hasAccount = rowStr.includes('số tiểu khoản');
 
-          if (hasAsset && hasVol && hasPrice) {
-            headerRowIndex = i;
+          if (hasDate && hasAction && hasAsset && hasAccount) {
+            // Header phụ (chứa Khối lượng/Giá khớp) nằm ở dòng ngay dưới (i + 1). 
+            // Đặt headerRowIndex = i + 1 để vòng lặp trích xuất chạy từ i + 2.
+            headerRowIndex = i + 1;
             flowType = 'TRADE';
             
-            row.forEach((cell: string, colIdx: number) => {
-              const val = String(cell).toLowerCase();
-              if (val.includes('mã')) colAsset = colIdx;
-              else if (val.includes('lượng') || val.includes('kl')) colAmount = colIdx;
-              else if (val.includes('giá')) colPrice = colIdx;
-              else if (val.includes('mua') || val.includes('bán') || val.includes('loại') || val.includes('gd')) colType = colIdx;
-              else if (val.includes('ngày')) colDate = colIdx;
-            });
+            // Gán cứng index các cột theo form chuẩn của DNSE
+            colDate = 1;      // B - Ngày GD
+            colType = 2;      // C - Loại lệnh
+            colAsset = 3;     // D - Mã
+            colAmount = 5;    // F - Khối lượng
+            colPrice = 6;     // G - Giá khớp
             break;
           }
 
