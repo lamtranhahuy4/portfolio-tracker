@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { Holding, Transaction } from '@/types/portfolio';
-import { calculateHoldings } from '@/lib/portfolioEngine';
+import { Holding, PortfolioMetrics, Transaction } from '@/types/portfolio';
+import { calculatePortfolioMetrics } from '@/lib/portfolioMetrics';
 
 interface PortfolioState {
   transactions: Transaction[];
@@ -42,9 +42,13 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
 }));
 
 export const useHoldings = (): Holding[] => {
+  return usePortfolioMetrics().holdings;
+};
+
+export const usePortfolioMetrics = (): PortfolioMetrics => {
   const transactions = usePortfolioStore((state) => state.transactions);
   const currentPrices = usePortfolioStore((state) => state.currentPrices);
 
-  return calculateHoldings(transactions, currentPrices);
+  return calculatePortfolioMetrics(transactions, currentPrices);
 };
 

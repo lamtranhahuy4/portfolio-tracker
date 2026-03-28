@@ -88,7 +88,37 @@ export interface Holding {
   /** Tổng giá trị thị trường = totalShares * currentPrice */
   marketValue: number;
   /** Lợi nhuận đã chốt (từ các lệnh SELL) */
-  realizedPnL: number;
+  averageCostRealizedPnL: number;
+  fifoRealizedPnL: number;
   /** Lợi nhuận chưa chốt = marketValue - (totalShares * averageCost) */
   unrealizedPnL: number;
+}
+
+export interface NavPoint {
+  date: string;
+  netAssetValue: number;
+  cashValue: number;
+  investedMarketValue: number;
+  netContributions: number;
+}
+
+export interface PortfolioMetrics {
+  holdings: Holding[];
+  totalMarketValue: number;
+  currentCostBasis: number;
+  averageCostRealizedPnL: number;
+  fifoRealizedPnL: number;
+  totalUnrealizedPnL: number;
+  netContributions: number;
+  returnVsCostBasis: number;
+  navSeries: NavPoint[];
+  calculationWarnings: string[];
+}
+
+export interface GroupedTransactionsByDay {
+  dateKey: string;
+  displayDate: string;
+  items: Transaction[];
+  count: number;
+  dayGrossValue: number;
 }
