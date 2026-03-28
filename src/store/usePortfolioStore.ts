@@ -73,7 +73,8 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
   const transactions = usePortfolioStore((state) => state.transactions);
   const cashEvents = usePortfolioStore((state) => state.cashEvents);
   const currentPrices = usePortfolioStore((state) => state.currentPrices);
+  const valuationDate = usePortfolioStore((state) => state.valuationDate);
 
-  return calculatePortfolioMetrics(transactions, currentPrices, cashEvents);
+  return calculatePortfolioMetrics(transactions, currentPrices, cashEvents, valuationDate);
 };
 

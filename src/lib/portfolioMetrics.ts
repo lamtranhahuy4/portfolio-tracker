@@ -122,7 +122,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
       
       stock.grossBuyValueRemaining -= grossCostBasisOfSold;
       stock.allocatedBuyFeesRemaining -= feeBasisOfSold;
-      stock.totalShares = Math.max(0, stock.totalShares - tx.quantity);
+      stock.totalShares = Math.max(0, stock.totalShares - quantityToSell);
       
       if (stock.totalShares === 0) {
         stock.grossBuyValueRemaining = 0;
@@ -205,7 +205,7 @@ function buildHoldingsFromState(
     
     const currentPrice = ticker === 'CASH_VND'
       ? 1
-      : (valuationMode ? (fallbackPrice ?? costPrice) : (currentPrices[ticker] ?? fallbackPrice ?? costPrice));
+      : (currentPrices[ticker] ?? fallbackPrice ?? costPrice);
       
     const marketValue = holding.totalShares * currentPrice;
     const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining + holding.allocatedBuyFeesRemaining;
