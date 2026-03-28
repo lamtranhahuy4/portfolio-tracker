@@ -205,7 +205,7 @@ function buildHoldingsFromState(
     
     const currentPrice = ticker === 'CASH_VND'
       ? 1
-      : (currentPrices[ticker] ?? fallbackPrice ?? costPrice);
+      : (valuationMode ? (fallbackPrice ?? costPrice) : (currentPrices[ticker] ?? fallbackPrice ?? costPrice));
       
     const marketValue = holding.totalShares * currentPrice;
     const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining + holding.allocatedBuyFeesRemaining;
@@ -242,7 +242,8 @@ function buildHoldingsFromState(
 export function buildDailyNavSeries(
   transactions: Transaction[],
   currentPrices: Record<string, number>,
-  cashEvents: CashLedgerEvent[]
+  cashEvents: CashLedgerEvent[],
+  valuationDate?: Date | null
 ): NavPoint[] {
   const sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -258,7 +259,7 @@ export function buildDailyNavSeries(
   const firstDateTx = sortedTx.length > 0 ? new Date(sortedTx[0].date).getTime() : Infinity;
   const firstDateCash = sortedCashEvents.length > 0 ? new Date(sortedCashEvents[0].date).getTime() : Infinity;
   const startDate = new Date(Math.min(firstDateTx, firstDateCash));
-  const endDate = new Date();
+  const endDate = valuationDate ? new Date(valuationDate) : new Date();
   startDate.setHours(0, 0, 0, 0);
   endDate.setHours(0, 0, 0, 0);
   
@@ -399,7 +400,7 @@ export function calculatePortfolioMetrics(
     totalUnrealizedPnL,
     netContributions: activeNetContributions,
     returnVsCostBasis: activeNetContributions !== 0 ? netPnL / activeNetContributions : 0,
-    navSeries: buildDailyNavSeries(transactions, currentPrices, cashEvents),
+    navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate),
     calculationWarnings: state.calculationWarnings,
     cashBalanceSource: ledgerMode ? 'ledger' : 'derived',
     cashBalanceEOD: ledgerMode ? finalLedgerBalance : undefined,

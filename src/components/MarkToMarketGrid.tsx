@@ -26,6 +26,16 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
+// Format giá mua trung bình chuẩn DNSE (bước giá 10đ)
+const formatGrossPrice = (value: number) => {
+  const step10 = Math.round(value / 10) * 10;
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(step10);
+};
+
 // Format số lượng (shares)
 const formatNumber = (value: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -126,7 +136,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
                     {h.ticker !== 'CASH_VND' && (
                       <button
                         className="text-gray-400 hover:text-indigo-500 transition-colors"
-                        title={`--- DEBUG INFO ---\nRemaining Qty: ${h.totalShares}\nGross Price: ${formatCurrency(h.grossAveragePrice)}\nNet Cost: ${formatCurrency(h.netAverageCost)}\nTotal Net Basis: ${formatCurrency(h.totalShares * h.netAverageCost)}`}
+                        title={`--- DEBUG INFO ---\nRemaining Qty: ${h.totalShares}\nGross Price: ${formatGrossPrice(h.grossAveragePrice)} (Raw: ${h.grossAveragePrice.toFixed(2)})\nNet Cost: ${formatCurrency(h.netAverageCost)}\nTotal Net Basis: ${formatCurrency(h.totalShares * h.netAverageCost)}`}
                       >
                         <Search size={14} />
                       </button>
@@ -153,7 +163,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
                 
                 {/* Average Cost Column */}
                 <td className="px-5 py-4 text-right text-gray-700 dark:text-gray-400">
-                  {h.ticker === 'CASH_VND' ? '-' : formatCurrency(h.grossAveragePrice)}
+                  {h.ticker === 'CASH_VND' ? '-' : formatGrossPrice(h.grossAveragePrice)}
                 </td>
                 
                 {/* Current Price (Inline Edit) Column */}
