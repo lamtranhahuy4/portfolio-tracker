@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { parseFileToTransactions } from '@/lib/csvMapper';
+import { parseExcelToTransactions } from '@/lib/excelMapper';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { saveTransactionsBatch } from '@/actions/transaction';
 import { toast } from 'sonner';
@@ -18,7 +19,13 @@ export default function CsvUploader() {
 
     setIsUploading(true);
     try {
-      const transactions = await parseFileToTransactions(file);
+      let transactions: any[] = [];
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'xlsx' || ext === 'xls') {
+        transactions = await parseExcelToTransactions(file);
+      } else {
+        transactions = await parseFileToTransactions(file);
+      }
       
       if (transactions.length > 0) {
         await saveTransactionsBatch(transactions);
@@ -49,7 +56,7 @@ export default function CsvUploader() {
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 text-center uppercase tracking-wide">
             {isUploading ? 'Đang đọc...' : 'Tải lên Dữ liệu'}
           </span>
-          <span className="text-[10px] text-gray-400 mt-1 mb-4">.CSV, .XLSX</span>
+          <span className="text-[10px] text-gray-400 mt-1 mb-4">.CSV, .XLSX, .XLS</span>
           <input 
             ref={fileInputRef}
             type="file" 
