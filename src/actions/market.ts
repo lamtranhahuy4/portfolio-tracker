@@ -3,16 +3,26 @@
 import yahooFinance from 'yahoo-finance2';
 
 export async function fetchMarketIndices() {
+  const symbols = ['^VNINDEX', '^GSPC', 'BTC-USD', 'GC=F'];
+
   try {
-    const symbols = ['^VNINDEX.VN', '^GSPC', 'BTC-USD', 'GC=F'];
+    // Fetch từng symbol riêng biệt để nếu 1 cái lỗi, các cái khác vẫn hoạt động
+    const promises = symbols.map(symbol => 
+      // @ts-ignore
+      yahooFinance.quote(symbol).catch(err => {
+        console.error(`Error fetching ${symbol}:`, err.message);
+        return null; // Trả về null nếu symbol này lỗi
+      })
+    );
+    
+    const results = await Promise.all(promises);
+    
+    // Lọc bỏ những kết quả null (do lỗi)
+    const validQuotes = results.filter(quote => quote !== null);
 
-    // Yêu cầu lấy dữ liệu cho tất cả các chỉ số (gộp thành 1 request duy nhất để tránh bị rate limit)
-    // @ts-ignore - type definition in yahoo-finance2 causes 'this' context error with ModuleThis
-    const quotes = await yahooFinance.quote(symbols);
-
-    const formattedData = quotes.map((quote) => {
+    const formattedData = validQuotes.map((quote: any) => {
       let name = quote.symbol;
-      if (name === '^VNINDEX.VN') name = 'VN-INDEX';
+      if (name === '^VNINDEX') name = 'VN-INDEX';
       if (name === '^GSPC') name = 'S&P 500';
       if (name === 'BTC-USD') name = 'BITCOIN';
       if (name === 'GC=F') name = 'GOLD (Oz)';
