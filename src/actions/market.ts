@@ -7,6 +7,7 @@ export async function fetchMarketIndices() {
     const symbols = ['^VNINDEX.VN', '^GSPC', 'BTC-USD', 'GC=F'];
 
     // Yêu cầu lấy dữ liệu cho tất cả các chỉ số (gộp thành 1 request duy nhất để tránh bị rate limit)
+    // @ts-ignore - type definition in yahoo-finance2 causes 'this' context error with ModuleThis
     const quotes = await yahooFinance.quote(symbols);
 
     const formattedData = quotes.map((quote) => {
