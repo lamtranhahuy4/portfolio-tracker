@@ -96,8 +96,8 @@ export async function fetchTrendingAssets() {
   const stocks = [
     { ticker: 'FPT', name: 'Công ty Cổ phần FPT' },
     { ticker: 'VCB', name: 'Ngân hàng Vietcombank' },
-    { ticker: 'HPG', name: 'Tập đoàn Hòa Phát' }
-    { ticker: 'TCB', name: 'Ngân hàng Techcombank' }
+    { ticker: 'HPG', name: 'Tập đoàn Hòa Phát' },
+    { ticker: 'TCB', name: 'Ngân hàng Techcombank' },
     { ticker: 'POW', name: 'Tổng Công ty Điện lực Dầu khí Việt Nam' }
   ];
 
