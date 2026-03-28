@@ -26,17 +26,12 @@ export async function parseExcelToTransactions(file: File): Promise<any[]> {
           const row = rows[i];
           if (!row || row.length === 0) continue;
           
-          const rowStr = row.join(' ').toLowerCase();
+          const cleanStr = row.join(' ').replace(/[\r\n\s]+/g, ' ').toLowerCase();
           
-          console.log("DEBUG ROW:", rowStr); // Thêm theo yêu cầu để debug
+          console.log("DEBUG ROW:", cleanStr); // Thêm theo yêu cầu để debug
 
           // Nhánh 1: Khớp lệnh (DNSE Form: Header 2 dòng)
-          const hasDate = rowStr.includes('ngày gd');
-          const hasAction = rowStr.includes('loại lệnh');
-          const hasAsset = rowStr.includes('mã');
-          const hasAccount = rowStr.includes('số tiểu khoản');
-
-          if (hasDate && hasAction && hasAsset && hasAccount) {
+          if (cleanStr.includes('chi tiết giao dịch') && cleanStr.includes('loại lệnh') && cleanStr.includes('mã')) {
             // Header phụ (chứa Khối lượng/Giá khớp) nằm ở dòng ngay dưới (i + 1). 
             // Đặt headerRowIndex = i + 1 để vòng lặp trích xuất chạy từ i + 2.
             headerRowIndex = i + 1;
@@ -52,10 +47,11 @@ export async function parseExcelToTransactions(file: File): Promise<any[]> {
           }
 
           // Nhánh 2: Lịch sử tiền
-          const hasMoney = rowStr.includes('số tiền');
-          const hasDesc = rowStr.includes('diễn giải') || rowStr.includes('loại nghiệp vụ');
+          const hasMoney = cleanStr.includes('số tiền');
+          const hasDesc = cleanStr.includes('diễn giải') || cleanStr.includes('loại nghiệp vụ');
+          const hasAssetStr = cleanStr.includes('mã');
           
-          if (hasMoney && hasDesc && !hasAsset) { // Phải không có 'Mã CK' để tránh nhầm
+          if (hasMoney && hasDesc && !hasAssetStr) { // Phải không có 'Mã CK' để tránh nhầm
             headerRowIndex = i;
             flowType = 'CASH';
             
