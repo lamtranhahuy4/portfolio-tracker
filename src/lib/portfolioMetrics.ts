@@ -239,6 +239,18 @@ function buildHoldingsFromState(
   });
 }
 
+function getCashContributionDelta(evt: CashLedgerEvent): number {
+  switch (evt.eventType) {
+    case 'DEPOSIT':
+      return evt.amount;
+    case 'WITHDRAW':
+    case 'BANK_TRANSFER_OUT':
+      return -evt.amount;
+    default:
+      return 0;
+  }
+}
+
 export function buildDailyNavSeries(
   transactions: Transaction[],
   currentPrices: Record<string, number>,
@@ -282,11 +294,7 @@ export function buildDailyNavSeries(
       if (evtDate.getTime() > cursor.getTime()) break;
       
       currentLedgerBalance = evt.balanceAfter;
-      if (evt.eventType === 'DEPOSIT') {
-        currentNetContributionsLedger += evt.amount;
-      } else if (evt.eventType === 'WITHDRAW' || evt.eventType === 'BANK_TRANSFER_OUT') {
-        currentNetContributionsLedger -= evt.amount;
-      }
+      currentNetContributionsLedger += getCashContributionDelta(evt);
       
       cashIndex += 1;
     }
@@ -351,8 +359,7 @@ export function calculatePortfolioMetrics(
   let finalNetContributionsLedger = 0;
   sortedCashEvents.forEach((evt) => {
     finalLedgerBalance = evt.balanceAfter;
-    if (evt.eventType === 'DEPOSIT') finalNetContributionsLedger += evt.amount;
-    if (evt.eventType === 'WITHDRAW' || evt.eventType === 'BANK_TRANSFER_OUT') finalNetContributionsLedger -= evt.amount;
+    finalNetContributionsLedger += getCashContributionDelta(evt);
   });
 
   const holdings = buildHoldingsFromState(state, currentPrices, !!valuationDate);
