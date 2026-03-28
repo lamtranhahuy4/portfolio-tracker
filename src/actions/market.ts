@@ -27,11 +27,26 @@ async function fetchDNSE(symbol: string, isIndex = false) {
   }
 }
 
+// Helper: Fetch Binance
+async function fetchBinance(symbol: string) {
+  try {
+    const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`, { next: { revalidate: 0 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const price = parseFloat(json.lastPrice || '0');
+    const change = parseFloat(json.priceChange || '0');
+    const percent = parseFloat(json.priceChangePercent || '0');
+    return { price, change, percent };
+  } catch(e) {
+    return null;
+  }
+}
+
 export async function fetchMarketIndices() {
   noStore();
   const formattedData: any[] = [];
 
-  // 1. Fetch VN-INDEX từ DNSE (Real-time ổn định)
+  // 1. Fetch VN-INDEX từ DNSE 
   const vnData = await fetchDNSE('VNINDEX', true);
   if (vnData) {
     formattedData.push({
@@ -43,45 +58,41 @@ export async function fetchMarketIndices() {
     });
   }
 
-  // 2. Tạm ẩn S&P 500 do thiếu Public API không cần Key ở US. 
-  // Chỉ khi fetch ok nó mới hiện lên, nếu không ok mảng trả về sẽ ít đi 1 card không làm vỡ UI.
+  // 2. Fetch VN30 từ DNSE
+  const vn30Data = await fetchDNSE('VN30', true);
+  if (vn30Data) {
+    formattedData.push({
+      name: 'VN30-INDEX',
+      price: new Intl.NumberFormat('en-US').format(vn30Data.price),
+      change: vn30Data.change > 0 ? `+${vn30Data.change.toFixed(2)}` : vn30Data.change.toFixed(2),
+      percent: vn30Data.percent > 0 ? `+${vn30Data.percent.toFixed(2)}%` : `${vn30Data.percent.toFixed(2)}%`,
+      up: vn30Data.change >= 0
+    });
+  }
 
   // 3. Bitcoin từ Binance
-  try {
-    const btcRes = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', { next: { revalidate: 0 } }).catch(() => null);
-    if (btcRes && btcRes.ok) {
-      const btcJson = await btcRes.json();
-      const price = parseFloat(btcJson.lastPrice || '0');
-      const change = parseFloat(btcJson.priceChange || '0');
-      const percent = parseFloat(btcJson.priceChangePercent || '0');
+  const btcData = await fetchBinance('BTCUSDT');
+  if (btcData) {
       formattedData.push({
         name: 'BITCOIN',
-        price: new Intl.NumberFormat('en-US').format(price),
-        change: change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2),
-        percent: percent > 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
-        up: change >= 0
+        price: new Intl.NumberFormat('en-US').format(btcData.price),
+        change: btcData.change > 0 ? `+${btcData.change.toFixed(2)}` : btcData.change.toFixed(2),
+        percent: btcData.percent > 0 ? `+${btcData.percent.toFixed(2)}%` : `${btcData.percent.toFixed(2)}%`,
+        up: btcData.change >= 0
       });
-    }
-  } catch (e) { console.error('BTC fetch error:', e); }
+  }
 
-  // 4. Giá Vàng mượn PAX Gold (Binance)
-  // 1 PAXG Token = Phản chiếu chính xác 1 oz vàng thực ngoài đời
-  try {
-    const goldRes = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT', { next: { revalidate: 0 } }).catch(() => null);
-    if (goldRes && goldRes.ok) {
-      const goldJson = await goldRes.json();
-      const price = parseFloat(goldJson.lastPrice || '0');
-      const change = parseFloat(goldJson.priceChange || '0');
-      const percent = parseFloat(goldJson.priceChangePercent || '0');
+  // 4. Ethereum từ Binance
+  const ethData = await fetchBinance('ETHUSDT');
+  if (ethData) {
       formattedData.push({
-        name: 'GOLD (Oz)', 
-        price: new Intl.NumberFormat('en-US').format(price),
-        change: change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2),
-        percent: percent > 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
-        up: change >= 0
+        name: 'ETHEREUM',
+        price: new Intl.NumberFormat('en-US').format(ethData.price),
+        change: ethData.change > 0 ? `+${ethData.change.toFixed(2)}` : ethData.change.toFixed(2),
+        percent: ethData.percent > 0 ? `+${ethData.percent.toFixed(2)}%` : `${ethData.percent.toFixed(2)}%`,
+        up: ethData.change >= 0
       });
-    }
-  } catch (e) { console.error('Gold fetch error:', e); }
+  }
 
   return formattedData;
 }
@@ -90,46 +101,23 @@ export async function fetchTrendingAssets() {
   noStore();
   const formattedData: any[] = [];
   
-  // 1. FPT từ DNSE
-  const fptData = await fetchDNSE('FPT', false);
-  if (fptData) {
-    formattedData.push({
-      ticker: 'FPT',
-      name: 'Công ty Cổ phần FPT',
-      price: `${new Intl.NumberFormat('vi-VN').format(fptData.price * 1000)} ₫`, // DNSE trả về giá rút gọn theo Đơn vị Nghìn Đồng
-      change: fptData.percent > 0 ? `+${fptData.percent.toFixed(2)}%` : `${fptData.percent.toFixed(2)}%`,
-      up: fptData.change >= 0
-    });
-  }
+  const stocks = [
+    { ticker: 'FPT', name: 'Công ty Cổ phần FPT' },
+    { ticker: 'VCB', name: 'Ngân hàng Vietcombank' },
+    { ticker: 'HPG', name: 'Tập đoàn Hòa Phát' } // Đổi mã NVDA bị ẩn thành HPG (Thép Hòa Phát)
+  ];
 
-  // 2. VCB từ DNSE
-  const vcbData = await fetchDNSE('VCB', false);
-  if (vcbData) {
-    formattedData.push({
-      ticker: 'VCB',
-      name: 'Ngân hàng Vietcombank',
-      price: `${new Intl.NumberFormat('vi-VN').format(vcbData.price * 1000)} ₫`,
-      change: vcbData.percent > 0 ? `+${vcbData.percent.toFixed(2)}%` : `${vcbData.percent.toFixed(2)}%`,
-      up: vcbData.change >= 0
-    });
-  }
-
-  // 3. Giữ NVDA là Placeholder tĩnh để tránh vỡ giao diện 3 cột của grid.
-  formattedData.push({
-    ticker: 'NVDA',
-    name: 'Nvidia Corp',
-    price: '$850.50',
-    change: '+3.8%',
-    up: true
-  });
-
-  // Nếu cả DNSE cũng bảo trì thì fallback 2 fake data
-  if (formattedData.length === 1) { 
-    return [
-      { ticker: 'FPT', name: 'Công ty Cổ phần FPT', price: '115,000 ₫', change: '+2.5%', up: true },
-      { ticker: 'VCB', name: 'Ngân hàng Vietcombank', price: '95,400 ₫', change: '+1.2%', up: true },
-      ...formattedData
-    ];
+  for (const stock of stocks) {
+    const data = await fetchDNSE(stock.ticker, false);
+    if (data) {
+      formattedData.push({
+        ticker: stock.ticker,
+        name: stock.name,
+        price: `${new Intl.NumberFormat('vi-VN').format(data.price * 1000)} ₫`, // DNSE trả về giá rút gọn theo Đơn vị Nghìn Đồng
+        change: data.percent > 0 ? `+${data.percent.toFixed(2)}%` : `${data.percent.toFixed(2)}%`,
+        up: data.change >= 0
+      });
+    }
   }
 
   return formattedData;
