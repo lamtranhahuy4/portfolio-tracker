@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Holding } from '../types/portfolio';
-import { Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, Search } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -94,7 +94,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
             <th className="px-5 py-4 whitespace-nowrap">Mã (Ticker)</th>
             <th className="px-5 py-4 whitespace-nowrap">Phân loại</th>
             <th className="px-5 py-4 whitespace-nowrap text-right">Khối lượng</th>
-            <th className="px-5 py-4 whitespace-nowrap text-right">Giá vốn trung bình</th>
+            <th className="px-5 py-4 whitespace-nowrap text-right">Giá mua trung bình</th>
             <th className="px-5 py-4 whitespace-nowrap text-right">Giá HT (Cập nhật)</th>
             <th className="px-5 py-4 whitespace-nowrap text-right">Giá trị thị trường</th>
             <th className="px-5 py-4 whitespace-nowrap text-right">Lãi/Lỗ chưa chốt</th>
@@ -105,8 +105,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
             const isEditing = editingTicker === h.ticker;
             
             // Tính toán logic % PnL cục bộ cho UI
-            const costBasis = h.totalShares * h.averageCost;
-            const pnlPercent = costBasis > 0 ? h.unrealizedPnL / costBasis : 0;
+            const pnlPercent = h.unrealizedPnLPercent || 0;
             
             // Dynamic text colors for Profit and Loss
             const pnlColorClass = h.unrealizedPnL > 0 
@@ -121,8 +120,18 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
                 className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors"
               >
                 {/* Ticker Column */}
-                <td className="px-5 py-4 font-bold text-gray-900 dark:text-gray-100">
-                  {h.ticker}
+                <td className="px-5 py-4 font-bold text-gray-900 dark:text-gray-100 min-w-[120px]">
+                  <div className="flex items-center gap-2">
+                    {h.ticker}
+                    {h.ticker !== 'CASH_VND' && (
+                      <button
+                        className="text-gray-400 hover:text-indigo-500 transition-colors"
+                        title={`--- DEBUG INFO ---\nRemaining Qty: ${h.totalShares}\nGross Price: ${formatCurrency(h.grossAveragePrice)}\nNet Cost: ${formatCurrency(h.netAverageCost)}\nTotal Net Basis: ${formatCurrency(h.totalShares * h.netAverageCost)}`}
+                      >
+                        <Search size={14} />
+                      </button>
+                    )}
+                  </div>
                 </td>
                 
                 {/* Asset Class Column */}
@@ -144,7 +153,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
                 
                 {/* Average Cost Column */}
                 <td className="px-5 py-4 text-right text-gray-700 dark:text-gray-400">
-                  {h.ticker === 'CASH_VND' ? '-' : formatCurrency(h.averageCost)}
+                  {h.ticker === 'CASH_VND' ? '-' : formatCurrency(h.grossAveragePrice)}
                 </td>
                 
                 {/* Current Price (Inline Edit) Column */}

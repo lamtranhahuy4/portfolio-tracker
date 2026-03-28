@@ -81,8 +81,10 @@ export interface Holding {
   ticker: string;
   /** Tổng số lượng đang nắm giữ (đã trừ đi số lượng bán) */
   totalShares: number;
-  /** Giá vốn trung bình (DCA) */
-  averageCost: number;
+  /** Giá vốn ròng trên mỗi cổ phiếu (gồm phí + thuế) */
+  netAverageCost: number;
+  /** Giá mua trung bình (chỉ tiền mua khớp lệnh) */
+  grossAveragePrice: number;
   /** Giá thị trường hiện tại (lấy từ API hoặc tự cập nhật) */
   currentPrice: number;
   /** Tổng giá trị thị trường = totalShares * currentPrice */
@@ -90,8 +92,9 @@ export interface Holding {
   /** Lợi nhuận đã chốt (từ các lệnh SELL) */
   averageCostRealizedPnL: number;
   fifoRealizedPnL: number;
-  /** Lợi nhuận chưa chốt = marketValue - (totalShares * averageCost) */
+  /** Lợi nhuận chưa chốt = marketValue - netCostBasis */
   unrealizedPnL: number;
+  unrealizedPnLPercent: number;
 }
 
 export interface NavPoint {

@@ -4,7 +4,8 @@ type HoldingState = {
   assetClass: Holding['assetClass'];
   ticker: string;
   totalShares: number;
-  averageCost: number;
+  grossBuyValueRemaining: number;
+  allocatedBuyFeesRemaining: number;
   averageCostRealizedPnL: number;
   fifoRealizedPnL: number;
 };
@@ -51,12 +52,12 @@ function getCashHolding(holdingsMap: Map<string, HoldingState>): HoldingState {
       assetClass: 'CASH',
       ticker: 'CASH_VND',
       totalShares: 0,
-      averageCost: 1,
+      grossBuyValueRemaining: 0,
+      allocatedBuyFeesRemaining: 0,
       averageCostRealizedPnL: 0,
       fifoRealizedPnL: 0,
     });
   }
-
   return holdingsMap.get('CASH_VND')!;
 }
 
@@ -66,12 +67,12 @@ function getStockHolding(holdingsMap: Map<string, HoldingState>, ticker: string)
       assetClass: 'STOCK',
       ticker,
       totalShares: 0,
-      averageCost: 0,
+      grossBuyValueRemaining: 0,
+      allocatedBuyFeesRemaining: 0,
       averageCostRealizedPnL: 0,
       fifoRealizedPnL: 0,
     });
   }
-
   return holdingsMap.get(ticker)!;
 }
 
@@ -79,7 +80,6 @@ function getLots(lotsMap: Map<string, Lot[]>, ticker: string) {
   if (!lotsMap.has(ticker)) {
     lotsMap.set(ticker, []);
   }
-
   return lotsMap.get(ticker)!;
 }
 
@@ -93,9 +93,9 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
     const lots = getLots(state.lotsMap, tx.ticker);
 
     if (tx.type === 'BUY') {
-      const previousCostBasis = stock.totalShares * stock.averageCost;
       const nextShares = stock.totalShares + tx.quantity;
-      stock.averageCost = nextShares > 0 ? (previousCostBasis + tx.totalValue) / nextShares : 0;
+      stock.grossBuyValueRemaining += (tx.quantity * tx.price);
+      stock.allocatedBuyFeesRemaining += tx.fee + tx.tax;
       stock.totalShares = nextShares;
       lots.push({
         remainingQty: tx.quantity,
@@ -112,9 +112,23 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
       }
 
       const quantityToSell = Math.min(tx.quantity, stock.totalShares);
-      const averageCostBasisOfSoldShares = stock.averageCost * quantityToSell;
+      const ratioRemaining = stock.totalShares > 0 ? quantityToSell / stock.totalShares : 0;
+      
+      const grossCostBasisOfSold = stock.grossBuyValueRemaining * ratioRemaining;
+      const feeBasisOfSold = stock.allocatedBuyFeesRemaining * ratioRemaining;
+
+      const averageCostBasisOfSoldShares = grossCostBasisOfSold + feeBasisOfSold;
       const averageCostNetProceeds = tx.price * quantityToSell - tx.fee - tx.tax;
+      
+      stock.grossBuyValueRemaining -= grossCostBasisOfSold;
+      stock.allocatedBuyFeesRemaining -= feeBasisOfSold;
       stock.totalShares = Math.max(0, stock.totalShares - tx.quantity);
+      
+      if (stock.totalShares === 0) {
+        stock.grossBuyValueRemaining = 0;
+        stock.allocatedBuyFeesRemaining = 0;
+      }
+
       stock.averageCostRealizedPnL += averageCostNetProceeds - averageCostBasisOfSoldShares;
 
       let fifoCostBasis = 0;
@@ -142,9 +156,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
     }
 
     if (tx.type === 'STOCK_DIVIDEND') {
-      const previousCostBasis = stock.totalShares * stock.averageCost;
       stock.totalShares += tx.quantity;
-      stock.averageCost = stock.totalShares > 0 ? previousCostBasis / stock.totalShares : 0;
       lots.push({
         remainingQty: tx.quantity,
         unitCostNet: 0,
@@ -182,21 +194,22 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
 function buildHoldingsFromState(
   state: ReplayState,
   currentPrices: Record<string, number>,
+  valuationMode: boolean,
   priceOverrides?: Map<string, number>
 ) {
   const holdings: Holding[] = [];
 
   for (const [ticker, holding] of state.holdingsMap.entries()) {
-    const fallbackPrice = priceOverrides?.get(ticker)
-      ?? state.lastKnownPrices.get(ticker)
-      ?? holding.averageCost;
+    const fallbackPrice = priceOverrides?.get(ticker) ?? state.lastKnownPrices.get(ticker);
+    const costPrice = holding.totalShares > 0 ? (holding.grossBuyValueRemaining + holding.allocatedBuyFeesRemaining) / holding.totalShares : 0;
+    
     const currentPrice = ticker === 'CASH_VND'
       ? 1
-      : (currentPrices[ticker] ?? fallbackPrice);
+      : (valuationMode ? (fallbackPrice ?? costPrice) : (currentPrices[ticker] ?? fallbackPrice ?? costPrice));
+      
     const marketValue = holding.totalShares * currentPrice;
-    const unrealizedPnL = ticker === 'CASH_VND'
-      ? 0
-      : marketValue - (holding.totalShares * holding.averageCost);
+    const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining + holding.allocatedBuyFeesRemaining;
+    const unrealizedPnL = ticker === 'CASH_VND' ? 0 : marketValue - netCostBasis;
 
     if (
       holding.totalShares > 0 ||
@@ -204,10 +217,17 @@ function buildHoldingsFromState(
       holding.fifoRealizedPnL !== 0
     ) {
       holdings.push({
-        ...holding,
+        assetClass: holding.assetClass,
+        ticker: holding.ticker,
+        totalShares: holding.totalShares,
+        grossAveragePrice: ticker === 'CASH_VND' ? 1 : (holding.totalShares > 0 ? holding.grossBuyValueRemaining / holding.totalShares : 0),
+        netAverageCost: ticker === 'CASH_VND' ? 1 : (holding.totalShares > 0 ? netCostBasis / holding.totalShares : 0),
         currentPrice,
         marketValue,
+        averageCostRealizedPnL: holding.averageCostRealizedPnL,
+        fifoRealizedPnL: holding.fifoRealizedPnL,
         unrealizedPnL,
+        unrealizedPnLPercent: netCostBasis !== 0 ? unrealizedPnL / netCostBasis : 0,
       });
     }
   }
@@ -278,7 +298,7 @@ export function buildDailyNavSeries(
       });
     }
 
-    const holdings = buildHoldingsFromState(state, currentPrices, dayPriceOverrides);
+    const holdings = buildHoldingsFromState(state, currentPrices, false, dayPriceOverrides);
     let cashValue = 0;
     
     if (ledgerMode) {
@@ -307,12 +327,21 @@ export function buildDailyNavSeries(
 export function calculatePortfolioMetrics(
   transactions: Transaction[],
   currentPrices: Record<string, number>,
-  cashEvents: CashLedgerEvent[]
+  cashEvents: CashLedgerEvent[],
+  valuationDate?: Date | null
 ): PortfolioMetrics {
-  const sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const ledgerMode = sortedCashEvents.length > 0;
+  let sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  let sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
+  if (valuationDate) {
+    const vTime = new Date(valuationDate);
+    vTime.setHours(23, 59, 59, 999);
+    const limit = vTime.getTime();
+    sortedTx = sortedTx.filter(tx => new Date(tx.date).getTime() <= limit);
+    sortedCashEvents = sortedCashEvents.filter(evt => new Date(evt.date).getTime() <= limit);
+  }
+
+  const ledgerMode = sortedCashEvents.length > 0;
   const state = createEmptyState();
 
   sortedTx.forEach((tx) => applyTransaction(state, tx, ledgerMode));
@@ -325,7 +354,7 @@ export function calculatePortfolioMetrics(
     if (evt.eventType === 'WITHDRAW') finalNetContributionsLedger -= evt.amount;
   });
 
-  const holdings = buildHoldingsFromState(state, currentPrices);
+  const holdings = buildHoldingsFromState(state, currentPrices, !!valuationDate);
   
   if (ledgerMode) {
     const cashHolding = holdings.find(h => h.ticker === 'CASH_VND');
@@ -337,12 +366,14 @@ export function calculatePortfolioMetrics(
         assetClass: 'CASH',
         ticker: 'CASH_VND',
         totalShares: finalLedgerBalance,
-        averageCost: 1,
+        grossAveragePrice: 1,
+        netAverageCost: 1,
         currentPrice: 1,
         marketValue: finalLedgerBalance,
         averageCostRealizedPnL: 0,
         fifoRealizedPnL: 0,
         unrealizedPnL: 0,
+        unrealizedPnLPercent: 0,
       });
     }
   }
@@ -350,8 +381,9 @@ export function calculatePortfolioMetrics(
   const totalMarketValue = holdings.reduce((sum, holding) => sum + holding.marketValue, 0);
   const currentCostBasis = holdings.reduce((sum, holding) => {
     if (holding.ticker === 'CASH_VND') return sum + holding.marketValue;
-    return sum + (holding.totalShares * holding.averageCost);
+    return sum + (holding.totalShares * holding.netAverageCost);
   }, 0);
+  
   const averageCostRealizedPnL = holdings.reduce((sum, holding) => sum + holding.averageCostRealizedPnL, 0);
   const fifoRealizedPnL = holdings.reduce((sum, holding) => sum + holding.fifoRealizedPnL, 0);
   const totalUnrealizedPnL = holdings.reduce((sum, holding) => sum + holding.unrealizedPnL, 0);
@@ -367,7 +399,7 @@ export function calculatePortfolioMetrics(
     totalUnrealizedPnL,
     netContributions: activeNetContributions,
     returnVsCostBasis: activeNetContributions !== 0 ? netPnL / activeNetContributions : 0,
-    navSeries: buildDailyNavSeries(sortedTx, currentPrices, cashEvents),
+    navSeries: buildDailyNavSeries(transactions, currentPrices, cashEvents),
     calculationWarnings: state.calculationWarnings,
     cashBalanceSource: ledgerMode ? 'ledger' : 'derived',
     cashBalanceEOD: ledgerMode ? finalLedgerBalance : undefined,

@@ -15,6 +15,8 @@ interface PortfolioState {
   setLastImportResult: (result: (import('@/types/portfolio').ImportParseResult & { importedAt: Date }) | null) => void;
   lastCashImportSummary: CashImportSummaryState | null;
   setLastCashImportSummary: (summary: CashImportSummaryState | null) => void;
+  valuationDate: Date | null;
+  setValuationDate: (date: Date | null) => void;
 }
 
 function sortTransactions(txs: Transaction[]) {
@@ -27,9 +29,11 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
   currentPrices: {},
   lastImportResult: null,
   lastCashImportSummary: null,
+  valuationDate: null,
 
   setLastImportResult: (result) => set({ lastImportResult: result }),
   setLastCashImportSummary: (summary) => set({ lastCashImportSummary: summary }),
+  setValuationDate: (date) => set({ valuationDate: date }),
 
   setTransactions: (txs) => set({ transactions: sortTransactions(txs) }),
   

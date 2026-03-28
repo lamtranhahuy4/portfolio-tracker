@@ -32,6 +32,8 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const metrics = usePortfolioMetrics();
   const updatePrice = usePortfolioStore((state) => state.updatePrice);
+  const valuationDate = usePortfolioStore((state) => state.valuationDate);
+  const setValuationDate = usePortfolioStore((state) => state.setValuationDate);
 
   useEffect(() => {
     setIsMounted(true);
@@ -58,6 +60,22 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
               <div />
               <div className="flex items-center gap-3">
                 <span className="hidden sm:inline text-sm text-white/80">{userEmail}</span>
+                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm">
+                  <span className="text-sm font-medium text-white/80">Snapshot:</span>
+                  <input
+                    type="date"
+                    className="bg-transparent text-white text-sm outline-none cursor-pointer [color-scheme:dark]"
+                    value={valuationDate ? valuationDate.toISOString().split('T')[0] : ''}
+                    onChange={(e) => setValuationDate(e.target.value ? new Date(e.target.value) : null)}
+                  />
+                  {valuationDate && (
+                    <button 
+                      onClick={() => setValuationDate(null)}
+                      className="ml-1 text-white/50 hover:text-white"
+                      title="Clear Snapshot Date"
+                    >×</button>
+                  )}
+                </div>
                 {metrics.cashBalanceSource === 'ledger' ? (
                   <span className="bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 px-3 py-1 py-1.5 text-xs rounded-xl font-medium tracking-wide">Cash: Ledger Mode</span>
                 ) : (
