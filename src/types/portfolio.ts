@@ -49,11 +49,25 @@ export interface NormalizedTransaction extends Transaction {}
 export interface ImportWarning {
   row: number;
   message: string;
+  rawType?: string;
+  rawTicker?: string;
+  rawQuantity?: string;
+  rawPrice?: string;
+  rawDate?: string;
+}
+
+export interface ImportSummary {
+  fileName: string;
+  source: string;
+  totalRows: number;
+  acceptedRows: number;
+  rejectedRows: number;
 }
 
 export interface ImportParseResult {
   transactions: NormalizedTransaction[];
   warnings: ImportWarning[];
+  summary: ImportSummary;
 }
 
 /**

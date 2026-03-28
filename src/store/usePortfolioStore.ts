@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { Holding, Transaction } from '@/types/portfolio';
 import { calculateHoldings } from '@/lib/portfolioEngine';
 
@@ -8,6 +8,8 @@ interface PortfolioState {
   setTransactions: (txs: Transaction[]) => void;
   addTransactions: (newTransactions: Transaction[]) => void;
   updatePrice: (ticker: string, newPrice: number) => void;
+  lastImportResult: (import('@/types/portfolio').ImportParseResult & { importedAt: Date }) | null;
+  setLastImportResult: (result: (import('@/types/portfolio').ImportParseResult & { importedAt: Date }) | null) => void;
 }
 
 function sortTransactions(txs: Transaction[]) {
@@ -17,6 +19,9 @@ function sortTransactions(txs: Transaction[]) {
 export const usePortfolioStore = create<PortfolioState>((set) => ({
   transactions: [],
   currentPrices: {},
+  lastImportResult: null,
+
+  setLastImportResult: (result) => set({ lastImportResult: result }),
 
   setTransactions: (txs) => set({ transactions: sortTransactions(txs) }),
 

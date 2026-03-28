@@ -125,8 +125,12 @@ async function parseCsv(file: File): Promise<ImportParseResult> {
       complete: (results) => {
         const warnings: ImportWarning[] = [];
         const transactions: NormalizedTransaction[] = [];
+        let acceptedRows = 0;
+        let rejectedRows = 0;
+        let totalRows = 0;
 
         results.data.forEach((row, index) => {
+          totalRows++;
           const rowNumber = index + 2;
           const rawType = resolveColumn(row, ['type', 'side', 'action', 'loai', 'gd']);
           const type = parseTransactionType(rawType);
@@ -138,8 +142,21 @@ async function parseCsv(file: File): Promise<ImportParseResult> {
           const rawTax = resolveColumn(row, ['tax', 'thue']);
           const rawNotes = resolveColumn(row, ['notes', 'ghi chu']);
 
+          const pushWarning = (msg: string) => {
+            warnings.push({
+              row: rowNumber,
+              message: msg,
+              rawType: String(rawType ?? ''),
+              rawTicker: String(rawTicker ?? ''),
+              rawQuantity: String(rawQuantity ?? ''),
+              rawPrice: String(rawPrice ?? ''),
+              rawDate: String(rawDate ?? ''),
+            });
+            rejectedRows++;
+          };
+
           if (!type) {
-            warnings.push({ row: rowNumber, message: 'Không nhận diện được loại giao dịch.' });
+            pushWarning('Không nhận diện được loại giao dịch.');
             return;
           }
 
@@ -154,17 +171,17 @@ async function parseCsv(file: File): Promise<ImportParseResult> {
           const date = parseViDate(rawDate) ?? new Date();
 
           if (!ticker) {
-            warnings.push({ row: rowNumber, message: 'Thiếu mã tài sản.' });
+            pushWarning('Thiếu mã tài sản.');
             return;
           }
 
           if (Number.isNaN(quantity) || quantity <= 0) {
-            warnings.push({ row: rowNumber, message: 'Khối lượng hoặc số tiền không hợp lệ.' });
+            pushWarning('Khối lượng hoặc số tiền không hợp lệ.');
             return;
           }
 
           if (Number.isNaN(price) || price <= 0) {
-            warnings.push({ row: rowNumber, message: 'Giá giao dịch không hợp lệ.' });
+            pushWarning('Giá giao dịch không hợp lệ.');
             return;
           }
 
@@ -180,9 +197,20 @@ async function parseCsv(file: File): Promise<ImportParseResult> {
             notes: rawNotes ? String(rawNotes) : undefined,
             source: 'csv',
           }));
+          acceptedRows++;
         });
 
-        resolve({ transactions, warnings });
+        resolve({
+          transactions,
+          warnings,
+          summary: {
+            fileName: file.name,
+            source: 'csv',
+            totalRows,
+            acceptedRows,
+            rejectedRows,
+          },
+        });
       },
       error: (error) => reject(error),
     });
@@ -238,12 +266,16 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
   const warnings: ImportWarning[] = [];
   const transactions: NormalizedTransaction[] = [];
   const { columns, headerRow } = header;
+  let acceptedRows = 0;
+  let rejectedRows = 0;
+  let totalRows = 0;
 
   for (let i = headerRow + 2; i < rows.length; i += 1) {
     const row = rows[i];
     if (!row || row.every((cell) => normalizeText(cell) === '')) {
       continue;
     }
+    totalRows++;
 
     const rowNumber = i + 1;
     const type = parseTransactionType(row[columns.type]);
@@ -256,28 +288,41 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
     const tax = Number.isNaN(parseNumber(row[columns.tax])) ? 0 : parseNumber(row[columns.tax]);
     const date = parseViDate(row[columns.date]);
 
+    const pushWarning = (msg: string) => {
+      warnings.push({
+        row: rowNumber,
+        message: msg,
+        rawType: String(row[columns.type] ?? ''),
+        rawTicker: String(row[columns.ticker] ?? ''),
+        rawQuantity: String(row[columns.quantity] ?? ''),
+        rawPrice: String(row[columns.price] ?? ''),
+        rawDate: String(row[columns.date] ?? ''),
+      });
+      rejectedRows++;
+    };
+
     if (!type) {
-      warnings.push({ row: rowNumber, message: 'Không nhận diện được loại lệnh từ file DNSE.' });
+      pushWarning('Không nhận diện được loại lệnh từ file DNSE.');
       continue;
     }
 
     if (!ticker) {
-      warnings.push({ row: rowNumber, message: 'Thiếu mã chứng khoán.' });
+      pushWarning('Thiếu mã chứng khoán.');
       continue;
     }
 
     if (Number.isNaN(quantity) || quantity <= 0) {
-      warnings.push({ row: rowNumber, message: 'Khối lượng không hợp lệ.' });
+      pushWarning('Khối lượng không hợp lệ.');
       continue;
     }
 
     if (Number.isNaN(price) || price <= 0) {
-      warnings.push({ row: rowNumber, message: 'Giá khớp không hợp lệ.' });
+      pushWarning('Giá khớp không hợp lệ.');
       continue;
     }
 
     if (!date) {
-      warnings.push({ row: rowNumber, message: 'Ngày giao dịch không hợp lệ.' });
+      pushWarning('Ngày giao dịch không hợp lệ.');
       continue;
     }
 
@@ -302,9 +347,20 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
     }
 
     transactions.push(normalized);
+    acceptedRows++;
   }
 
-  return { transactions, warnings };
+  return {
+    transactions,
+    warnings,
+    summary: {
+      fileName: file.name,
+      source: 'dnse-xlsx',
+      totalRows,
+      acceptedRows,
+      rejectedRows,
+    },
+  };
 }
 
 export async function parseImportFile(file: File): Promise<ImportParseResult> {

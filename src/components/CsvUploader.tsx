@@ -11,6 +11,7 @@ export default function CsvUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const addTransactions = usePortfolioStore((state) => state.addTransactions);
+  const setLastImportResult = usePortfolioStore((state) => state.setLastImportResult);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -19,6 +20,7 @@ export default function CsvUploader() {
     setIsUploading(true);
     try {
       const result = await parseImportFile(file);
+      setLastImportResult({ ...result, importedAt: new Date() });
 
       if (result.transactions.length > 0) {
         await saveTransactionsBatch(result.transactions);

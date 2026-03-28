@@ -7,6 +7,8 @@ import CsvUploader from '@/components/CsvUploader';
 import MarketOverview from '@/components/MarketOverview';
 import LogoutButton from '@/components/LogoutButton';
 import TransactionHistoryTable from '@/components/TransactionHistoryTable';
+import ImportWarningsPanel from '@/components/ImportWarningsPanel';
+import Link from 'next/link';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { DollarSign, PieChart as PieChartIcon, TrendingUp, Activity } from 'lucide-react';
 
@@ -74,6 +76,9 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
               <div />
               <div className="flex items-center gap-3">
                 <span className="hidden sm:inline text-sm text-white/80">{userEmail}</span>
+                <Link href="/account" className="text-white hover:text-indigo-200 text-sm font-medium transition-colors bg-white/10 hover:bg-white/20 px-4 py-1.5 rounded-xl backdrop-blur-sm border border-white/10">
+                  Tài Khoản
+                </Link>
                 <LogoutButton />
               </div>
             </div>
@@ -170,8 +175,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
           <div className="xl:col-span-8 flex flex-col h-full">
             <MarketOverview />
           </div>
-          <div className="xl:col-span-2 flex flex-col h-full">
-            <CsvUploader />
+          <div className="xl:col-span-2 flex flex-col flex-1 h-full min-h-[420px]">
+             <div className="flex-1 max-h-[160px]">
+               <CsvUploader />
+             </div>
+             <ImportWarningsPanel />
           </div>
         </div>
 
