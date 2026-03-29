@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -10,6 +10,7 @@ import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
+import { i18n } from '@/lib/i18n';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
@@ -24,60 +25,7 @@ const formatPercent = (value: number) => new Intl.NumberFormat('vi-VN', {
   signDisplay: 'exceptZero',
 }).format(value);
 
-const copy = {
-  vi: {
-    loading: 'Đang tải dữ liệu danh mục...',
-    product: 'Portfolio Tracker',
-    dashboard: 'Bảng điều khiển',
-    subtitle: 'Giao diện terminal tối ưu cho việc theo dõi danh mục, định giá theo thời gian thực và kiểm soát chất lượng dữ liệu nhập mà không dùng mock data.',
-    ledgerMode: 'Tiền mặt: Chế độ Sổ cái',
-    derivedMode: 'Tiền mặt: Chế độ Suy diễn',
-    snapshot: 'Ảnh chụp',
-    clearSnapshot: 'Xóa ngày chụp',
-    operator: 'Người dùng',
-    account: 'Tài khoản',
-    totalNav: 'Tổng NAV',
-    costBasis: 'Giá vốn',
-    avgPnL: 'Lãi lỗ Avg',
-    fifoPnL: 'Lãi lỗ FIFO',
-    markToMarket: 'Định giá Mark-to-Market',
-    markToMarketDesc: 'Định giá từng mã theo dữ liệu thật, cho phép chỉnh giá thị trường trực tiếp vào Zustand store.',
-    positions: 'vị thế',
-    groupedHistory: 'Lịch sử giao dịch theo ngày',
-    groupedHistoryDesc: 'Dữ liệu giao dịch gốc được nhóm theo ngày giao dịch từ ledger đã import.',
-    returnLabel: 'Tỷ suất',
-    calcWarnings: 'cảnh báo tính toán được phát hiện trong engine replay. Hãy kiểm tra các lệnh bán vượt số lượng hoặc thiếu lot FIFO trước khi tin vào realized PnL.',
-    language: 'Ngôn ngữ',
-    vietnamese: 'VI',
-    english: 'EN',
-  },
-  en: {
-    loading: 'Loading portfolio data...',
-    product: 'Portfolio Tracker',
-    dashboard: 'Dashboard',
-    subtitle: 'Terminal-style layout for live portfolio monitoring, real-time valuation, and import-quality control with no mock data.',
-    ledgerMode: 'Cash: Ledger Mode',
-    derivedMode: 'Cash: Derived Mode',
-    snapshot: 'Snapshot',
-    clearSnapshot: 'Clear snapshot date',
-    operator: 'Operator',
-    account: 'Account',
-    totalNav: 'Total NAV',
-    costBasis: 'Cost Basis',
-    avgPnL: 'Avg P&L',
-    fifoPnL: 'FIFO P&L',
-    markToMarket: 'Mark-to-Market',
-    markToMarketDesc: 'Live valuation by holding with inline market-price updates written back to the Zustand store.',
-    positions: 'positions',
-    groupedHistory: 'Grouped Transaction History',
-    groupedHistoryDesc: 'Raw transaction records grouped by trading date from the imported ledger.',
-    returnLabel: 'Return',
-    calcWarnings: 'calculation warning(s) detected in the engine replay. Review oversold transactions or missing FIFO lots before relying on realized P&L.',
-    language: 'Language',
-    vietnamese: 'VI',
-    english: 'EN',
-  },
-} satisfies Record<DashboardLanguage, Record<string, string>>;
+
 
 export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [isMounted, setIsMounted] = useState(false);
@@ -95,6 +43,8 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     setIsMounted(true);
   }, []);
 
+  const t = i18n[language].dashboard;
+
   useEffect(() => {
     if (isMounted) {
       window.localStorage.setItem(DASHBOARD_LANGUAGE_STORAGE_KEY, language);
@@ -102,10 +52,9 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   }, [isMounted, language]);
 
   if (!isMounted) {
-    return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">{copy.vi.loading}</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">{i18n.vi.dashboard.loading}</div>;
   }
 
-  const t = copy[language];
   const holdings = metrics.holdings;
   const avgPnL = metrics.totalUnrealizedPnL + metrics.averageCostRealizedPnL;
   const fifoPnL = metrics.totalUnrealizedPnL + metrics.fifoRealizedPnL;

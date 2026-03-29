@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Clock, Activity, Globe, AlertCircle, RefreshCw } from 'lucide-react';
 import { fetchMarketIndices, fetchTrendingAssets } from '@/actions/market';
+import { DashboardLanguage } from '@/lib/dashboardLocale';
+import { i18n } from '@/lib/i18n';
 
 const TRENDING_ASSETS = [
   { ticker: 'FPT', name: 'Công ty Cổ phần FPT', price: '115,000 ₫', change: '+2.5%', up: true },
@@ -10,7 +12,8 @@ const TRENDING_ASSETS = [
   { ticker: 'NVDA', name: 'Nvidia Corp', price: '$850.50', change: '+3.8%', up: true },
 ];
 
-export default function MarketOverview() {
+export default function MarketOverview({ language }: { language: DashboardLanguage }) {
+  const t = i18n[language].marketOverview;
   const [indices, setIndices] = useState<any[]>([]);
   const [trending, setTrending] = useState<any[]>(TRENDING_ASSETS);
   const [loading, setLoading] = useState(true);
@@ -39,7 +42,7 @@ export default function MarketOverview() {
       <div className="flex items-center justify-between mb-5 border-b border-gray-100 dark:border-gray-800 pb-4">
         <div className="flex items-center gap-2">
           <Globe className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Thị trường Thế giới (Live API)</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{t.title}</h2>
         </div>
         <button 
           onClick={refreshData}
@@ -51,7 +54,7 @@ export default function MarketOverview() {
           } dark:bg-transparent dark:ring-gray-700`}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-emerald-600'}`} />
-          <span>{loading ? 'Đang cập nhật Radar...' : 'Dữ liệu Thời gian thực'}</span>
+          <span>{loading ? t.updating : t.realtime}</span>
         </button>
       </div>
 
@@ -72,7 +75,7 @@ export default function MarketOverview() {
         ) : (
           <div className="col-span-4 text-center text-sm text-gray-400 py-3 flex items-center justify-center gap-2">
             <AlertCircle className="w-5 h-5 text-rose-400" />
-            <span>Đã vượt quá giới hạn API từ Yahoo Finance hoặc mất kết nối mạng.</span>
+            <span>{t.apiError}</span>
           </div>
         )}
       </div>
@@ -80,7 +83,7 @@ export default function MarketOverview() {
       <div className="flex-1 bg-gray-50/30 dark:bg-gray-800/10 rounded-xl p-4 border border-gray-100 dark:border-gray-800/60">
         <div className="flex items-center gap-2 mb-3">
           <Activity className="w-4 h-4 text-orange-500" />
-          <h3 className="text-sm font-bold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Tài sản Đặc trưng</h3>
+          <h3 className="text-sm font-bold tracking-wide text-gray-700 dark:text-gray-300 uppercase">{t.trendingAssets}</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {trending.map((asset, i) => (

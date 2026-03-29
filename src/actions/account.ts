@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { eq, count, max, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -31,7 +31,7 @@ export async function getAccountSummary() {
     transactionCount: Number(stats?.transactionCount ?? 0),
     distinctTickerCount: Number(stats?.distinctTickerCount ?? 0),
     lastTransactionAt: stats?.lastTransactionAt ?? null,
-    sourceBreakdown: sources.map(s => ({ source: s.source || 'manual', count: Number(s.count) })),
+    sourceBreakdown: sources.map((s) => ({ source: s.source || 'manual', count: Number(s.count) })),
   };
 }
 
@@ -47,7 +47,7 @@ export async function changePasswordAction(currentPassword: string, newPassword:
   }
 
   const [dbUser] = await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, user.id));
-  
+
   if (!dbUser || !verifyPassword(currentPassword, dbUser.passwordHash)) {
     throw new Error('Mật khẩu hiện tại không đúng.');
   }

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useMemo, useState } from 'react';
 import { Holding } from '../types/portfolio';
@@ -6,6 +6,7 @@ import { Pencil, Check, X, Search } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
+import { i18n } from '@/lib/i18n';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -42,47 +43,8 @@ const formatPercent = (value: number) => new Intl.NumberFormat('vi-VN', {
   signDisplay: 'exceptZero',
 }).format(value);
 
-const copy = {
-  vi: {
-    badgeSymbols: 'Số mã',
-    badgeProfit: 'Đang lãi',
-    badgeLoss: 'Đang lỗ',
-    badgeCash: 'Tiền mặt',
-    ticker: 'Mã (Ticker)',
-    assetClass: 'Phân loại',
-    quantity: 'Khối lượng',
-    avgPrice: 'Giá mua TB',
-    currentPrice: 'Giá hiện tại',
-    marketValue: 'Giá trị thị trường',
-    unrealized: 'Lãi/Lỗ chưa chốt',
-    save: 'Lưu',
-    cancel: 'Hủy',
-    editPrice: 'Sửa giá thị trường',
-    noDataTitle: 'Chưa có dữ liệu danh mục',
-    noDataDesc: 'Hãy nạp file CSV hoặc thêm giao dịch đầu tiên.',
-  },
-  en: {
-    badgeSymbols: 'Symbols',
-    badgeProfit: 'Winners',
-    badgeLoss: 'Losers',
-    badgeCash: 'Cash',
-    ticker: 'Ticker',
-    assetClass: 'Class',
-    quantity: 'Quantity',
-    avgPrice: 'Avg Cost',
-    currentPrice: 'Current Price',
-    marketValue: 'Market Value',
-    unrealized: 'Unrealized P&L',
-    save: 'Save',
-    cancel: 'Cancel',
-    editPrice: 'Edit market price',
-    noDataTitle: 'No portfolio data yet',
-    noDataDesc: 'Upload a CSV file or add the first transaction.',
-  },
-} satisfies Record<DashboardLanguage, Record<string, string>>;
-
 export default function MarkToMarketGrid({ holdings, onPriceChange, language }: MarkToMarketGridProps) {
-  const t = copy[language];
+  const t = i18n[language].markToMarketGrid;
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const sortedHoldings = useMemo(() => [...holdings].sort((a, b) => b.marketValue - a.marketValue), [holdings]);

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useRef, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
@@ -7,41 +7,11 @@ import { saveTransactionsBatch } from '@/actions/transaction';
 import { saveCashEventsBatch } from '@/actions/cashLedger';
 import { parseImportCashFile, parseImportFile } from '@/lib/importParser';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
+import { i18n } from '@/lib/i18n';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
-const copy = {
-  vi: {
-    reading: 'Đang đọc...',
-    upload: 'Tải lên dữ liệu',
-    helper: 'Thả file lịch sử giao dịch hoặc sổ quỹ tiền để cập nhật trạng thái dashboard hiện tại.',
-    cashImportSuccess: (count: number) => `Nạp thành công ${count} sự kiện dòng tiền.`,
-    cashCoverage: (start: Date, end: Date) => `Phạm vi ${new Intl.DateTimeFormat('vi-VN').format(start)} - ${new Intl.DateTimeFormat('vi-VN').format(end)}`,
-    unclassifiedCash: (count: number) => `Có ${count} sự kiện chưa được phân loại rõ ràng.`,
-    invalidCashFile: 'File dòng tiền không hợp lệ hoặc dữ liệu trống.',
-    missingHeader: 'Không tìm thấy header',
-    parseError: 'Lỗi phân tích: ',
-    tradeImportSuccess: (count: number) => `Nạp thành công ${count} giao dịch.`,
-    skippedRows: (count: number) => `${count} dòng bị bỏ qua. Kiểm tra lại file import.`,
-    invalidFile: 'File không hợp lệ hoặc dữ liệu trống.',
-  },
-  en: {
-    reading: 'Reading...',
-    upload: 'Upload data',
-    helper: 'Drop a trade ledger or cash ledger file here to update the current dashboard state.',
-    cashImportSuccess: (count: number) => `Imported ${count} cash-flow events successfully.`,
-    cashCoverage: (start: Date, end: Date) => `Coverage ${new Intl.DateTimeFormat('en-US').format(start)} - ${new Intl.DateTimeFormat('en-US').format(end)}`,
-    unclassifiedCash: (count: number) => `${count} cash events could not be classified clearly.`,
-    invalidCashFile: 'Invalid cash ledger file or empty data.',
-    missingHeader: 'Khong tim thay header',
-    parseError: 'Parse error: ',
-    tradeImportSuccess: (count: number) => `Imported ${count} transactions successfully.`,
-    skippedRows: (count: number) => `${count} rows were skipped. Review the import file.`,
-    invalidFile: 'Invalid file or empty data.',
-  },
-};
-
 export default function CsvUploader({ language }: { language: DashboardLanguage }) {
-  const t = copy[language];
+  const t = i18n[language].csvUploader;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const addTransactions = usePortfolioStore((state) => state.addTransactions);
