@@ -3,8 +3,43 @@
 import { useState } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { DashboardLanguage } from '@/lib/dashboardLocale';
 
-export default function ImportWarningsPanel() {
+const copy = {
+  vi: {
+    title: 'Kết quả import gần nhất',
+    valid: 'hợp lệ',
+    skipped: 'bỏ qua',
+    perfect: 'Dữ liệu hoàn hảo. Không có dòng nào bị bỏ qua.',
+    row: 'Dòng',
+    reason: 'Lý do lỗi',
+    order: 'Lệnh',
+    asset: 'Mã TS',
+    quantity: 'Khối lượng',
+    price: 'Giá khớp',
+    date: 'Ngày GD',
+    showMore: (count: number) => `Xem thêm ${count} dòng lỗi`,
+    collapse: 'Thu gọn danh sách',
+  },
+  en: {
+    title: 'Latest import result',
+    valid: 'valid',
+    skipped: 'skipped',
+    perfect: 'Perfect import. No rows were skipped.',
+    row: 'Row',
+    reason: 'Error reason',
+    order: 'Order',
+    asset: 'Ticker',
+    quantity: 'Quantity',
+    price: 'Price',
+    date: 'Trade date',
+    showMore: (count: number) => `Show ${count} more error rows`,
+    collapse: 'Collapse list',
+  },
+};
+
+export default function ImportWarningsPanel({ language }: { language: DashboardLanguage }) {
+  const t = copy[language];
   const lastImportResult = usePortfolioStore((state) => state.lastImportResult);
   const [expanded, setExpanded] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -29,8 +64,8 @@ export default function ImportWarningsPanel() {
           </div>
           <div>
             <h3 className="flex items-center gap-2 text-sm font-bold text-slate-100">
-              Ket qua import gan nhat
-              <span className="text-xs font-normal text-slate-500">({importedAt.toLocaleTimeString('vi-VN')})</span>
+              {t.title}
+              <span className="text-xs font-normal text-slate-500">({importedAt.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US')})</span>
             </h3>
             <p className="mt-0.5 max-w-[200px] truncate font-mono text-xs text-slate-400">{summary.fileName}</p>
           </div>
@@ -38,8 +73,8 @@ export default function ImportWarningsPanel() {
 
         <div className="flex items-center gap-3 pr-2">
           <div className="hidden flex-col gap-1 text-right text-xs sm:flex">
-            <span className="whitespace-nowrap font-medium text-slate-400"><strong className="text-emerald-300">{summary.acceptedRows}</strong> hop le</span>
-            {summary.rejectedRows > 0 && <span className="whitespace-nowrap font-medium text-slate-400"><strong className="text-rose-300">{summary.rejectedRows}</strong> bo qua</span>}
+            <span className="whitespace-nowrap font-medium text-slate-400"><strong className="text-emerald-300">{summary.acceptedRows}</strong> {t.valid}</span>
+            {summary.rejectedRows > 0 && <span className="whitespace-nowrap font-medium text-slate-400"><strong className="text-rose-300">{summary.rejectedRows}</strong> {t.skipped}</span>}
           </div>
           {expanded ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
         </div>
@@ -50,7 +85,7 @@ export default function ImportWarningsPanel() {
           {isPerfect ? (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400">
               <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
-              Du lieu hoan hao. Khong co dong nao bi bo qua.
+              {t.perfect}
             </div>
           ) : (
             <>
@@ -58,13 +93,13 @@ export default function ImportWarningsPanel() {
                 <table className="w-full border-collapse text-left text-sm text-slate-400">
                   <thead className="border-b border-rose-900/40 bg-slate-950/40 text-xs font-medium uppercase tracking-wider text-slate-500">
                     <tr>
-                      <th className="w-16 px-4 py-3 text-center">Dong</th>
-                      <th className="min-w-[200px] px-4 py-3 font-bold text-rose-300">Ly do loi</th>
-                      <th className="px-4 py-3 font-mono">Lenh</th>
-                      <th className="px-4 py-3 font-mono">Ma TS</th>
-                      <th className="px-4 py-3 font-mono">Khoi luong</th>
-                      <th className="px-4 py-3 font-mono">Gia khop</th>
-                      <th className="px-4 py-3 font-mono">Ngay GD</th>
+                      <th className="w-16 px-4 py-3 text-center">{t.row}</th>
+                      <th className="min-w-[200px] px-4 py-3 font-bold text-rose-300">{t.reason}</th>
+                      <th className="px-4 py-3 font-mono">{t.order}</th>
+                      <th className="px-4 py-3 font-mono">{t.asset}</th>
+                      <th className="px-4 py-3 font-mono">{t.quantity}</th>
+                      <th className="px-4 py-3 font-mono">{t.price}</th>
+                      <th className="px-4 py-3 font-mono">{t.date}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rose-900/20 bg-transparent font-mono text-xs">
@@ -89,7 +124,7 @@ export default function ImportWarningsPanel() {
                     onClick={() => setShowAll(!showAll)}
                     className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-300 transition-colors hover:bg-slate-800"
                   >
-                    {showAll ? 'Thu gon danh sach' : `Xem them ${warnings.length - 10} dong loi`}
+                    {showAll ? t.collapse : t.showMore(warnings.length - 10)}
                   </button>
                 </div>
               )}

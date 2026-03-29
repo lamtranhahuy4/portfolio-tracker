@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { History } from 'lucide-react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { groupTransactionsByDay } from '@/lib/portfolioMetrics';
+import { DashboardLanguage } from '@/lib/dashboardLocale';
 
 const GROUPS_PER_PAGE = 10;
 
@@ -19,15 +20,51 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(value);
 }
 
-function getTxBadge(type: string) {
-  if (type === 'BUY') return { label: 'MUA', className: 'bg-emerald-500/20 text-emerald-400' };
-  if (type === 'SELL') return { label: 'BAN', className: 'bg-rose-500/20 text-rose-400' };
-  if (type === 'DEPOSIT') return { label: 'NAP', className: 'bg-purple-500/20 text-purple-400' };
-  if (type === 'WITHDRAW') return { label: 'RUT', className: 'bg-purple-500/20 text-purple-400' };
+function getTxBadge(type: string, language: DashboardLanguage) {
+  if (type === 'BUY') return { label: language === 'vi' ? 'MUA' : 'BUY', className: 'bg-emerald-500/20 text-emerald-400' };
+  if (type === 'SELL') return { label: language === 'vi' ? 'BÁN' : 'SELL', className: 'bg-rose-500/20 text-rose-400' };
+  if (type === 'DEPOSIT') return { label: language === 'vi' ? 'NẠP' : 'DEPOSIT', className: 'bg-purple-500/20 text-purple-400' };
+  if (type === 'WITHDRAW') return { label: language === 'vi' ? 'RÚT' : 'WITHDRAW', className: 'bg-purple-500/20 text-purple-400' };
   return { label: type, className: 'bg-purple-500/20 text-purple-400' };
 }
 
-export default function GroupedTransactionHistoryTable() {
+const copy = {
+  vi: {
+    emptyTitle: 'Chưa có dữ liệu giao dịch',
+    emptyDesc: 'Vui lòng tải lên file CSV/XLSX để hệ thống bắt đầu dựng lịch sử danh mục.',
+    tradeCount: 'giao dịch',
+    grossValue: 'Giá trị gộp trong ngày',
+    tradeDate: 'Ngày giao dịch',
+    ticker: 'Mã',
+    type: 'Loại',
+    quantity: 'Khối lượng',
+    price: 'Giá',
+    total: 'Tổng tiền',
+    showing: 'Hiển thị',
+    dayGroups: 'ngày giao dịch trên tổng',
+    previous: 'Trước',
+    next: 'Sau',
+  },
+  en: {
+    emptyTitle: 'No transaction data yet',
+    emptyDesc: 'Upload a CSV/XLSX file so the system can build your trading history.',
+    tradeCount: 'transactions',
+    grossValue: 'Gross value for the day',
+    tradeDate: 'Trade Date',
+    ticker: 'Ticker',
+    type: 'Type',
+    quantity: 'Quantity',
+    price: 'Price',
+    total: 'Total',
+    showing: 'Showing',
+    dayGroups: 'trading days out of',
+    previous: 'Previous',
+    next: 'Next',
+  },
+} satisfies Record<DashboardLanguage, Record<string, string>>;
+
+export default function GroupedTransactionHistoryTable({ language }: { language: DashboardLanguage }) {
+  const t = copy[language];
   const transactions = usePortfolioStore((state) => state.transactions);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -48,10 +85,8 @@ export default function GroupedTransactionHistoryTable() {
             <History className="h-8 w-8" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-100">Chua co du lieu giao dich</h3>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">
-              Vui long tai len file CSV/XLSX de he thong bat dau dung lich su danh muc.
-            </p>
+            <h3 className="text-lg font-bold text-slate-100">{t.emptyTitle}</h3>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">{t.emptyDesc}</p>
           </div>
         </div>
       </div>
@@ -66,10 +101,10 @@ export default function GroupedTransactionHistoryTable() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/60 px-6 py-4">
               <div>
                 <h3 className="text-base font-bold text-slate-100">{group.displayDate}</h3>
-                <p className="text-sm text-slate-400">{group.count} giao dich</p>
+                <p className="text-sm text-slate-400">{group.count} {t.tradeCount}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Gross value trong ngay</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">{t.grossValue}</p>
                 <p className="text-sm font-semibold text-slate-100">{formatCurrency(group.dayGrossValue)}</p>
               </div>
             </div>
@@ -78,17 +113,17 @@ export default function GroupedTransactionHistoryTable() {
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="border-b border-slate-800 text-slate-400">
                   <tr>
-                    <th className="px-6 py-3 text-left font-semibold">Ngay giao dich</th>
-                    <th className="px-6 py-3 text-left font-semibold">Ma</th>
-                    <th className="px-6 py-3 text-left font-semibold">Loai</th>
-                    <th className="px-6 py-3 text-right font-semibold">Khoi luong</th>
-                    <th className="px-6 py-3 text-right font-semibold">Gia</th>
-                    <th className="px-6 py-3 text-right font-semibold">Tong tien</th>
+                    <th className="px-6 py-3 text-left font-semibold">{t.tradeDate}</th>
+                    <th className="px-6 py-3 text-left font-semibold">{t.ticker}</th>
+                    <th className="px-6 py-3 text-left font-semibold">{t.type}</th>
+                    <th className="px-6 py-3 text-right font-semibold">{t.quantity}</th>
+                    <th className="px-6 py-3 text-right font-semibold">{t.price}</th>
+                    <th className="px-6 py-3 text-right font-semibold">{t.total}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
                   {group.items.map((tx) => {
-                    const badge = getTxBadge(tx.type);
+                    const badge = getTxBadge(tx.type, language);
                     return (
                       <tr key={tx.id} className="transition-colors hover:bg-slate-800/30">
                         <td className="px-6 py-4 text-slate-400">{group.displayDate}</td>
@@ -113,7 +148,7 @@ export default function GroupedTransactionHistoryTable() {
 
       <div className="flex items-center justify-between border-t border-slate-800 bg-slate-950/40 px-6 py-4">
         <span className="text-sm text-slate-400">
-          Hien thi {currentGroups.length} ngay giao dich tren tong {groupedDays.length} ngay
+          {t.showing} {currentGroups.length} {t.dayGroups} {groupedDays.length}
         </span>
         <div className="flex items-center gap-3">
           <button
@@ -121,7 +156,7 @@ export default function GroupedTransactionHistoryTable() {
             disabled={safeCurrentPage === 1}
             className="rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-sm font-semibold text-slate-200 transition-all hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-40"
           >
-            Truoc
+            {t.previous}
           </button>
           <span className="text-sm font-semibold text-slate-300">{safeCurrentPage} / {Math.max(totalPages, 1)}</span>
           <button
@@ -129,7 +164,7 @@ export default function GroupedTransactionHistoryTable() {
             disabled={safeCurrentPage === totalPages || totalPages === 0}
             className="rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-sm font-semibold text-slate-200 transition-all hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-40"
           >
-            Sau
+            {t.next}
           </button>
         </div>
       </div>

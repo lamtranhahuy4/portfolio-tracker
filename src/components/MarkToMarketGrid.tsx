@@ -5,6 +5,7 @@ import { Holding } from '../types/portfolio';
 import { Pencil, Check, X, Search } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { DashboardLanguage } from '@/lib/dashboardLocale';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,6 +14,7 @@ export function cn(...inputs: ClassValue[]) {
 export interface MarkToMarketGridProps {
   holdings: Holding[];
   onPriceChange: (ticker: string, newPrice: number) => void;
+  language: DashboardLanguage;
 }
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
@@ -40,7 +42,47 @@ const formatPercent = (value: number) => new Intl.NumberFormat('vi-VN', {
   signDisplay: 'exceptZero',
 }).format(value);
 
-export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMarketGridProps) {
+const copy = {
+  vi: {
+    badgeSymbols: 'Số mã',
+    badgeProfit: 'Đang lãi',
+    badgeLoss: 'Đang lỗ',
+    badgeCash: 'Tiền mặt',
+    ticker: 'Mã (Ticker)',
+    assetClass: 'Phân loại',
+    quantity: 'Khối lượng',
+    avgPrice: 'Giá mua TB',
+    currentPrice: 'Giá hiện tại',
+    marketValue: 'Giá trị thị trường',
+    unrealized: 'Lãi/Lỗ chưa chốt',
+    save: 'Lưu',
+    cancel: 'Hủy',
+    editPrice: 'Sửa giá thị trường',
+    noDataTitle: 'Chưa có dữ liệu danh mục',
+    noDataDesc: 'Hãy nạp file CSV hoặc thêm giao dịch đầu tiên.',
+  },
+  en: {
+    badgeSymbols: 'Symbols',
+    badgeProfit: 'Winners',
+    badgeLoss: 'Losers',
+    badgeCash: 'Cash',
+    ticker: 'Ticker',
+    assetClass: 'Class',
+    quantity: 'Quantity',
+    avgPrice: 'Avg Cost',
+    currentPrice: 'Current Price',
+    marketValue: 'Market Value',
+    unrealized: 'Unrealized P&L',
+    save: 'Save',
+    cancel: 'Cancel',
+    editPrice: 'Edit market price',
+    noDataTitle: 'No portfolio data yet',
+    noDataDesc: 'Upload a CSV file or add the first transaction.',
+  },
+} satisfies Record<DashboardLanguage, Record<string, string>>;
+
+export default function MarkToMarketGrid({ holdings, onPriceChange, language }: MarkToMarketGridProps) {
+  const t = copy[language];
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const sortedHoldings = useMemo(() => [...holdings].sort((a, b) => b.marketValue - a.marketValue), [holdings]);
@@ -76,23 +118,23 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
     <div className="w-full overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/60 shadow-xl shadow-black/20 backdrop-blur-sm">
       <div className="border-b border-slate-800 bg-slate-950/40 px-5 py-4">
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <SummaryBadge label="So ma" value={holdingSummary.activeTickers.toString()} />
-          <SummaryBadge label="Dang lai" value={holdingSummary.profitableTickers.toString()} positive />
-          <SummaryBadge label="Dang lo" value={holdingSummary.losingTickers.toString()} negative />
-          <SummaryBadge label="Tien mat" value={formatCurrency(holdingSummary.cashValue)} />
+          <SummaryBadge label={t.badgeSymbols} value={holdingSummary.activeTickers.toString()} />
+          <SummaryBadge label={t.badgeProfit} value={holdingSummary.profitableTickers.toString()} positive />
+          <SummaryBadge label={t.badgeLoss} value={holdingSummary.losingTickers.toString()} negative />
+          <SummaryBadge label={t.badgeCash} value={formatCurrency(holdingSummary.cashValue)} />
         </div>
       </div>
       <div className="h-96 overflow-auto">
         <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 font-semibold text-slate-400 backdrop-blur-sm">
             <tr>
-              <th className="px-5 py-4 whitespace-nowrap">Ma (Ticker)</th>
-              <th className="px-5 py-4 whitespace-nowrap">Phan loai</th>
-              <th className="px-5 py-4 whitespace-nowrap text-right">Khoi luong</th>
-              <th className="px-5 py-4 whitespace-nowrap text-right">Gia mua TB</th>
-              <th className="px-5 py-4 whitespace-nowrap text-right">Gia HT</th>
-              <th className="px-5 py-4 whitespace-nowrap text-right">Gia tri thi truong</th>
-              <th className="px-5 py-4 whitespace-nowrap text-right">Lai/Lo chua chot</th>
+              <th className="px-5 py-4 whitespace-nowrap">{t.ticker}</th>
+              <th className="px-5 py-4 whitespace-nowrap">{t.assetClass}</th>
+              <th className="px-5 py-4 whitespace-nowrap text-right">{t.quantity}</th>
+              <th className="px-5 py-4 whitespace-nowrap text-right">{t.avgPrice}</th>
+              <th className="px-5 py-4 whitespace-nowrap text-right">{t.currentPrice}</th>
+              <th className="px-5 py-4 whitespace-nowrap text-right">{t.marketValue}</th>
+              <th className="px-5 py-4 whitespace-nowrap text-right">{t.unrealized}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/70">
@@ -145,10 +187,10 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
                           onKeyDown={(e) => e.key === 'Enter' && handleSave(h.ticker)}
                           autoFocus
                         />
-                        <button onClick={() => handleSave(h.ticker)} className="rounded-md p-1.5 text-emerald-400 transition-colors hover:bg-emerald-500/10" title="Luu">
+                        <button onClick={() => handleSave(h.ticker)} className="rounded-md p-1.5 text-emerald-400 transition-colors hover:bg-emerald-500/10" title={t.save}>
                           <Check size={16} strokeWidth={2.5} />
                         </button>
-                        <button onClick={handleCancel} className="rounded-md p-1.5 text-rose-400 transition-colors hover:bg-rose-500/10" title="Huy">
+                        <button onClick={handleCancel} className="rounded-md p-1.5 text-rose-400 transition-colors hover:bg-rose-500/10" title={t.cancel}>
                           <X size={16} strokeWidth={2.5} />
                         </button>
                       </div>
@@ -158,7 +200,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
                         <button
                           onClick={() => handleEditClick(h.ticker, h.currentPrice)}
                           className="rounded-md p-1.5 text-slate-500 opacity-0 transition-all hover:bg-blue-500/10 hover:text-blue-300 group-hover:opacity-100"
-                          title="Sua gia thi truong"
+                          title={t.editPrice}
                         >
                           <Pencil size={14} />
                         </button>
@@ -184,8 +226,8 @@ export default function MarkToMarketGrid({ holdings, onPriceChange }: MarkToMark
                     <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-800">
                       <span className="text-xl">P</span>
                     </div>
-                    <p className="text-base font-medium">Chua co du lieu danh muc</p>
-                    <p className="text-sm">Hay nap file CSV hoac them giao dich dau tien.</p>
+                    <p className="text-base font-medium">{t.noDataTitle}</p>
+                    <p className="text-sm">{t.noDataDesc}</p>
                   </div>
                 </td>
               </tr>

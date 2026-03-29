@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays } from 'lucide-react';
+import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages } from 'lucide-react';
 import CsvUploader from '@/components/CsvUploader';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
 import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
+import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
@@ -23,21 +24,88 @@ const formatPercent = (value: number) => new Intl.NumberFormat('vi-VN', {
   signDisplay: 'exceptZero',
 }).format(value);
 
+const copy = {
+  vi: {
+    loading: 'Đang tải dữ liệu danh mục...',
+    product: 'Portfolio Tracker',
+    dashboard: 'Bảng điều khiển',
+    subtitle: 'Giao diện terminal tối ưu cho việc theo dõi danh mục, định giá theo thời gian thực và kiểm soát chất lượng dữ liệu nhập mà không dùng mock data.',
+    ledgerMode: 'Tiền mặt: Chế độ Sổ cái',
+    derivedMode: 'Tiền mặt: Chế độ Suy diễn',
+    snapshot: 'Ảnh chụp',
+    clearSnapshot: 'Xóa ngày chụp',
+    operator: 'Người dùng',
+    account: 'Tài khoản',
+    totalNav: 'Tổng NAV',
+    costBasis: 'Giá vốn',
+    avgPnL: 'Lãi lỗ Avg',
+    fifoPnL: 'Lãi lỗ FIFO',
+    markToMarket: 'Định giá Mark-to-Market',
+    markToMarketDesc: 'Định giá từng mã theo dữ liệu thật, cho phép chỉnh giá thị trường trực tiếp vào Zustand store.',
+    positions: 'vị thế',
+    groupedHistory: 'Lịch sử giao dịch theo ngày',
+    groupedHistoryDesc: 'Dữ liệu giao dịch gốc được nhóm theo ngày giao dịch từ ledger đã import.',
+    returnLabel: 'Tỷ suất',
+    calcWarnings: 'cảnh báo tính toán được phát hiện trong engine replay. Hãy kiểm tra các lệnh bán vượt số lượng hoặc thiếu lot FIFO trước khi tin vào realized PnL.',
+    language: 'Ngôn ngữ',
+    vietnamese: 'VI',
+    english: 'EN',
+  },
+  en: {
+    loading: 'Loading portfolio data...',
+    product: 'Portfolio Tracker',
+    dashboard: 'Dashboard',
+    subtitle: 'Terminal-style layout for live portfolio monitoring, real-time valuation, and import-quality control with no mock data.',
+    ledgerMode: 'Cash: Ledger Mode',
+    derivedMode: 'Cash: Derived Mode',
+    snapshot: 'Snapshot',
+    clearSnapshot: 'Clear snapshot date',
+    operator: 'Operator',
+    account: 'Account',
+    totalNav: 'Total NAV',
+    costBasis: 'Cost Basis',
+    avgPnL: 'Avg P&L',
+    fifoPnL: 'FIFO P&L',
+    markToMarket: 'Mark-to-Market',
+    markToMarketDesc: 'Live valuation by holding with inline market-price updates written back to the Zustand store.',
+    positions: 'positions',
+    groupedHistory: 'Grouped Transaction History',
+    groupedHistoryDesc: 'Raw transaction records grouped by trading date from the imported ledger.',
+    returnLabel: 'Return',
+    calcWarnings: 'calculation warning(s) detected in the engine replay. Review oversold transactions or missing FIFO lots before relying on realized P&L.',
+    language: 'Language',
+    vietnamese: 'VI',
+    english: 'EN',
+  },
+} satisfies Record<DashboardLanguage, Record<string, string>>;
+
 export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [isMounted, setIsMounted] = useState(false);
+  const [language, setLanguage] = useState<DashboardLanguage>('vi');
   const metrics = usePortfolioMetrics();
   const updatePrice = usePortfolioStore((state) => state.updatePrice);
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
   const setValuationDate = usePortfolioStore((state) => state.setValuationDate);
 
   useEffect(() => {
+    const storedLanguage = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
+    if (storedLanguage === 'vi' || storedLanguage === 'en') {
+      setLanguage(storedLanguage);
+    }
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (isMounted) {
+      window.localStorage.setItem(DASHBOARD_LANGUAGE_STORAGE_KEY, language);
+    }
+  }, [isMounted, language]);
+
   if (!isMounted) {
-    return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">Dang tai du lieu danh muc...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">{copy.vi.loading}</div>;
   }
 
+  const t = copy[language];
   const holdings = metrics.holdings;
   const avgPnL = metrics.totalUnrealizedPnL + metrics.averageCostRealizedPnL;
   const fifoPnL = metrics.totalUnrealizedPnL + metrics.fifoRealizedPnL;
@@ -55,13 +123,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                     <Wallet className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Portfolio Tracker</p>
-                    <h1 className="text-2xl font-semibold tracking-tight text-slate-100 lg:text-3xl">Dashboard</h1>
+                    <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">{t.product}</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-slate-100 lg:text-3xl">{t.dashboard}</h1>
                   </div>
                 </div>
-                <p className="max-w-3xl text-sm leading-6 text-slate-400">
-                  Terminal-style dashboard using live portfolio state, valuation snapshots, and import diagnostics without mock data.
-                </p>
+                <p className="max-w-3xl text-sm leading-6 text-slate-400">{t.subtitle}</p>
               </div>
 
               <div className="flex flex-col items-stretch gap-3 lg:items-end">
@@ -82,12 +148,12 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                         isLedgerMode ? 'bg-emerald-400' : 'bg-amber-400'
                       )} />
                     </span>
-                    {isLedgerMode ? 'Cash: Ledger Mode' : 'Cash: Derived Mode'}
+                    {isLedgerMode ? t.ledgerMode : t.derivedMode}
                   </div>
 
                   <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-sm text-slate-300">
                     <CalendarDays className="h-4 w-4 text-slate-500" />
-                    <span className="text-slate-400">Snapshot</span>
+                    <span className="text-slate-400">{t.snapshot}</span>
                     <input
                       type="date"
                       className="bg-transparent text-slate-100 outline-none [color-scheme:dark]"
@@ -98,17 +164,38 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                       <button
                         onClick={() => setValuationDate(null)}
                         className="text-slate-500 transition-colors hover:text-slate-200"
-                        title="Clear snapshot"
+                        title={t.clearSnapshot}
                       >
-                        x
+                        ×
                       </button>
                     )}
+                  </div>
+
+                  <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/80 p-1 text-sm text-slate-300">
+                    <div className="flex items-center gap-2 px-3 text-slate-400">
+                      <Languages className="h-4 w-4" />
+                      <span>{t.language}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLanguage('vi')}
+                      className={cn('rounded-xl px-3 py-1.5 font-medium transition-colors', language === 'vi' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-900')}
+                    >
+                      {t.vietnamese}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLanguage('en')}
+                      className={cn('rounded-xl px-3 py-1.5 font-medium transition-colors', language === 'en' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-900')}
+                    >
+                      {t.english}
+                    </button>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3">
                   <div className="min-w-[180px] px-2">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Operator</p>
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">{t.operator}</p>
                     <p className="truncate text-sm font-medium text-slate-200">{userEmail}</p>
                   </div>
                   <Link
@@ -116,10 +203,10 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                     className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800"
                   >
                     <ShieldCheck className="h-4 w-4 text-blue-400" />
-                    Account
+                    {t.account}
                   </Link>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-1">
-                    <LogoutButton />
+                    <LogoutButton language={language} />
                   </div>
                 </div>
               </div>
@@ -128,16 +215,16 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         </header>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Total NAV" value={formatCurrency(metrics.totalMarketValue)} icon={<Wallet className="h-5 w-5 text-blue-300" />} />
-          <StatCard title="Gia von" value={formatCurrency(metrics.currentCostBasis)} icon={<PieChartIcon className="h-5 w-5 text-indigo-300" />} />
+          <StatCard title={t.totalNav} value={formatCurrency(metrics.totalMarketValue)} icon={<Wallet className="h-5 w-5 text-blue-300" />} />
+          <StatCard title={t.costBasis} value={formatCurrency(metrics.currentCostBasis)} icon={<PieChartIcon className="h-5 w-5 text-indigo-300" />} />
           <StatCard
-            title="Lai lo Avg"
+            title={t.avgPnL}
             value={`${avgPnL > 0 ? '+' : ''}${formatCurrency(avgPnL)}`}
             valueColor={avgPnL > 0 ? 'text-emerald-400' : avgPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
             icon={<TrendingUp className="h-5 w-5 text-emerald-300" />}
           />
           <StatCard
-            title="Lai lo FIFO"
+            title={t.fifoPnL}
             value={`${fifoPnL > 0 ? '+' : ''}${formatCurrency(fifoPnL)}`}
             valueColor={fifoPnL > 0 ? 'text-emerald-400' : fifoPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
             icon={<CheckCircle2 className="h-5 w-5 text-cyan-300" />}
@@ -146,43 +233,41 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
-            <NetWorthChart series={metrics.navSeries} />
+            <NetWorthChart series={metrics.navSeries} language={language} />
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-100">Mark-to-Market</h2>
-                  <p className="text-sm text-slate-400">
-                    Live valuation by holding with inline price updates written back to the active store.
-                  </p>
+                  <h2 className="text-lg font-semibold text-slate-100">{t.markToMarket}</h2>
+                  <p className="text-sm text-slate-400">{t.markToMarketDesc}</p>
                 </div>
                 <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
-                  {holdings.length} positions
+                  {holdings.length} {t.positions}
                 </div>
               </div>
-              <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} />
+              <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} language={language} />
             </section>
             <section className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-100">Grouped Transaction History</h2>
-                  <p className="text-sm text-slate-400">Rendered from the imported transaction ledger grouped by trading date.</p>
+                  <h2 className="text-lg font-semibold text-slate-100">{t.groupedHistory}</h2>
+                  <p className="text-sm text-slate-400">{t.groupedHistoryDesc}</p>
                 </div>
                 <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
-                  Return {formatPercent(metrics.returnVsCostBasis)}
+                  {t.returnLabel} {formatPercent(metrics.returnVsCostBasis)}
                 </div>
               </div>
-              <GroupedTransactionHistoryTable />
+              <GroupedTransactionHistoryTable language={language} />
             </section>
           </div>
 
           <aside className="flex flex-col gap-6 lg:col-span-1">
             <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
-              <CsvUploader />
+              <CsvUploader language={language} />
             </div>
-            <ImportWarningsPanel />
+            <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (
               <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">
-                {metrics.calculationWarnings.length} calculation warning(s) detected in the engine replay. Review invalid sell quantities or missing FIFO lots before relying on realized PnL.
+                {metrics.calculationWarnings.length} {t.calcWarnings}
               </div>
             )}
           </aside>

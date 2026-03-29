@@ -6,9 +6,42 @@ import { toast } from 'sonner';
 import { saveTransactionsBatch } from '@/actions/transaction';
 import { saveCashEventsBatch } from '@/actions/cashLedger';
 import { parseImportCashFile, parseImportFile } from '@/lib/importParser';
+import { DashboardLanguage } from '@/lib/dashboardLocale';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
-export default function CsvUploader() {
+const copy = {
+  vi: {
+    reading: 'Đang đọc...',
+    upload: 'Tải lên dữ liệu',
+    helper: 'Thả file lịch sử giao dịch hoặc sổ quỹ tiền để cập nhật trạng thái dashboard hiện tại.',
+    cashImportSuccess: (count: number) => `Nạp thành công ${count} sự kiện dòng tiền.`,
+    cashCoverage: (start: Date, end: Date) => `Phạm vi ${new Intl.DateTimeFormat('vi-VN').format(start)} - ${new Intl.DateTimeFormat('vi-VN').format(end)}`,
+    unclassifiedCash: (count: number) => `Có ${count} sự kiện chưa được phân loại rõ ràng.`,
+    invalidCashFile: 'File dòng tiền không hợp lệ hoặc dữ liệu trống.',
+    missingHeader: 'Không tìm thấy header',
+    parseError: 'Lỗi phân tích: ',
+    tradeImportSuccess: (count: number) => `Nạp thành công ${count} giao dịch.`,
+    skippedRows: (count: number) => `${count} dòng bị bỏ qua. Kiểm tra lại file import.`,
+    invalidFile: 'File không hợp lệ hoặc dữ liệu trống.',
+  },
+  en: {
+    reading: 'Reading...',
+    upload: 'Upload data',
+    helper: 'Drop a trade ledger or cash ledger file here to update the current dashboard state.',
+    cashImportSuccess: (count: number) => `Imported ${count} cash-flow events successfully.`,
+    cashCoverage: (start: Date, end: Date) => `Coverage ${new Intl.DateTimeFormat('en-US').format(start)} - ${new Intl.DateTimeFormat('en-US').format(end)}`,
+    unclassifiedCash: (count: number) => `${count} cash events could not be classified clearly.`,
+    invalidCashFile: 'Invalid cash ledger file or empty data.',
+    missingHeader: 'Khong tim thay header',
+    parseError: 'Parse error: ',
+    tradeImportSuccess: (count: number) => `Imported ${count} transactions successfully.`,
+    skippedRows: (count: number) => `${count} rows were skipped. Review the import file.`,
+    invalidFile: 'Invalid file or empty data.',
+  },
+};
+
+export default function CsvUploader({ language }: { language: DashboardLanguage }) {
+  const t = copy[language];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const addTransactions = usePortfolioStore((state) => state.addTransactions);
@@ -32,20 +65,18 @@ export default function CsvUploader() {
             await saveCashEventsBatch(result.events);
             addCashEvents(result.events);
             setLastCashImportSummary({ ...result.summary, importedAt: new Date() });
-            toast.success(`Nap thanh cong ${result.events.length} su kien dong tien.`);
+            toast.success(t.cashImportSuccess(result.events.length));
             if (result.summary.coverageStart && result.summary.coverageEnd) {
-              toast.message(
-                `Coverage ${new Intl.DateTimeFormat('vi-VN').format(result.summary.coverageStart)} - ${new Intl.DateTimeFormat('vi-VN').format(result.summary.coverageEnd)}`
-              );
+              toast.message(t.cashCoverage(result.summary.coverageStart, result.summary.coverageEnd));
             }
             if (result.summary.unclassifiedEvents > 0) {
-              toast.warning(`Co ${result.summary.unclassifiedEvents} su kien chua duoc phan loai ro rang.`);
+              toast.warning(t.unclassifiedCash(result.summary.unclassifiedEvents));
             }
           } else {
-            toast.warning('File dong tien khong hop le hoac du lieu trong.');
+            toast.warning(t.invalidCashFile);
           }
         } catch (err: any) {
-          if (err.message?.includes('Khong tim thay header')) {
+          if (err.message?.includes(t.missingHeader)) {
             await handleTradeFile(file);
           } else {
             throw err;
@@ -55,7 +86,7 @@ export default function CsvUploader() {
         await handleTradeFile(file);
       }
     } catch (error) {
-      toast.error('Loi phan tich: ' + (error as Error).message);
+      toast.error(t.parseError + (error as Error).message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -69,15 +100,15 @@ export default function CsvUploader() {
     if (result.transactions.length > 0) {
       await saveTransactionsBatch(result.transactions);
       addTransactions(result.transactions);
-      toast.success(`Nap thanh cong ${result.transactions.length} giao dich.`);
+      toast.success(t.tradeImportSuccess(result.transactions.length));
 
       if (result.warnings.length > 0) {
-        toast.warning(`${result.warnings.length} dong bi bo qua. Kiem tra lai file import.`);
+        toast.warning(t.skippedRows(result.warnings.length));
       }
     } else if (result.warnings.length > 0) {
       toast.warning(result.warnings[0].message);
     } else {
-      toast.warning('File khong hop le hoac du lieu trong.');
+      toast.warning(t.invalidFile);
     }
   };
 
@@ -93,12 +124,10 @@ export default function CsvUploader() {
             <FileSpreadsheet className="mb-3 mt-4 h-7 w-7 text-blue-400" />
           )}
           <span className="text-center text-xs font-bold uppercase tracking-[0.24em] text-slate-300">
-            {isUploading ? 'Dang doc...' : 'Tai len du lieu'}
+            {isUploading ? t.reading : t.upload}
           </span>
           <span className="mb-1 mt-2 text-[10px] text-slate-500">.CSV, .XLSX, .XLS</span>
-          <span className="mb-4 max-w-[220px] text-center text-xs text-slate-400">
-            Drop trading ledger or cash ledger files here to update the live dashboard state.
-          </span>
+          <span className="mb-4 max-w-[220px] text-center text-xs text-slate-400">{t.helper}</span>
           <input
             ref={fileInputRef}
             type="file"
@@ -112,4 +141,3 @@ export default function CsvUploader() {
     </div>
   );
 }
-
