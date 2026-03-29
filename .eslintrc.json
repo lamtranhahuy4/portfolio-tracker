@@ -1,0 +1,9 @@
+﻿{
+  "root": true,
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "eqeqeq": ["error", "always"],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "prefer-const": "error"
+  }
+}

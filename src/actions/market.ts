@@ -15,7 +15,7 @@ async function fetchDNSE(symbol: string, isIndex = false) {
     const json = await res.json();
     if (!json.c || json.c.length < 2) return null;
 
-    let price = json.c[json.c.length - 1];
+    const price = json.c[json.c.length - 1];
     const prevPrice = json.c[json.c.length - 2];
     const change = price - prevPrice;
     const percent = (change / prevPrice) * 100;
