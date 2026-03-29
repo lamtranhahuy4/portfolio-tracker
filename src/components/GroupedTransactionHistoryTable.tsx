@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useMemo, useState } from 'react';
 import { History } from 'lucide-react';
@@ -19,6 +19,14 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(value);
 }
 
+function getTxBadge(type: string) {
+  if (type === 'BUY') return { label: 'MUA', className: 'bg-emerald-500/20 text-emerald-400' };
+  if (type === 'SELL') return { label: 'BAN', className: 'bg-rose-500/20 text-rose-400' };
+  if (type === 'DEPOSIT') return { label: 'NAP', className: 'bg-purple-500/20 text-purple-400' };
+  if (type === 'WITHDRAW') return { label: 'RUT', className: 'bg-purple-500/20 text-purple-400' };
+  return { label: type, className: 'bg-purple-500/20 text-purple-400' };
+}
+
 export default function GroupedTransactionHistoryTable() {
   const transactions = usePortfolioStore((state) => state.transactions);
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,16 +41,16 @@ export default function GroupedTransactionHistoryTable() {
 
   if (transactions.length === 0) {
     return (
-      <div className="w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center shadow-sm relative overflow-hidden">
-        <div className="absolute inset-0 bg-gray-50/50 dark:bg-gray-800/20 max-w-full" />
-        <div className="flex flex-col items-center justify-center gap-4 relative z-10">
-          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-400 dark:text-gray-500 shadow-inner">
-            <History className="w-8 h-8" />
+      <div className="relative w-full overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/60 p-12 text-center shadow-xl shadow-black/20">
+        <div className="absolute inset-0 max-w-full bg-slate-950/20" />
+        <div className="relative z-10 flex flex-col items-center justify-center gap-4">
+          <div className="rounded-full bg-slate-800 p-4 text-slate-500 shadow-inner">
+            <History className="h-8 w-8" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Chưa có dữ liệu giao dịch</h3>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 max-w-sm mx-auto">
-              Vui lòng tải lên file CSV/XLSX để hệ thống bắt đầu dựng lịch sử danh mục.
+            <h3 className="text-lg font-bold text-slate-100">Chua co du lieu giao dich</h3>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">
+              Vui long tai len file CSV/XLSX de he thong bat dau dung lich su danh muc.
             </p>
           </div>
         </div>
@@ -51,56 +59,51 @@ export default function GroupedTransactionHistoryTable() {
   }
 
   return (
-    <div className="w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-      <div className="divide-y divide-gray-200 dark:divide-gray-800">
+    <div className="w-full overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/60 shadow-xl shadow-black/20 backdrop-blur-sm">
+      <div className="space-y-4 p-4">
         {currentGroups.map((group) => (
-          <section key={group.dateKey}>
-            <div className="bg-gray-50/80 dark:bg-gray-900/70 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <section key={group.dateKey} className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/30">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/60 px-6 py-4">
               <div>
-                <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{group.displayDate}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {group.count} giao dịch
-                </p>
+                <h3 className="text-base font-bold text-slate-100">{group.displayDate}</h3>
+                <p className="text-sm text-slate-400">{group.count} giao dich</p>
               </div>
               <div className="text-right">
-                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Gross value trong ngày</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(group.dayGrossValue)}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Gross value trong ngay</p>
+                <p className="text-sm font-semibold text-slate-100">{formatCurrency(group.dayGrossValue)}</p>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
-                <thead className="text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <thead className="border-b border-slate-800 text-slate-400">
                   <tr>
-                    <th className="px-6 py-3 text-left font-semibold">Ngày giao dịch</th>
-                    <th className="px-6 py-3 text-left font-semibold">Mã</th>
-                    <th className="px-6 py-3 text-left font-semibold">Loại</th>
-                    <th className="px-6 py-3 text-right font-semibold">Khối lượng</th>
-                    <th className="px-6 py-3 text-right font-semibold">Giá</th>
-                    <th className="px-6 py-3 text-right font-semibold">Tổng tiền</th>
+                    <th className="px-6 py-3 text-left font-semibold">Ngay giao dich</th>
+                    <th className="px-6 py-3 text-left font-semibold">Ma</th>
+                    <th className="px-6 py-3 text-left font-semibold">Loai</th>
+                    <th className="px-6 py-3 text-right font-semibold">Khoi luong</th>
+                    <th className="px-6 py-3 text-right font-semibold">Gia</th>
+                    <th className="px-6 py-3 text-right font-semibold">Tong tien</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80">
-                  {group.items.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                      <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{group.displayDate}</td>
-                      <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">{tx.ticker}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider inline-flex items-center ${
-                          tx.type === 'BUY'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400'
-                            : tx.type === 'SELL'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400'
-                              : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-400'
-                        }`}>
-                          {tx.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right text-gray-900 dark:text-gray-100">{formatNumber(tx.quantity)}</td>
-                      <td className="px-6 py-4 text-right text-gray-700 dark:text-gray-300">{formatCurrency(tx.price)}</td>
-                      <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(tx.totalValue)}</td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-slate-800/80">
+                  {group.items.map((tx) => {
+                    const badge = getTxBadge(tx.type);
+                    return (
+                      <tr key={tx.id} className="transition-colors hover:bg-slate-800/30">
+                        <td className="px-6 py-4 text-slate-400">{group.displayDate}</td>
+                        <td className="px-6 py-4 font-semibold text-slate-100">{tx.ticker}</td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-bold tracking-wider ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right text-slate-100">{formatNumber(tx.quantity)}</td>
+                        <td className="px-6 py-4 text-right text-slate-300">{formatCurrency(tx.price)}</td>
+                        <td className="px-6 py-4 text-right font-semibold text-slate-100">{formatCurrency(tx.totalValue)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -108,23 +111,23 @@ export default function GroupedTransactionHistoryTable() {
         ))}
       </div>
 
-      <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50/60 dark:bg-gray-900/60">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          Hiển thị {currentGroups.length} ngày giao dịch trên tổng {groupedDays.length} ngày
+      <div className="flex items-center justify-between border-t border-slate-800 bg-slate-950/40 px-6 py-4">
+        <span className="text-sm text-slate-400">
+          Hien thi {currentGroups.length} ngay giao dich tren tong {groupedDays.length} ngay
         </span>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             disabled={safeCurrentPage === 1}
-            className="px-3.5 py-1.5 text-sm font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-50 transition-all disabled:opacity-40 disabled:pointer-events-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-sm font-semibold text-slate-200 transition-all hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-40"
           >
-            Trước
+            Truoc
           </button>
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{safeCurrentPage} / {Math.max(totalPages, 1)}</span>
+          <span className="text-sm font-semibold text-slate-300">{safeCurrentPage} / {Math.max(totalPages, 1)}</span>
           <button
             onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
             disabled={safeCurrentPage === totalPages || totalPages === 0}
-            className="px-3.5 py-1.5 text-sm font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-50 transition-all disabled:opacity-40 disabled:pointer-events-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-sm font-semibold text-slate-200 transition-all hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-40"
           >
             Sau
           </button>

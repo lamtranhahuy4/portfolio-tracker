@@ -1,20 +1,15 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
-import { DollarSign, PieChart as PieChartIcon, TrendingUp, Activity } from 'lucide-react';
-import CashLedgerStatusCard from '@/components/CashLedgerStatusCard';
+import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays } from 'lucide-react';
 import CsvUploader from '@/components/CsvUploader';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
 import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
-import MarketOverview from '@/components/MarketOverview';
 import NetWorthChart from '@/components/NetWorthChart';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -40,156 +35,157 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   }, []);
 
   if (!isMounted) {
-    return <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-950 animate-pulse flex items-center justify-center text-gray-400">Đang tải dữ liệu danh mục từ server...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">Dang tai du lieu danh muc...</div>;
   }
 
   const holdings = metrics.holdings;
-  const netPnL = metrics.totalUnrealizedPnL + metrics.averageCostRealizedPnL;
-  const chartData = holdings
-    .filter((holding) => holding.marketValue > 0 && holding.ticker !== 'CASH_VND')
-    .sort((a, b) => b.marketValue - a.marketValue)
-    .map((holding) => ({ name: holding.ticker, value: holding.marketValue }));
+  const avgPnL = metrics.totalUnrealizedPnL + metrics.averageCostRealizedPnL;
+  const fifoPnL = metrics.totalUnrealizedPnL + metrics.fifoRealizedPnL;
+  const isLedgerMode = metrics.cashBalanceSource === 'ledger';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <main className="max-w-[1600px] w-[95%] mx-auto py-6 space-y-8">
-        <header className="h-64 w-full rounded-2xl overflow-hidden relative mb-4 shadow-lg group">
-          <img src="/hero-banner.jpg" alt="Portfolio Oasis" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/40 to-transparent flex flex-col justify-end p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div />
-              <div className="flex items-center gap-3">
-                <span className="hidden sm:inline text-sm text-white/80">{userEmail}</span>
-                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm">
-                  <span className="text-sm font-medium text-white/80">Snapshot:</span>
-                  <input
-                    type="date"
-                    className="bg-transparent text-white text-sm outline-none cursor-pointer [color-scheme:dark]"
-                    value={valuationDate ? valuationDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => setValuationDate(e.target.value ? new Date(e.target.value) : null)}
-                  />
-                  {valuationDate && (
-                    <button 
-                      onClick={() => setValuationDate(null)}
-                      className="ml-1 text-white/50 hover:text-white"
-                      title="Clear Snapshot Date"
-                    >×</button>
-                  )}
+    <div className="min-h-screen bg-slate-950">
+      <main className="mx-auto flex w-[95%] max-w-[1680px] flex-col gap-6 py-6">
+        <header className="rounded-[28px] border border-slate-800/80 bg-slate-900/60 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-950/60">
+                    <Wallet className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Portfolio Tracker</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-slate-100 lg:text-3xl">Dashboard</h1>
+                  </div>
                 </div>
-                {metrics.cashBalanceSource === 'ledger' ? (
-                  <span className="bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 px-3 py-1 py-1.5 text-xs rounded-xl font-medium tracking-wide">Cash: Ledger Mode</span>
-                ) : (
-                  <span className="bg-orange-500/20 text-orange-200 border border-orange-500/30 px-3 py-1.5 text-xs rounded-xl font-medium tracking-wide">Cash: Derived Mode</span>
-                )}
-                <Link href="/account" className="text-white hover:text-indigo-200 text-sm font-medium transition-colors bg-white/10 hover:bg-white/20 px-4 py-1.5 rounded-xl backdrop-blur-sm border border-white/10">
-                  Tài khoản
-                </Link>
-                <LogoutButton />
+                <p className="max-w-3xl text-sm leading-6 text-slate-400">
+                  Terminal-style dashboard using live portfolio state, valuation snapshots, and import diagnostics without mock data.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-stretch gap-3 lg:items-end">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className={cn(
+                    'inline-flex items-center gap-3 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]',
+                    isLedgerMode
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                      : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                  )}>
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className={cn(
+                        'absolute inline-flex h-full w-full rounded-full opacity-75',
+                        isLedgerMode ? 'animate-ping bg-emerald-400' : 'bg-amber-400/60'
+                      )} />
+                      <span className={cn(
+                        'relative inline-flex h-2.5 w-2.5 rounded-full',
+                        isLedgerMode ? 'bg-emerald-400' : 'bg-amber-400'
+                      )} />
+                    </span>
+                    {isLedgerMode ? 'Cash: Ledger Mode' : 'Cash: Derived Mode'}
+                  </div>
+
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-sm text-slate-300">
+                    <CalendarDays className="h-4 w-4 text-slate-500" />
+                    <span className="text-slate-400">Snapshot</span>
+                    <input
+                      type="date"
+                      className="bg-transparent text-slate-100 outline-none [color-scheme:dark]"
+                      value={valuationDate ? valuationDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => setValuationDate(e.target.value ? new Date(e.target.value) : null)}
+                    />
+                    {valuationDate && (
+                      <button
+                        onClick={() => setValuationDate(null)}
+                        className="text-slate-500 transition-colors hover:text-slate-200"
+                        title="Clear snapshot"
+                      >
+                        x
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3">
+                  <div className="min-w-[180px] px-2">
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Operator</p>
+                    <p className="truncate text-sm font-medium text-slate-200">{userEmail}</p>
+                  </div>
+                  <Link
+                    href="/account"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-blue-400" />
+                    Account
+                  </Link>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-1">
+                    <LogoutButton />
+                  </div>
+                </div>
               </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-md">My Portfolio Oasis</h1>
-            <p className="text-gray-200 mt-2 text-lg font-medium opacity-90 drop-shadow">
-              Quản lý tài sản an toàn, thanh thoát và theo dõi thời gian thực.
-            </p>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-2">
-          <StatCard title="Tổng tài sản" value={formatCurrency(metrics.totalMarketValue)} icon={<DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />} />
-          <StatCard title="Giá vốn hiện tại" value={formatCurrency(metrics.currentCostBasis)} icon={<PieChartIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />} />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="Total NAV" value={formatCurrency(metrics.totalMarketValue)} icon={<Wallet className="h-5 w-5 text-blue-300" />} />
+          <StatCard title="Gia von" value={formatCurrency(metrics.currentCostBasis)} icon={<PieChartIcon className="h-5 w-5 text-indigo-300" />} />
           <StatCard
-            title="Lãi / lỗ ròng (Avg Cost)"
-            value={(netPnL > 0 ? '+' : '') + formatCurrency(netPnL)}
-            valueColor={netPnL > 0 ? 'text-emerald-600 dark:text-emerald-400' : netPnL < 0 ? 'text-rose-600 dark:text-rose-500' : ''}
-            icon={<Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+            title="Lai lo Avg"
+            value={`${avgPnL > 0 ? '+' : ''}${formatCurrency(avgPnL)}`}
+            valueColor={avgPnL > 0 ? 'text-emerald-400' : avgPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
+            icon={<TrendingUp className="h-5 w-5 text-emerald-300" />}
           />
           <StatCard
-            title="Return vs Net Contributions"
-            value={(metrics.returnVsCostBasis > 0 ? '+' : '') + formatPercent(metrics.returnVsCostBasis)}
-            valueColor={metrics.returnVsCostBasis > 0 ? 'text-emerald-600 dark:text-emerald-400' : metrics.returnVsCostBasis < 0 ? 'text-rose-600 dark:text-rose-500' : ''}
-            icon={<TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />}
+            title="Lai lo FIFO"
+            value={`${fifoPnL > 0 ? '+' : ''}${formatCurrency(fifoPnL)}`}
+            valueColor={fifoPnL > 0 ? 'text-emerald-400' : fifoPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
+            icon={<CheckCircle2 className="h-5 w-5 text-cyan-300" />}
           />
         </div>
 
-        <NetWorthChart series={metrics.navSeries} />
-
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="xl:col-span-1 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm flex flex-col min-h-[420px]">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6">Cơ cấu trọng số tài sản</h2>
-            <div className="flex-1 w-full relative">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={130} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={4}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{
-                        borderRadius: '12px',
-                        border: 'none',
-                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        color: '#1f2937',
-                        fontWeight: 600,
-                      }}
-                    />
-                    <Legend verticalAlign="bottom" height={40} iconType="circle" />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 text-sm gap-2">
-                  <PieChartIcon className="w-10 h-10 opacity-20" />
-                  <span>Chưa có dữ liệu để vẽ biểu đồ</span>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="flex flex-col gap-6 lg:col-span-2">
+            <NetWorthChart series={metrics.navSeries} />
+            <section className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-100">Mark-to-Market</h2>
+                  <p className="text-sm text-slate-400">
+                    Live valuation by holding with inline price updates written back to the active store.
+                  </p>
                 </div>
-              )}
-            </div>
+                <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
+                  {holdings.length} positions
+                </div>
+              </div>
+              <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} />
+            </section>
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-100">Grouped Transaction History</h2>
+                  <p className="text-sm text-slate-400">Rendered from the imported transaction ledger grouped by trading date.</p>
+                </div>
+                <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
+                  Return {formatPercent(metrics.returnVsCostBasis)}
+                </div>
+              </div>
+              <GroupedTransactionHistoryTable />
+            </section>
           </div>
-          <div className="xl:col-span-2 flex flex-col h-full">
-            <MarketOverview />
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
-          <div className="xl:col-span-2 flex flex-col flex-1 h-full min-h-[420px] gap-4">
-            <div className="flex-1 max-h-[160px]">
+          <aside className="flex flex-col gap-6 lg:col-span-1">
+            <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
               <CsvUploader />
             </div>
-            <CashLedgerStatusCard />
             <ImportWarningsPanel />
-          </div>
-          <div className="xl:col-span-8 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Phân tích lợi nhuận</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">So sánh giữa weighted average cost và FIFO realized PnL.</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
-                <MiniMetric label="Realized PnL (Avg Cost)" value={formatCurrency(metrics.averageCostRealizedPnL)} />
-                <MiniMetric label="Realized PnL (FIFO)" value={formatCurrency(metrics.fifoRealizedPnL)} />
-              </div>
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Net contributions hiện tại: <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(metrics.netContributions)}</span>
-            </div>
             {metrics.calculationWarnings.length > 0 && (
-              <div className="mt-4 rounded-xl bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200 px-4 py-3 text-sm">
-                {metrics.calculationWarnings.length} cảnh báo tính toán được phát hiện. Hãy kiểm tra lại các giao dịch bán vượt số lượng hoặc dữ liệu lịch sử thiếu lot.
+              <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">
+                {metrics.calculationWarnings.length} calculation warning(s) detected in the engine replay. Review invalid sell quantities or missing FIFO lots before relying on realized PnL.
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4 pt-2">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Định giá Mark-to-Market</h2>
-          <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} />
-        </div>
-
-        <div className="flex flex-col gap-4 pt-8 border-t border-gray-200 dark:border-gray-800">
-          <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">🗒️ Lịch sử Giao dịch Gốc</h2>
-          <GroupedTransactionHistoryTable />
+          </aside>
         </div>
       </main>
     </div>
@@ -198,24 +194,15 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
 function StatCard({ title, value, valueColor, icon }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; }) {
   return (
-    <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between gap-5 relative overflow-hidden group">
-      <div className="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 dark:bg-gray-800 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500" />
-      <div className="flex items-center justify-between relative z-10">
-        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</h3>
-        <div className="p-2.5 bg-gray-50 dark:bg-gray-800 rounded-xl">{icon}</div>
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{title}</h3>
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">{icon}</div>
       </div>
-      <div className="relative z-10">
-        <div className={cn('text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white', valueColor)}>{value}</div>
+      <div className="mt-5">
+        <div className={cn('text-3xl font-semibold tracking-tight text-slate-100', valueColor)}>{value}</div>
       </div>
-    </div>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-950/60 px-4 py-3 min-w-[220px]">
-      <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-      <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }

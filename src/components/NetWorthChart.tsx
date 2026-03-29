@@ -1,11 +1,12 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
   Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -28,63 +29,81 @@ type NetWorthChartProps = {
 export default function NetWorthChart({ series }: NetWorthChartProps) {
   if (series.length === 0) {
     return (
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-10 text-center text-sm text-gray-500 dark:text-gray-400">
-        Chưa có đủ dữ liệu để dựng biểu đồ tài sản ròng.
+      <div className="rounded-[28px] border border-slate-800 bg-slate-900/60 p-10 text-center text-sm text-slate-400 shadow-xl shadow-black/20">
+        Chua co du du lieu de dung bieu do tai san rong.
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+    <div className="rounded-[28px] border border-slate-800 bg-slate-900/60 p-6 shadow-xl shadow-black/20 backdrop-blur-sm">
       <div className="mb-4">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Tăng trưởng tài sản ròng</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Snapshot cuối ngày từ giao dịch đầu tiên của bạn đến hiện tại.
+        <h2 className="text-lg font-bold text-slate-100">Tang truong tai san rong</h2>
+        <p className="text-sm text-slate-400">
+          Snapshot cuoi ngay tu giao dich dau tien cua ban den hien tai.
         </p>
       </div>
 
       <div className="h-[340px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={series}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <AreaChart data={series}>
+            <defs>
+              <linearGradient id="navFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: '#94a3b8' }}
+              tickLine={false}
+              axisLine={{ stroke: '#334155' }}
               minTickGap={24}
             />
             <YAxis
               tickFormatter={(value) => `${Math.round(value / 1000000)}M`}
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: '#94a3b8' }}
+              tickLine={false}
+              axisLine={{ stroke: '#334155' }}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [formatCurrency(value), name === 'netAssetValue' ? 'Tài sản ròng' : 'Vốn ròng nạp/rút']}
-              labelFormatter={(label) => `Ngày ${label}`}
+              formatter={(value: number, name: string) => [formatCurrency(value), name === 'netAssetValue' ? 'Tai san rong' : 'Von rong nap/rut']}
+              labelFormatter={(label) => `Ngay ${label}`}
               contentStyle={{
                 borderRadius: '12px',
-                border: 'none',
-                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                border: '1px solid #334155',
+                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3)',
+                backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                color: '#e2e8f0',
               }}
+              labelStyle={{ color: '#cbd5e1' }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ color: '#94a3b8' }} />
+            <Area
+              type="monotone"
+              dataKey="netAssetValue"
+              stroke="none"
+              fill="url(#navFill)"
+            />
             <Line
               type="monotone"
               dataKey="netAssetValue"
-              name="Tài sản ròng"
-              stroke="#2563eb"
+              name="Tai san rong"
+              stroke="#3b82f6"
               strokeWidth={3}
               dot={false}
             />
             <Line
               type="monotone"
               dataKey="netContributions"
-              name="Vốn ròng nạp/rút"
+              name="Von rong nap/rut"
               stroke="#10b981"
               strokeDasharray="6 6"
               strokeWidth={2}
               dot={false}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useRef, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
@@ -32,20 +32,20 @@ export default function CsvUploader() {
             await saveCashEventsBatch(result.events);
             addCashEvents(result.events);
             setLastCashImportSummary({ ...result.summary, importedAt: new Date() });
-            toast.success(`Nạp thành công ${result.events.length} sự kiện dòng tiền.`);
+            toast.success(`Nap thanh cong ${result.events.length} su kien dong tien.`);
             if (result.summary.coverageStart && result.summary.coverageEnd) {
               toast.message(
                 `Coverage ${new Intl.DateTimeFormat('vi-VN').format(result.summary.coverageStart)} - ${new Intl.DateTimeFormat('vi-VN').format(result.summary.coverageEnd)}`
               );
             }
             if (result.summary.unclassifiedEvents > 0) {
-              toast.warning(`Có ${result.summary.unclassifiedEvents} sự kiện chưa được phân loại rõ ràng.`);
+              toast.warning(`Co ${result.summary.unclassifiedEvents} su kien chua duoc phan loai ro rang.`);
             }
           } else {
-            toast.warning('File dòng tiền không hợp lệ hoặc dữ liệu trống.');
+            toast.warning('File dong tien khong hop le hoac du lieu trong.');
           }
         } catch (err: any) {
-          if (err.message?.includes('Không tìm thấy header')) {
+          if (err.message?.includes('Khong tim thay header')) {
             await handleTradeFile(file);
           } else {
             throw err;
@@ -55,7 +55,7 @@ export default function CsvUploader() {
         await handleTradeFile(file);
       }
     } catch (error) {
-      toast.error('Lỗi phân tích: ' + (error as Error).message);
+      toast.error('Loi phan tich: ' + (error as Error).message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -69,33 +69,36 @@ export default function CsvUploader() {
     if (result.transactions.length > 0) {
       await saveTransactionsBatch(result.transactions);
       addTransactions(result.transactions);
-      toast.success(`Nạp thành công ${result.transactions.length} giao dịch.`);
+      toast.success(`Nap thanh cong ${result.transactions.length} giao dich.`);
 
       if (result.warnings.length > 0) {
-        toast.warning(`${result.warnings.length} dòng bị bỏ qua. Kiểm tra lại file import.`);
+        toast.warning(`${result.warnings.length} dong bi bo qua. Kiem tra lai file import.`);
       }
     } else if (result.warnings.length > 0) {
       toast.warning(result.warnings[0].message);
     } else {
-      toast.warning('File không hợp lệ hoặc dữ liệu trống.');
+      toast.warning('File khong hop le hoac du lieu trong.');
     }
   };
 
   return (
-    <div className="w-full h-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col justify-center items-center transition-all hover:shadow-md h-[100%] min-h-[160px]">
-      <div className="flex flex-col items-center justify-center w-full h-full">
-        <label className={`flex flex-col items-center justify-center w-full h-full cursor-pointer rounded-xl border-2 border-dashed transition-all ${
-          isUploading ? 'bg-indigo-50/50 dark:bg-gray-800 border-indigo-200' : 'border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/10'
+    <div className="flex h-full min-h-[220px] w-full flex-col items-center justify-center rounded-[24px] border border-slate-800 bg-slate-900/60 p-4 shadow-xl shadow-black/20 backdrop-blur-sm transition-all">
+      <div className="flex h-full w-full flex-col items-center justify-center">
+        <label className={`flex h-full w-full cursor-pointer flex-col items-center justify-center rounded-[20px] border border-dashed transition-all ${
+          isUploading ? 'border-blue-500/40 bg-slate-950/80' : 'border-slate-800 bg-slate-900/60 hover:bg-slate-900/80'
         }`}>
           {isUploading ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600 mb-2 mt-4"></div>
+            <div className="mb-3 mt-4 h-6 w-6 animate-spin rounded-full border-b-2 border-blue-400"></div>
           ) : (
-            <FileSpreadsheet className="w-6 h-6 text-indigo-500 mb-2 mt-4" />
+            <FileSpreadsheet className="mb-3 mt-4 h-7 w-7 text-blue-400" />
           )}
-          <span className="text-xs font-bold text-gray-700 dark:text-gray-300 text-center uppercase tracking-wide">
-            {isUploading ? 'Đang đọc...' : 'Tải lên Dữ liệu'}
+          <span className="text-center text-xs font-bold uppercase tracking-[0.24em] text-slate-300">
+            {isUploading ? 'Dang doc...' : 'Tai len du lieu'}
           </span>
-          <span className="text-[10px] text-gray-400 mt-1 mb-4">.CSV, .XLSX, .XLS</span>
+          <span className="mb-1 mt-2 text-[10px] text-slate-500">.CSV, .XLSX, .XLS</span>
+          <span className="mb-4 max-w-[220px] text-center text-xs text-slate-400">
+            Drop trading ledger or cash ledger files here to update the live dashboard state.
+          </span>
           <input
             ref={fileInputRef}
             type="file"
