@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import Decimal from 'decimal.js';
 import {
   AssetClass,
   CashLedgerEvent,
@@ -92,10 +93,10 @@ function buildTransaction(input: {
   const price = input.price;
   const fee = input.fee ?? 0;
   const tax = input.tax ?? 0;
-  const grossValue = quantity * price;
+  const grossValue = new Decimal(quantity).times(price);
   const totalValue = input.type === 'SELL'
-    ? grossValue - fee - tax
-    : grossValue + fee + tax;
+    ? grossValue.minus(fee).minus(tax)
+    : grossValue.plus(fee).plus(tax);
 
   return {
     id: crypto.randomUUID(),
@@ -107,7 +108,7 @@ function buildTransaction(input: {
     price,
     fee,
     tax,
-    totalValue,
+    totalValue: totalValue.toNumber(),
     notes: input.notes,
     source: input.source,
   };
@@ -369,9 +370,11 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
     });
 
     if (!Number.isNaN(grossValue) && grossValue > 0) {
-      normalized.totalValue = type === 'SELL'
-        ? grossValue - fee - tax
-        : grossValue + fee + tax;
+      normalized.totalValue = (
+        type === 'SELL'
+          ? new Decimal(grossValue).minus(fee).minus(tax)
+          : new Decimal(grossValue).plus(fee).plus(tax)
+      ).toNumber();
     }
 
     transactions.push(normalized);

@@ -1,5 +1,6 @@
 'use server';
 
+import Decimal from 'decimal.js';
 import { asc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { createImportBatch } from '@/actions/importBatch';
@@ -70,13 +71,13 @@ export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
       batchId: record.batchId ?? undefined,
       date: new Date(record.date),
       direction: record.direction as 'INFLOW' | 'OUTFLOW',
-      amount: parseFloat(record.amount),
-      balanceAfter: parseFloat(record.balanceAfter),
+      amount: new Decimal(record.amount).toNumber(),
+      balanceAfter: new Decimal(record.balanceAfter).toNumber(),
       eventType: record.eventType as any,
       description: record.description,
       source: record.source,
       referenceTicker: record.referenceTicker ?? undefined,
-      referenceQuantity: record.referenceQuantity ? parseFloat(record.referenceQuantity) : undefined,
+      referenceQuantity: record.referenceQuantity ? new Decimal(record.referenceQuantity).toNumber() : undefined,
       referenceTradeDate: record.referenceTradeDate ? new Date(record.referenceTradeDate) : undefined,
     }));
   } catch (error) {
