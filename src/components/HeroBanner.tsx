@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles } from 'lucide-react';
 import { fetchMarketIndices } from '@/actions/market';
@@ -112,6 +113,16 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-md md:p-8">
+      <Image
+        src="/hero-banner.jpg"
+        alt="Hero banner"
+        fill
+        priority
+        className="object-cover object-center opacity-20"
+        sizes="(min-width: 1024px) 1200px, 100vw"
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/82 to-slate-950/72" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,23,42,0.1),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.24),transparent_42%)]" />
       <div className="pointer-events-none absolute right-0 top-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-blue-600/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 left-0 -mb-20 -ml-20 h-60 w-60 rounded-full bg-emerald-600/10 blur-3xl" />
 
@@ -130,13 +141,13 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
                 {displayName}
               </span>
             </h2>
-            <p className="max-w-xl text-sm leading-6 text-slate-400">{t.subtitle}</p>
+            <p className="max-w-xl text-sm leading-6 text-slate-300">{t.subtitle}</p>
           </div>
         </div>
 
         <div className="custom-scrollbar flex gap-3 overflow-x-auto pb-2 lg:max-w-[560px]">
           {cards.map((card) => (
-            <article key={card.label} className="min-w-[160px] rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 shadow-inner">
+            <article key={card.label} className="min-w-[160px] rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 shadow-inner backdrop-blur-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{card.symbol}</p>
