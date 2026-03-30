@@ -2,6 +2,7 @@
 
 import { eq, count, max, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { fetchImportBatches } from '@/actions/importBatch';
 import { db } from '@/db/index';
 import { users, transactions, cashLedgerEvents } from '@/db/schema';
 import { requireUser, hashPassword, verifyPassword } from '@/lib/auth';
@@ -25,6 +26,7 @@ export async function getAccountSummary() {
     email: users.email,
     createdAt: users.createdAt,
   }).from(users).where(eq(users.id, user.id));
+  const importBatches = await fetchImportBatches();
 
   return {
     user: userInfo,
@@ -32,6 +34,7 @@ export async function getAccountSummary() {
     distinctTickerCount: Number(stats?.distinctTickerCount ?? 0),
     lastTransactionAt: stats?.lastTransactionAt ?? null,
     sourceBreakdown: sources.map((s) => ({ source: s.source || 'manual', count: Number(s.count) })),
+    importBatches,
   };
 }
 

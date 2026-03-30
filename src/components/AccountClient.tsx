@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { ArrowLeft, UserCircle2, Activity, HardDrive, Filter, Clock, Languages } from 'lucide-react';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import DeletePortfolioDataForm from '@/components/DeletePortfolioDataForm';
+import ImportHistoryCard from '@/components/ImportHistoryCard';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
+import { ImportBatchRecord } from '@/types/importAudit';
 
 interface AccountSummary {
   user: {
@@ -17,6 +19,7 @@ interface AccountSummary {
   distinctTickerCount: number;
   lastTransactionAt: Date | null;
   sourceBreakdown: Array<{ source: string; count: number }>;
+  importBatches: ImportBatchRecord[];
 }
 
 const copy = {
@@ -168,6 +171,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
           </div>
         </div>
 
+        <ImportHistoryCard batches={summary.importBatches} language={language} />
         <ChangePasswordForm language={language} />
         <DeletePortfolioDataForm language={language} />
       </main>

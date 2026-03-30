@@ -2,19 +2,33 @@
 
 import { asc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { createImportBatch } from '@/actions/importBatch';
 import { db } from '@/db/index';
 import { transactions } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
 import { NormalizedTransaction } from '@/types/portfolio';
+import { ImportBatchInput } from '@/types/importAudit';
 
-export async function saveTransactionsBatch(data: NormalizedTransaction[]) {
-  if (!data || data.length === 0) return;
+function toLegacyImportInput(data: NormalizedTransaction[]): ImportBatchInput {
+  return {
+    fileName: 'legacy-transaction-import',
+    fileChecksum: crypto.randomUUID(),
+    source: data[0]?.source ?? 'legacy',
+    importKind: 'TRANSACTION',
+    totalRows: data.length,
+    acceptedRows: data.length,
+    rejectedRows: 0,
+  };
+}
 
+export async function saveTransactionsBatch(data: NormalizedTransaction[], importInput?: ImportBatchInput) {
   const user = await requireUser();
+  const batch = await createImportBatch(importInput ?? toLegacyImportInput(data));
 
   const mappedData = data.map((tx) => ({
     id: tx.id,
     userId: user.id,
+    batchId: batch.batchId,
     assetClass: tx.assetClass,
     asset: tx.ticker,
     type: tx.type,
@@ -27,8 +41,12 @@ export async function saveTransactionsBatch(data: NormalizedTransaction[]) {
     date: new Date(tx.date),
   }));
 
-  await db.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
+  if (mappedData.length > 0) {
+    await db.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
+  }
   revalidatePath('/');
+
+  return batch;
 }
 
 export async function fetchTransactions() {
@@ -51,6 +69,7 @@ export async function fetchTransactions() {
 
     return {
       id: tx.id,
+      batchId: tx.batchId ?? undefined,
       date: tx.date,
       assetClass: tx.assetClass as 'STOCK' | 'CASH' | 'SAVING',
       ticker: tx.asset,

@@ -1,25 +1,26 @@
+import { Decimal } from 'decimal.js';
 import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, PortfolioMetrics, Transaction } from '@/types/portfolio';
 
 type HoldingState = {
   assetClass: Holding['assetClass'];
   ticker: string;
-  totalShares: number;
-  grossBuyValueRemaining: number;
-  allocatedBuyFeesRemaining: number;
-  averageCostRealizedPnL: number;
-  fifoRealizedPnL: number;
+  totalShares: Decimal;
+  grossBuyValueRemaining: Decimal;
+  allocatedBuyFeesRemaining: Decimal;
+  averageCostRealizedPnL: Decimal;
+  fifoRealizedPnL: Decimal;
 };
 
 type Lot = {
-  remainingQty: number;
-  unitCostNet: number;
+  remainingQty: Decimal;
+  unitCostNet: Decimal;
 };
 
 type ReplayState = {
   holdingsMap: Map<string, HoldingState>;
   lotsMap: Map<string, Lot[]>;
-  lastKnownPrices: Map<string, number>;
-  netContributions: number;
+  lastKnownPrices: Map<string, Decimal>;
+  netContributions: Decimal;
   calculationWarnings: string[];
 };
 
@@ -40,8 +41,8 @@ function createEmptyState(): ReplayState {
   return {
     holdingsMap: new Map<string, HoldingState>(),
     lotsMap: new Map<string, Lot[]>(),
-    lastKnownPrices: new Map<string, number>(),
-    netContributions: 0,
+    lastKnownPrices: new Map<string, Decimal>(),
+    netContributions: new Decimal(0),
     calculationWarnings: [],
   };
 }
@@ -51,11 +52,11 @@ function getCashHolding(holdingsMap: Map<string, HoldingState>): HoldingState {
     holdingsMap.set('CASH_VND', {
       assetClass: 'CASH',
       ticker: 'CASH_VND',
-      totalShares: 0,
-      grossBuyValueRemaining: 0,
-      allocatedBuyFeesRemaining: 0,
-      averageCostRealizedPnL: 0,
-      fifoRealizedPnL: 0,
+      totalShares: new Decimal(0),
+      grossBuyValueRemaining: new Decimal(0),
+      allocatedBuyFeesRemaining: new Decimal(0),
+      averageCostRealizedPnL: new Decimal(0),
+      fifoRealizedPnL: new Decimal(0),
     });
   }
   return holdingsMap.get('CASH_VND')!;
@@ -66,11 +67,11 @@ function getStockHolding(holdingsMap: Map<string, HoldingState>, ticker: string)
     holdingsMap.set(ticker, {
       assetClass: 'STOCK',
       ticker,
-      totalShares: 0,
-      grossBuyValueRemaining: 0,
-      allocatedBuyFeesRemaining: 0,
-      averageCostRealizedPnL: 0,
-      fifoRealizedPnL: 0,
+      totalShares: new Decimal(0),
+      grossBuyValueRemaining: new Decimal(0),
+      allocatedBuyFeesRemaining: new Decimal(0),
+      averageCostRealizedPnL: new Decimal(0),
+      fifoRealizedPnL: new Decimal(0),
     });
   }
   return holdingsMap.get(ticker)!;
@@ -88,105 +89,112 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
   const parsedDate = new Date(tx.date);
   const dateLabel = Number.isNaN(parsedDate.getTime()) ? String(tx.date) : parsedDate.toISOString();
 
+  const txQuantity = new Decimal(tx.quantity);
+  const txPrice = new Decimal(tx.price);
+  const txFee = new Decimal(tx.fee);
+  const txTax = new Decimal(tx.tax);
+  const txTotalValue = new Decimal(tx.totalValue);
+
   if (tx.assetClass === 'STOCK') {
     const stock = getStockHolding(state.holdingsMap, tx.ticker);
     const lots = getLots(state.lotsMap, tx.ticker);
 
     if (tx.type === 'BUY') {
-      const nextShares = stock.totalShares + tx.quantity;
-      stock.grossBuyValueRemaining += (tx.quantity * tx.price);
-      stock.allocatedBuyFeesRemaining += tx.fee + tx.tax;
+      const nextShares = stock.totalShares.plus(txQuantity);
+      stock.grossBuyValueRemaining = stock.grossBuyValueRemaining.plus(txQuantity.times(txPrice));
+      stock.allocatedBuyFeesRemaining = stock.allocatedBuyFeesRemaining.plus(txFee).plus(txTax);
       stock.totalShares = nextShares;
       lots.push({
-        remainingQty: tx.quantity,
-        unitCostNet: tx.totalValue / tx.quantity,
+        remainingQty: txQuantity,
+        unitCostNet: txTotalValue.div(txQuantity),
       });
-      if (!ledgerMode) cash.totalShares -= tx.totalValue;
-      state.lastKnownPrices.set(tx.ticker, tx.price);
+      if (!ledgerMode) cash.totalShares = cash.totalShares.minus(txTotalValue);
+      state.lastKnownPrices.set(tx.ticker, txPrice);
       return;
     }
 
     if (tx.type === 'SELL') {
-      if (stock.totalShares < tx.quantity) {
+      if (stock.totalShares.lt(txQuantity)) {
         state.calculationWarnings.push(`Sell quantity exceeds holdings for ${tx.ticker} on ${dateLabel}.`);
       }
 
-      const quantityToSell = Math.min(tx.quantity, stock.totalShares);
-      const ratioRemaining = stock.totalShares > 0 ? quantityToSell / stock.totalShares : 0;
+      const quantityToSell = Decimal.min(txQuantity, stock.totalShares);
+      const ratioRemaining = stock.totalShares.gt(0) ? quantityToSell.div(stock.totalShares) : new Decimal(0);
       
-      const grossCostBasisOfSold = stock.grossBuyValueRemaining * ratioRemaining;
-      const feeBasisOfSold = stock.allocatedBuyFeesRemaining * ratioRemaining;
+      const grossCostBasisOfSold = stock.grossBuyValueRemaining.times(ratioRemaining);
+      const feeBasisOfSold = stock.allocatedBuyFeesRemaining.times(ratioRemaining);
 
-      const averageCostBasisOfSoldShares = grossCostBasisOfSold + feeBasisOfSold;
-      const averageCostNetProceeds = tx.price * quantityToSell - tx.fee - tx.tax;
+      const averageCostBasisOfSoldShares = grossCostBasisOfSold.plus(feeBasisOfSold);
+      const averageCostNetProceeds = txPrice.times(quantityToSell).minus(txFee).minus(txTax);
       
-      stock.grossBuyValueRemaining -= grossCostBasisOfSold;
-      stock.allocatedBuyFeesRemaining -= feeBasisOfSold;
-      stock.totalShares = Math.max(0, stock.totalShares - quantityToSell);
+      stock.grossBuyValueRemaining = stock.grossBuyValueRemaining.minus(grossCostBasisOfSold);
+      stock.allocatedBuyFeesRemaining = stock.allocatedBuyFeesRemaining.minus(feeBasisOfSold);
+      stock.totalShares = Decimal.max(0, stock.totalShares.minus(quantityToSell));
       
-      if (stock.totalShares === 0) {
-        stock.grossBuyValueRemaining = 0;
-        stock.allocatedBuyFeesRemaining = 0;
+      if (stock.totalShares.eq(0)) {
+        stock.grossBuyValueRemaining = new Decimal(0);
+        stock.allocatedBuyFeesRemaining = new Decimal(0);
       }
 
-      stock.averageCostRealizedPnL += averageCostNetProceeds - averageCostBasisOfSoldShares;
+      stock.averageCostRealizedPnL = stock.averageCostRealizedPnL.plus(averageCostNetProceeds.minus(averageCostBasisOfSoldShares));
 
-      let fifoCostBasis = 0;
+      let fifoCostBasis = new Decimal(0);
       let remainingQty = quantityToSell;
-      while (remainingQty > 0 && lots.length > 0) {
+      while (remainingQty.gt(0) && lots.length > 0) {
         const lot = lots[0];
-        const consumed = Math.min(remainingQty, lot.remainingQty);
-        fifoCostBasis += consumed * lot.unitCostNet;
-        lot.remainingQty -= consumed;
-        remainingQty -= consumed;
-        if (lot.remainingQty <= 0) {
+        const consumed = Decimal.min(remainingQty, lot.remainingQty);
+        fifoCostBasis = fifoCostBasis.plus(consumed.times(lot.unitCostNet));
+        lot.remainingQty = lot.remainingQty.minus(consumed);
+        remainingQty = remainingQty.minus(consumed);
+        if (lot.remainingQty.lte(0)) {
           lots.shift();
         }
       }
 
-      if (remainingQty > 0) {
+      if (remainingQty.gt(0)) {
         state.calculationWarnings.push(`FIFO lots exhausted for ${tx.ticker} on ${dateLabel}.`);
       }
 
-      const fifoNetProceeds = tx.price * quantityToSell - tx.fee - tx.tax;
-      stock.fifoRealizedPnL += fifoNetProceeds - fifoCostBasis;
-      if (!ledgerMode) cash.totalShares += fifoNetProceeds;
-      state.lastKnownPrices.set(tx.ticker, tx.price);
+      const fifoNetProceeds = txPrice.times(quantityToSell).minus(txFee).minus(txTax);
+      stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(fifoNetProceeds.minus(fifoCostBasis));
+      
+      if (!ledgerMode) cash.totalShares = cash.totalShares.plus(fifoNetProceeds);
+      state.lastKnownPrices.set(tx.ticker, txPrice);
       return;
     }
 
     if (tx.type === 'STOCK_DIVIDEND') {
-      stock.totalShares += tx.quantity;
+      stock.totalShares = stock.totalShares.plus(txQuantity);
       lots.push({
-        remainingQty: tx.quantity,
-        unitCostNet: 0,
+        remainingQty: txQuantity,
+        unitCostNet: new Decimal(0),
       });
       return;
     }
 
     if (tx.type === 'DIVIDEND') {
-      if (!ledgerMode) cash.totalShares += tx.totalValue;
+      if (!ledgerMode) cash.totalShares = cash.totalShares.plus(txTotalValue);
       return;
     }
   }
 
   if (tx.type === 'DEPOSIT') {
     if (!ledgerMode) {
-      cash.totalShares += tx.totalValue;
-      state.netContributions += tx.totalValue;
+      cash.totalShares = cash.totalShares.plus(txTotalValue);
+      state.netContributions = state.netContributions.plus(txTotalValue);
     }
     return;
   }
 
   if (tx.type === 'INTEREST') {
-    if (!ledgerMode) cash.totalShares += tx.totalValue;
+    if (!ledgerMode) cash.totalShares = cash.totalShares.plus(txTotalValue);
     return;
   }
 
   if (tx.type === 'WITHDRAW') {
     if (!ledgerMode) {
-      cash.totalShares -= tx.totalValue;
-      state.netContributions -= tx.totalValue;
+      cash.totalShares = cash.totalShares.minus(txTotalValue);
+      state.netContributions = state.netContributions.minus(txTotalValue);
     }
   }
 }
@@ -195,39 +203,50 @@ function buildHoldingsFromState(
   state: ReplayState,
   currentPrices: Record<string, number>,
   valuationMode: boolean,
-  priceOverrides?: Map<string, number>
-) {
+  priceOverrides?: Map<string, Decimal>
+): Holding[] {
   const holdings: Holding[] = [];
 
   for (const [ticker, holding] of state.holdingsMap.entries()) {
     const fallbackPrice = priceOverrides?.get(ticker) ?? state.lastKnownPrices.get(ticker);
-    const costPrice = holding.totalShares > 0 ? (holding.grossBuyValueRemaining + holding.allocatedBuyFeesRemaining) / holding.totalShares : 0;
+    const costPrice = holding.totalShares.gt(0) ? holding.grossBuyValueRemaining.plus(holding.allocatedBuyFeesRemaining).div(holding.totalShares) : new Decimal(0);
     
-    const currentPrice = ticker === 'CASH_VND'
-      ? 1
-      : (currentPrices[ticker] ?? fallbackPrice ?? costPrice);
+    let currentPriceDec = new Decimal(1);
+    
+    if (ticker !== 'CASH_VND') {
+      if (currentPrices[ticker] !== undefined) {
+        currentPriceDec = new Decimal(currentPrices[ticker]);
+      } else if (fallbackPrice !== undefined) {
+        currentPriceDec = fallbackPrice;
+      } else {
+        currentPriceDec = costPrice;
+      }
+    }
       
-    const marketValue = holding.totalShares * currentPrice;
-    const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining + holding.allocatedBuyFeesRemaining;
-    const unrealizedPnL = ticker === 'CASH_VND' ? 0 : marketValue - netCostBasis;
+    const marketValue = holding.totalShares.times(currentPriceDec);
+    const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining.plus(holding.allocatedBuyFeesRemaining);
+    const unrealizedPnL = ticker === 'CASH_VND' ? new Decimal(0) : marketValue.minus(netCostBasis);
 
     if (
-      holding.totalShares > 0 ||
-      holding.averageCostRealizedPnL !== 0 ||
-      holding.fifoRealizedPnL !== 0
+      holding.totalShares.gt(0) ||
+      !holding.averageCostRealizedPnL.eq(0) ||
+      !holding.fifoRealizedPnL.eq(0)
     ) {
+      const gAP = ticker === 'CASH_VND' ? new Decimal(1) : (holding.totalShares.gt(0) ? holding.grossBuyValueRemaining.div(holding.totalShares) : new Decimal(0));
+      const nAC = ticker === 'CASH_VND' ? new Decimal(1) : (holding.totalShares.gt(0) ? netCostBasis.div(holding.totalShares) : new Decimal(0));
+      
       holdings.push({
         assetClass: holding.assetClass,
         ticker: holding.ticker,
-        totalShares: holding.totalShares,
-        grossAveragePrice: ticker === 'CASH_VND' ? 1 : (holding.totalShares > 0 ? holding.grossBuyValueRemaining / holding.totalShares : 0),
-        netAverageCost: ticker === 'CASH_VND' ? 1 : (holding.totalShares > 0 ? netCostBasis / holding.totalShares : 0),
-        currentPrice,
-        marketValue,
-        averageCostRealizedPnL: holding.averageCostRealizedPnL,
-        fifoRealizedPnL: holding.fifoRealizedPnL,
-        unrealizedPnL,
-        unrealizedPnLPercent: netCostBasis !== 0 ? unrealizedPnL / netCostBasis : 0,
+        totalShares: holding.totalShares.toNumber(),
+        grossAveragePrice: gAP.toNumber(),
+        netAverageCost: nAC.toNumber(),
+        currentPrice: currentPriceDec.toNumber(),
+        marketValue: marketValue.toNumber(),
+        averageCostRealizedPnL: holding.averageCostRealizedPnL.toNumber(),
+        fifoRealizedPnL: holding.fifoRealizedPnL.toNumber(),
+        unrealizedPnL: unrealizedPnL.toNumber(),
+        unrealizedPnLPercent: !netCostBasis.eq(0) ? unrealizedPnL.div(netCostBasis).toNumber() : 0,
       });
     }
   }
@@ -239,15 +258,15 @@ function buildHoldingsFromState(
   });
 }
 
-function getCashContributionDelta(evt: CashLedgerEvent): number {
+function getCashContributionDelta(evt: CashLedgerEvent): Decimal {
   switch (evt.eventType) {
     case 'DEPOSIT':
-      return evt.amount;
+      return new Decimal(evt.amount);
     case 'WITHDRAW':
     case 'BANK_TRANSFER_OUT':
-      return -evt.amount;
+      return new Decimal(evt.amount).negated();
     default:
-      return 0;
+      return new Decimal(0);
   }
 }
 
@@ -275,8 +294,8 @@ export function buildDailyNavSeries(
   startDate.setHours(0, 0, 0, 0);
   endDate.setHours(0, 0, 0, 0);
   
-  let currentLedgerBalance = 0;
-  let currentNetContributionsLedger = 0;
+  let currentLedgerBalance = new Decimal(0);
+  let currentNetContributionsLedger = new Decimal(0);
 
   for (const cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
     while (txIndex < sortedTx.length) {
@@ -293,17 +312,17 @@ export function buildDailyNavSeries(
       evtDate.setHours(0, 0, 0, 0);
       if (evtDate.getTime() > cursor.getTime()) break;
       
-      currentLedgerBalance = evt.balanceAfter;
-      currentNetContributionsLedger += getCashContributionDelta(evt);
+      currentLedgerBalance = new Decimal(evt.balanceAfter);
+      currentNetContributionsLedger = currentNetContributionsLedger.plus(getCashContributionDelta(evt));
       
       cashIndex += 1;
     }
 
     const dayKey = getDateKey(cursor);
-    const dayPriceOverrides = new Map(state.lastKnownPrices);
+    const dayPriceOverrides = new Map<string, Decimal>(state.lastKnownPrices);
     if (dayKey === getDateKey(new Date())) {
       Object.entries(currentPrices).forEach(([ticker, price]) => {
-        dayPriceOverrides.set(ticker, price);
+        dayPriceOverrides.set(ticker, new Decimal(price));
       });
     }
 
@@ -311,7 +330,7 @@ export function buildDailyNavSeries(
     let cashValue = 0;
     
     if (ledgerMode) {
-      cashValue = currentLedgerBalance;
+      cashValue = currentLedgerBalance.toNumber();
     } else {
       cashValue = holdings.find((holding) => holding.ticker === 'CASH_VND')?.marketValue ?? 0;
     }
@@ -326,7 +345,7 @@ export function buildDailyNavSeries(
       cashValue,
       cashValueSource: ledgerMode ? 'ledger' : 'derived',
       investedMarketValue,
-      netContributions: ledgerMode ? currentNetContributionsLedger : state.netContributions,
+      netContributions: ledgerMode ? currentNetContributionsLedger.toNumber() : state.netContributions.toNumber(),
     });
   }
 
@@ -355,29 +374,30 @@ export function calculatePortfolioMetrics(
 
   sortedTx.forEach((tx) => applyTransaction(state, tx, ledgerMode));
 
-  let finalLedgerBalance = 0;
-  let finalNetContributionsLedger = 0;
+  let finalLedgerBalance = new Decimal(0);
+  let finalNetContributionsLedger = new Decimal(0);
   sortedCashEvents.forEach((evt) => {
-    finalLedgerBalance = evt.balanceAfter;
-    finalNetContributionsLedger += getCashContributionDelta(evt);
+    finalLedgerBalance = new Decimal(evt.balanceAfter);
+    finalNetContributionsLedger = finalNetContributionsLedger.plus(getCashContributionDelta(evt));
   });
 
   const holdings = buildHoldingsFromState(state, currentPrices, !!valuationDate);
   
   if (ledgerMode) {
     const cashHolding = holdings.find(h => h.ticker === 'CASH_VND');
+    const finalLedgerBalanceNum = finalLedgerBalance.toNumber();
     if (cashHolding) {
-      cashHolding.totalShares = finalLedgerBalance;
-      cashHolding.marketValue = finalLedgerBalance;
+      cashHolding.totalShares = finalLedgerBalanceNum;
+      cashHolding.marketValue = finalLedgerBalanceNum;
     } else {
       holdings.push({
         assetClass: 'CASH',
         ticker: 'CASH_VND',
-        totalShares: finalLedgerBalance,
+        totalShares: finalLedgerBalanceNum,
         grossAveragePrice: 1,
         netAverageCost: 1,
         currentPrice: 1,
-        marketValue: finalLedgerBalance,
+        marketValue: finalLedgerBalanceNum,
         averageCostRealizedPnL: 0,
         fifoRealizedPnL: 0,
         unrealizedPnL: 0,
@@ -396,7 +416,7 @@ export function calculatePortfolioMetrics(
   const fifoRealizedPnL = holdings.reduce((sum, holding) => sum + holding.fifoRealizedPnL, 0);
   const totalUnrealizedPnL = holdings.reduce((sum, holding) => sum + holding.unrealizedPnL, 0);
   const netPnL = totalUnrealizedPnL + averageCostRealizedPnL;
-  const activeNetContributions = ledgerMode ? finalNetContributionsLedger : state.netContributions;
+  const activeNetContributions = ledgerMode ? finalNetContributionsLedger.toNumber() : state.netContributions.toNumber();
 
   return {
     holdings,
@@ -410,7 +430,7 @@ export function calculatePortfolioMetrics(
     navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate),
     calculationWarnings: state.calculationWarnings,
     cashBalanceSource: ledgerMode ? 'ledger' : 'derived',
-    cashBalanceEOD: ledgerMode ? finalLedgerBalance : undefined,
+    cashBalanceEOD: ledgerMode ? finalLedgerBalance.toNumber() : undefined,
     cashLedgerCoverageStart: ledgerMode && sortedCashEvents.length > 0 ? sortedCashEvents[0].date.toISOString() : undefined,
     cashLedgerCoverageEnd: ledgerMode && sortedCashEvents.length > 0 ? sortedCashEvents[sortedCashEvents.length - 1].date.toISOString() : undefined,
   };

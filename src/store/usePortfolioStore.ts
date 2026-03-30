@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { CashImportSummaryState, CashLedgerEvent, Holding, PortfolioMetrics, Transaction } from '@/types/portfolio';
 import { calculatePortfolioMetrics } from '@/lib/portfolioMetrics';
+import { ImportBatchStatus } from '@/types/importAudit';
+
+type TradeImportState = import('@/types/portfolio').ImportParseResult & {
+  importedAt: Date;
+  summary: import('@/types/portfolio').ImportSummary & {
+    batchId?: string;
+    status?: ImportBatchStatus;
+    importedAt?: Date;
+  };
+};
+
+type CashImportState = CashImportSummaryState & {
+  batchId?: string;
+  status?: ImportBatchStatus;
+};
 
 interface PortfolioState {
   transactions: Transaction[];
@@ -11,10 +26,10 @@ interface PortfolioState {
   updatePrice: (ticker: string, newPrice: number) => void;
   setCashEvents: (events: CashLedgerEvent[]) => void;
   addCashEvents: (events: CashLedgerEvent[]) => void;
-  lastImportResult: (import('@/types/portfolio').ImportParseResult & { importedAt: Date }) | null;
-  setLastImportResult: (result: (import('@/types/portfolio').ImportParseResult & { importedAt: Date }) | null) => void;
-  lastCashImportSummary: CashImportSummaryState | null;
-  setLastCashImportSummary: (summary: CashImportSummaryState | null) => void;
+  lastImportResult: TradeImportState | null;
+  setLastImportResult: (result: TradeImportState | null) => void;
+  lastCashImportSummary: CashImportState | null;
+  setLastCashImportSummary: (summary: CashImportState | null) => void;
   valuationDate: Date | null;
   setValuationDate: (date: Date | null) => void;
 }

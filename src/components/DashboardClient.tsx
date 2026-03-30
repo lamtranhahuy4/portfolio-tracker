@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages } from 'lucide-react';
-import CsvUploader from '@/components/CsvUploader';
+import CsvUploaderWithAudit from '@/components/CsvUploaderWithAudit';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
 import HeroBanner from '@/components/HeroBanner';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
@@ -212,7 +212,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
           <aside className="flex flex-col gap-6 lg:col-span-1">
             <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
-              <CsvUploader language={language} />
+              <CsvUploaderWithAudit language={language} />
             </div>
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (

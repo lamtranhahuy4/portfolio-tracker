@@ -2,19 +2,33 @@
 
 import { asc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { createImportBatch } from '@/actions/importBatch';
 import { db } from '@/db/index';
 import { cashLedgerEvents } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
 import { CashLedgerEvent } from '@/types/portfolio';
+import { ImportBatchInput } from '@/types/importAudit';
 
-export async function saveCashEventsBatch(data: CashLedgerEvent[]) {
-  if (!data || data.length === 0) return;
+function toLegacyImportInput(data: CashLedgerEvent[]): ImportBatchInput {
+  return {
+    fileName: 'legacy-cash-import',
+    fileChecksum: crypto.randomUUID(),
+    source: data[0]?.source ?? 'legacy',
+    importKind: 'CASH_LEDGER',
+    totalRows: data.length,
+    acceptedRows: data.length,
+    rejectedRows: 0,
+  };
+}
 
+export async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: ImportBatchInput) {
   const user = await requireUser();
+  const batch = await createImportBatch(importInput ?? toLegacyImportInput(data));
 
   const mappedData = data.map((evt) => ({
     id: evt.id,
     userId: user.id,
+    batchId: batch.batchId,
     date: new Date(evt.date),
     direction: evt.direction,
     amount: evt.amount.toString(),
@@ -27,16 +41,20 @@ export async function saveCashEventsBatch(data: CashLedgerEvent[]) {
     referenceTradeDate: evt.referenceTradeDate ? new Date(evt.referenceTradeDate) : null,
   }));
 
-  await db.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({
-    target: [
-      cashLedgerEvents.userId,
-      cashLedgerEvents.date,
-      cashLedgerEvents.description,
-      cashLedgerEvents.amount,
-      cashLedgerEvents.balanceAfter,
-    ],
-  });
+  if (mappedData.length > 0) {
+    await db.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({
+      target: [
+        cashLedgerEvents.userId,
+        cashLedgerEvents.date,
+        cashLedgerEvents.description,
+        cashLedgerEvents.amount,
+        cashLedgerEvents.balanceAfter,
+      ],
+    });
+  }
   revalidatePath('/');
+
+  return batch;
 }
 
 export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
@@ -49,6 +67,7 @@ export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
 
     return records.map((record) => ({
       id: record.id,
+      batchId: record.batchId ?? undefined,
       date: new Date(record.date),
       direction: record.direction as 'INFLOW' | 'OUTFLOW',
       amount: parseFloat(record.amount),
