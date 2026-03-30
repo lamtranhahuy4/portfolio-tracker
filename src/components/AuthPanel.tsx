@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { FormEvent, useEffect, useState, useTransition } from 'react';
 import { Languages } from 'lucide-react';

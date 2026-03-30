@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { getAccountSummary } from '@/actions/account';
 import AccountClient from '@/components/AccountClient';

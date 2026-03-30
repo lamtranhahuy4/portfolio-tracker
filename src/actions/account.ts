@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { eq, count, max, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
