@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages } from 'lucide-react';
 import CsvUploader from '@/components/CsvUploader';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
+import HeroBanner from '@/components/HeroBanner';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
 import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
@@ -24,8 +25,6 @@ const formatPercent = (value: number) => new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 2,
   signDisplay: 'exceptZero',
 }).format(value);
-
-
 
 export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [isMounted, setIsMounted] = useState(false);
@@ -162,6 +161,8 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             </div>
           </div>
         </header>
+
+        <HeroBanner userEmail={userEmail} language={language} />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard title={t.totalNav} value={formatCurrency(metrics.totalMarketValue)} icon={<Wallet className="h-5 w-5 text-blue-300" />} />
