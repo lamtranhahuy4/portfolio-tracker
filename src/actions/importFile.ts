@@ -53,7 +53,14 @@ export type ImportFileResultDto =
     };
 
 function isMissingHeaderError(error: unknown) {
-  return error instanceof Error && error.message.toLowerCase().includes('khong tim thay header'.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
+  if (!(error instanceof Error)) return false;
+
+  const normalizedMessage = error.message
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  return normalizedMessage.includes('khong tim thay header');
 }
 
 export async function importPortfolioFile(file: File, fileChecksum: string): Promise<ImportFileResult> {
@@ -70,7 +77,10 @@ export async function importPortfolioFile(file: File, fileChecksum: string): Pro
 async function importPortfolioFileInternal(file: File, fileChecksum: string): Promise<ImportFileResult> {
   const fileNameLower = file.name.toLowerCase();
   const isExcelFile = fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls');
-  const isLikelyCashReport = fileNameLower.includes('tiền') || fileNameLower.includes('tien') || fileNameLower.includes('cash');
+  const normalizedFileName = fileNameLower
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const isLikelyCashReport = normalizedFileName.includes('tien') || normalizedFileName.includes('cash');
 
   const buildImportInput = (source: string, importKind: ImportBatchInput['importKind'], totalRows: number, acceptedRows: number, rejectedRows: number): ImportBatchInput => ({
     fileName: file.name,
@@ -111,7 +121,7 @@ async function importPortfolioFileInternal(file: File, fileChecksum: string): Pr
     );
     return { importKind: 'TRANSACTION', result, audit };
   } catch (error) {
-    if (!isExcelFile || isLikelyCashReport || !isMissingHeaderError(error)) {
+    if (!isExcelFile || !isMissingHeaderError(error)) {
       throw error;
     }
   }
