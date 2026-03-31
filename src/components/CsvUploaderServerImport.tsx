@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
-import { importPortfolioFormData } from '@/actions/importFile';
+import { importPortfolioFormDataDto } from '@/actions/importFile';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -36,24 +36,31 @@ export default function CsvUploaderServerImport({ language }: { language: Dashbo
       formData.set('file', file);
       formData.set('fileChecksum', fileChecksum);
 
-      const payload = await importPortfolioFormData(formData);
+      const payload = await importPortfolioFormDataDto(formData);
 
       if (payload.importKind === 'TRANSACTION') {
         const { result, audit } = payload;
+        const transactions = result.transactions.map((tx) => ({
+          ...tx,
+          date: new Date(tx.date),
+        }));
+        const importedAt = new Date(audit.importedAt);
+
         setLastImportResult({
           ...result,
+          transactions,
           summary: {
             ...result.summary,
             batchId: audit.batchId,
             status: audit.status,
-            importedAt: audit.importedAt,
+            importedAt,
           },
-          importedAt: audit.importedAt,
+          importedAt,
         });
 
-        if (result.transactions.length > 0) {
-          addTransactions(result.transactions);
-          toast.success(t.tradeImportSuccess(result.transactions.length));
+        if (transactions.length > 0) {
+          addTransactions(transactions);
+          toast.success(t.tradeImportSuccess(transactions.length));
           if (result.warnings.length > 0) {
             toast.warning(t.skippedRows(result.warnings.length));
           }
@@ -64,18 +71,29 @@ export default function CsvUploaderServerImport({ language }: { language: Dashbo
         }
       } else {
         const { result, audit } = payload;
+        const events = result.events.map((evt) => ({
+          ...evt,
+          date: new Date(evt.date),
+          referenceTradeDate: evt.referenceTradeDate ? new Date(evt.referenceTradeDate) : undefined,
+        }));
+        const importedAt = new Date(audit.importedAt);
+        const coverageStart = result.summary.coverageStart ? new Date(result.summary.coverageStart) : undefined;
+        const coverageEnd = result.summary.coverageEnd ? new Date(result.summary.coverageEnd) : undefined;
+
         setLastCashImportSummary({
           ...result.summary,
+          coverageStart,
+          coverageEnd,
           batchId: audit.batchId,
           status: audit.status,
-          importedAt: audit.importedAt,
+          importedAt,
         });
 
-        if (result.events.length > 0) {
-          addCashEvents(result.events);
-          toast.success(t.cashImportSuccess(result.events.length));
-          if (result.summary.coverageStart && result.summary.coverageEnd) {
-            toast.message(t.cashCoverage(result.summary.coverageStart, result.summary.coverageEnd));
+        if (events.length > 0) {
+          addCashEvents(events);
+          toast.success(t.cashImportSuccess(events.length));
+          if (coverageStart && coverageEnd) {
+            toast.message(t.cashCoverage(coverageStart, coverageEnd));
           }
           if (result.summary.unclassifiedEvents > 0) {
             toast.warning(t.unclassifiedCash(result.summary.unclassifiedEvents));

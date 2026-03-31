@@ -17,6 +17,41 @@ type ImportFileResult =
       audit: Awaited<ReturnType<typeof saveCashEventsBatch>>;
     };
 
+export type ImportFileResultDto =
+  | {
+      importKind: 'TRANSACTION';
+      result: {
+        transactions: Array<Omit<Awaited<ReturnType<typeof parseImportFile>>['transactions'][number], 'date'> & { date: string }>;
+        warnings: Awaited<ReturnType<typeof parseImportFile>>['warnings'];
+        summary: Awaited<ReturnType<typeof parseImportFile>>['summary'];
+      };
+      audit: {
+        batchId: string;
+        status: Awaited<ReturnType<typeof saveTransactionsBatch>>['status'];
+        importedAt: string;
+      };
+    }
+  | {
+      importKind: 'CASH_LEDGER';
+      result: {
+        events: Array<
+          Omit<Awaited<ReturnType<typeof parseImportCashFile>>['events'][number], 'date' | 'referenceTradeDate'> & {
+            date: string;
+            referenceTradeDate?: string;
+          }
+        >;
+        summary: Omit<Awaited<ReturnType<typeof parseImportCashFile>>['summary'], 'coverageStart' | 'coverageEnd'> & {
+          coverageStart?: string;
+          coverageEnd?: string;
+        };
+      };
+      audit: {
+        batchId: string;
+        status: Awaited<ReturnType<typeof saveCashEventsBatch>>['status'];
+        importedAt: string;
+      };
+    };
+
 function isMissingHeaderError(error: unknown) {
   return error instanceof Error && error.message.toLowerCase().includes('khong tim thay header'.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
 }
@@ -98,4 +133,46 @@ export async function importPortfolioFormData(formData: FormData): Promise<Impor
   }
 
   return importPortfolioFileInternal(file, fileChecksum);
+}
+
+export async function importPortfolioFormDataDto(formData: FormData): Promise<ImportFileResultDto> {
+  const payload = await importPortfolioFormData(formData);
+
+  if (payload.importKind === 'TRANSACTION') {
+    return {
+      importKind: 'TRANSACTION',
+      result: {
+        transactions: payload.result.transactions.map((tx) => ({
+          ...tx,
+          date: new Date(tx.date).toISOString(),
+        })),
+        warnings: payload.result.warnings,
+        summary: payload.result.summary,
+      },
+      audit: {
+        ...payload.audit,
+        importedAt: payload.audit.importedAt.toISOString(),
+      },
+    };
+  }
+
+  return {
+    importKind: 'CASH_LEDGER',
+    result: {
+      events: payload.result.events.map((evt) => ({
+        ...evt,
+        date: new Date(evt.date).toISOString(),
+        referenceTradeDate: evt.referenceTradeDate ? new Date(evt.referenceTradeDate).toISOString() : undefined,
+      })),
+      summary: {
+        ...payload.result.summary,
+        coverageStart: payload.result.summary.coverageStart ? new Date(payload.result.summary.coverageStart).toISOString() : undefined,
+        coverageEnd: payload.result.summary.coverageEnd ? new Date(payload.result.summary.coverageEnd).toISOString() : undefined,
+      },
+    },
+    audit: {
+      ...payload.audit,
+      importedAt: payload.audit.importedAt.toISOString(),
+    },
+  };
 }
