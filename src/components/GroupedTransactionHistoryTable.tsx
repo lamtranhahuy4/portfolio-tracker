@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { History } from 'lucide-react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { groupTransactionsByDay } from '@/lib/portfolioMetrics';
+import { groupTransactionsByDay } from '@/domain/portfolio/portfolioMetrics';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 
 const GROUPS_PER_PAGE = 10;

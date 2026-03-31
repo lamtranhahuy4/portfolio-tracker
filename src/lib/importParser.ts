@@ -11,6 +11,7 @@ import {
   NormalizedTransaction,
   TransactionType,
 } from '@/types/portfolio';
+import { toMoney, toPrice, toQuantity } from '../domain/portfolio/primitives';
 
 function normalizeText(value: unknown) {
   return String(value ?? '')
@@ -104,11 +105,11 @@ function buildTransaction(input: {
     assetClass,
     ticker: toTicker(input.ticker, assetClass),
     type: input.type,
-    quantity,
-    price,
-    fee,
-    tax,
-    totalValue: totalValue.toNumber(),
+    quantity: toQuantity(quantity),
+    price: toPrice(price),
+    fee: toMoney(fee),
+    tax: toMoney(tax),
+    totalValue: toMoney(totalValue.toNumber()),
     notes: input.notes,
     source: input.source,
   };
@@ -370,11 +371,11 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
     });
 
     if (!Number.isNaN(grossValue) && grossValue > 0) {
-      normalized.totalValue = (
+      normalized.totalValue = toMoney((
         type === 'SELL'
           ? new Decimal(grossValue).minus(fee).minus(tax)
           : new Decimal(grossValue).plus(fee).plus(tax)
-      ).toNumber();
+      ).toNumber());
     }
 
     transactions.push(normalized);
@@ -561,13 +562,13 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
       id: crypto.randomUUID(),
       date: parsedDate,
       direction,
-      amount,
-      balanceAfter: Number.isNaN(rawBalance) ? 0 : rawBalance,
+      amount: toMoney(amount),
+      balanceAfter: toMoney(Number.isNaN(rawBalance) ? 0 : rawBalance),
       eventType,
       description: descText,
       source: 'dnse-cash-xlsx',
       referenceTicker,
-      referenceQuantity,
+      referenceQuantity: referenceQuantity !== undefined ? toQuantity(referenceQuantity) : undefined,
       referenceTradeDate: extractReferenceTradeMetadata(descText).referenceTradeDate,
     });
   }

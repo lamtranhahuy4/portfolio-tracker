@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { CashImportSummaryState, CashLedgerEvent, Holding, PortfolioMetrics, Transaction } from '@/types/portfolio';
-import { calculatePortfolioMetrics } from '@/lib/portfolioMetrics';
+import { calculatePortfolioMetrics } from '@/domain/portfolio/portfolioMetrics';
 import { ImportBatchStatus } from '@/types/importAudit';
 
 type TradeImportState = import('@/types/portfolio').ImportParseResult & {

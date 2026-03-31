@@ -1,3 +1,5 @@
+import { Money, Quantity, Price } from '../domain/portfolio/primitives';
+
 /**
  * Lớp tài sản cơ bản trong hệ thống
  */
@@ -31,14 +33,14 @@ export interface Transaction {
   /** Loại giao dịch (Mua, Bán, Nạp, Rút...) */
   type: TransactionType;
   /** Khối lượng thẻ/cổ phiếu/tiền trong giao dịch */
-  quantity: number;
+  quantity: Quantity;
   /** Giá trị trên một đơn vị khối lượng */
-  price: number;
+  price: Price;
   /** Phí giao dịch (thuế, phí sàn...) */
-  fee: number;
-  tax: number;
+  fee: Money;
+  tax: Money;
   /** Tổng giá trị của giao dịch = (quantity * price) + fee (đối với mua) hoặc - fee (đối với bán) */
-  totalValue: number;
+  totalValue: Money;
   /** Ghi chú người dùng tự nhập (không bắt buộc) */
   notes?: string;
   source?: string;
@@ -80,46 +82,46 @@ export interface Holding {
   /** Mã tài sản */
   ticker: string;
   /** Tổng số lượng đang nắm giữ (đã trừ đi số lượng bán) */
-  totalShares: number;
+  totalShares: Quantity;
   /** Giá vốn ròng trên mỗi cổ phiếu (gồm phí + thuế) */
-  netAverageCost: number;
+  netAverageCost: Price;
   /** Giá mua trung bình (chỉ tiền mua khớp lệnh) */
-  grossAveragePrice: number;
+  grossAveragePrice: Price;
   /** Giá thị trường hiện tại (lấy từ API hoặc tự cập nhật) */
-  currentPrice: number;
+  currentPrice: Price;
   /** Tổng giá trị thị trường = totalShares * currentPrice */
-  marketValue: number;
+  marketValue: Money;
   /** Lợi nhuận đã chốt (từ các lệnh SELL) */
-  averageCostRealizedPnL: number;
-  fifoRealizedPnL: number;
+  averageCostRealizedPnL: Money;
+  fifoRealizedPnL: Money;
   /** Lợi nhuận chưa chốt = marketValue - netCostBasis */
-  unrealizedPnL: number;
+  unrealizedPnL: Money;
   unrealizedPnLPercent: number;
 }
 
 export interface NavPoint {
   date: string;
-  netAssetValue: number;
-  cashValue: number;
+  netAssetValue: Money;
+  cashValue: Money;
   cashValueSource?: 'derived' | 'ledger';
-  investedMarketValue: number;
-  netContributions: number;
+  investedMarketValue: Money;
+  netContributions: Money;
   reconciled?: boolean;
 }
 
 export interface PortfolioMetrics {
   holdings: Holding[];
-  totalMarketValue: number;
-  currentCostBasis: number;
-  averageCostRealizedPnL: number;
-  fifoRealizedPnL: number;
-  totalUnrealizedPnL: number;
-  netContributions: number;
+  totalMarketValue: Money;
+  currentCostBasis: Money;
+  averageCostRealizedPnL: Money;
+  fifoRealizedPnL: Money;
+  totalUnrealizedPnL: Money;
+  netContributions: Money;
   returnVsCostBasis: number;
   navSeries: NavPoint[];
   calculationWarnings: string[];
   cashBalanceSource?: 'derived' | 'ledger';
-  cashBalanceEOD?: number;
+  cashBalanceEOD?: Money;
   cashLedgerCoverageStart?: string;
   cashLedgerCoverageEnd?: string;
 }
@@ -129,7 +131,7 @@ export interface GroupedTransactionsByDay {
   displayDate: string;
   items: Transaction[];
   count: number;
-  dayGrossValue: number;
+  dayGrossValue: Money;
 }
 
 export type CashLedgerEventType =
@@ -154,13 +156,13 @@ export interface CashLedgerEvent {
   userId?: string;
   date: Date;
   direction: 'INFLOW' | 'OUTFLOW';
-  amount: number;
-  balanceAfter: number;
+  amount: Money;
+  balanceAfter: Money;
   eventType: CashLedgerEventType;
   description: string;
   source: string;
   referenceTicker?: string;
-  referenceQuantity?: number;
+  referenceQuantity?: Quantity;
   referenceTradeDate?: Date;
 }
 

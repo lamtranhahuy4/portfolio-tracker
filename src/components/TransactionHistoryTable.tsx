@@ -25,8 +25,8 @@ export default function TransactionHistoryTable() {
     const sortableItems = [...transactions];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
+        let aValue: any = a[sortConfig.key];
+        let bValue: any = b[sortConfig.key];
 
         // Ép kiểu Date sang int để sort chính xác
         if (sortConfig.key === 'date') {

@@ -9,6 +9,7 @@ import { cashLedgerEvents } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
 import { CashLedgerEvent } from '@/types/portfolio';
 import { ImportBatchInput } from '@/types/importAudit';
+import { toMoney, toQuantity } from '@/domain/portfolio/primitives';
 
 function toLegacyImportInput(data: CashLedgerEvent[]): ImportBatchInput {
   return {
@@ -71,13 +72,13 @@ export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
       batchId: record.batchId ?? undefined,
       date: new Date(record.date),
       direction: record.direction as 'INFLOW' | 'OUTFLOW',
-      amount: new Decimal(record.amount).toNumber(),
-      balanceAfter: new Decimal(record.balanceAfter).toNumber(),
+      amount: toMoney(record.amount),
+      balanceAfter: toMoney(record.balanceAfter),
       eventType: record.eventType as any,
       description: record.description,
       source: record.source,
       referenceTicker: record.referenceTicker ?? undefined,
-      referenceQuantity: record.referenceQuantity ? new Decimal(record.referenceQuantity).toNumber() : undefined,
+      referenceQuantity: record.referenceQuantity ? toQuantity(record.referenceQuantity) : undefined,
       referenceTradeDate: record.referenceTradeDate ? new Date(record.referenceTradeDate) : undefined,
     }));
   } catch (error) {
