@@ -405,30 +405,72 @@ export async function parseImportFile(file: File): Promise<ImportParseResult> {
 }
 
 function findDnseCashHeader(rows: string[][]) {
-  for (let i = 0; i < Math.min(20, rows.length - 1); i += 1) {
+  const maxScanRows = Math.min(50, rows.length);
+
+  const includesAny = (cells: string[], aliases: string[]) =>
+    aliases.some((alias) => cells.some((cell) => cell.includes(alias)));
+
+  const findIndex = (cells: string[], aliases: string[]) =>
+    cells.findIndex((cell) => aliases.some((alias) => cell.includes(alias)));
+
+  const resolveHeader = (top: string[], bottom?: string[]) => {
+    const merged = top.map((cell, index) => [cell, bottom?.[index] ?? ''].filter(Boolean).join(' ').trim());
+    const allCandidates = [...top, ...merged];
+
+    const dateAliases = ['ngay gd', 'ngay giao dich', 'ngay'];
+    const descAliases = ['mo ta', 'dien giai', 'noi dung', 'dien giai giao dich'];
+    const inflowAliases = ['tang', 'ps tang', 'phat sinh tang', 'ghi co', 'thu'];
+    const outflowAliases = ['giam', 'ps giam', 'phat sinh giam', 'ghi no', 'chi'];
+    const balanceAliases = ['so du', 'so du cuoi', 'so du tien', 'du cuoi'];
+
+    const date = findIndex(allCandidates, dateAliases);
+    const desc = findIndex(allCandidates, descAliases);
+    const inflow = findIndex(allCandidates, inflowAliases);
+    const outflow = findIndex(allCandidates, outflowAliases);
+    const balance = findIndex(allCandidates, balanceAliases);
+
+    if (date === -1 || desc === -1 || inflow === -1 || outflow === -1) {
+      return null;
+    }
+
+    return {
+      date,
+      desc,
+      inflow,
+      outflow,
+      balance,
+    };
+  };
+
+  for (let i = 0; i < maxScanRows; i += 1) {
     const top = (rows[i] || []).map((c) => normalizeText(c));
     const bottom = (rows[i + 1] || []).map((c) => normalizeText(c));
-    const topStr = top.join(' ');
+    const topLikeCash = includesAny(top, ['ngay', 'mo ta', 'dien giai', 'noi dung', 'phat sinh', 'so du']);
+    const bottomLikeCash = includesAny(bottom, ['tang', 'giam', 'ps tang', 'ps giam', 'phat sinh tang', 'phat sinh giam']);
 
-    const hasTopHeader = topStr.includes('ngay gd')
-      && topStr.includes('phat sinh')
-      && topStr.includes('so du')
-      && topStr.includes('mo ta');
-    const hasBottomHeader = bottom.includes('tang') && bottom.includes('giam');
+    if (!topLikeCash && !bottomLikeCash) {
+      continue;
+    }
 
-    if (hasTopHeader && hasBottomHeader) {
+    const twoRowColumns = resolveHeader(top, bottom);
+    if (twoRowColumns) {
       return {
         headerRow: i,
-        columns: {
-          date: top.indexOf('ngay gd'),
-          inflow: bottom.indexOf('tang'),
-          outflow: bottom.indexOf('giam'),
-          balance: top.indexOf('so du'),
-          desc: top.indexOf('mo ta'),
-        },
+        dataStartRow: i + 2,
+        columns: twoRowColumns,
+      };
+    }
+
+    const oneRowColumns = resolveHeader(top);
+    if (oneRowColumns) {
+      return {
+        headerRow: i,
+        dataStartRow: i + 1,
+        columns: oneRowColumns,
       };
     }
   }
+
   return null;
 }
 
@@ -462,16 +504,16 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
   }
 
   const events: CashLedgerEvent[] = [];
-  const { columns, headerRow } = header;
+  const { columns, dataStartRow } = header;
   const firstDatedEvent = rows
-    .slice(headerRow + 2)
+    .slice(dataStartRow)
     .map((row) => parseViDate(row?.[columns.date]))
     .find((value): value is Date => Boolean(value));
   
   let totalEvents = 0;
   let unclassifiedEvents = 0;
 
-  for (let i = headerRow + 2; i < rows.length; i += 1) {
+  for (let i = dataStartRow; i < rows.length; i += 1) {
     const row = rows[i];
     if (!row || row.every((cell) => normalizeText(cell) === '')) continue;
     

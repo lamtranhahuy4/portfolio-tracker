@@ -66,6 +66,40 @@ export default function CsvUploaderWithAudit({ language }: { language: Dashboard
     }
   };
 
+  const handleCashFile = async (file: File, fileChecksum: string) => {
+    const result = await parseImportCashFile(file);
+    const importInput: ImportBatchInput = {
+      fileName: file.name,
+      fileChecksum,
+      source: result.summary.source,
+      importKind: 'CASH_LEDGER',
+      totalRows: result.summary.totalEvents,
+      acceptedRows: result.events.length,
+      rejectedRows: 0,
+    };
+    const audit = await saveCashEventsBatch(result.events, importInput);
+
+    setLastCashImportSummary({
+      ...result.summary,
+      batchId: audit.batchId,
+      status: audit.status,
+      importedAt: audit.importedAt,
+    });
+
+    if (result.events.length > 0) {
+      addCashEvents(result.events);
+      toast.success(t.cashImportSuccess(result.events.length));
+      if (result.summary.coverageStart && result.summary.coverageEnd) {
+        toast.message(t.cashCoverage(result.summary.coverageStart, result.summary.coverageEnd));
+      }
+      if (result.summary.unclassifiedEvents > 0) {
+        toast.warning(t.unclassifiedCash(result.summary.unclassifiedEvents));
+      }
+    } else {
+      toast.warning(t.invalidCashFile);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -78,37 +112,7 @@ export default function CsvUploaderWithAudit({ language }: { language: Dashboard
 
       if (isLikelyCashReport) {
         try {
-          const result = await parseImportCashFile(file);
-          const importInput: ImportBatchInput = {
-            fileName: file.name,
-            fileChecksum,
-            source: result.summary.source,
-            importKind: 'CASH_LEDGER',
-            totalRows: result.summary.totalEvents,
-            acceptedRows: result.events.length,
-            rejectedRows: 0,
-          };
-          const audit = await saveCashEventsBatch(result.events, importInput);
-
-          setLastCashImportSummary({
-            ...result.summary,
-            batchId: audit.batchId,
-            status: audit.status,
-            importedAt: audit.importedAt,
-          });
-
-          if (result.events.length > 0) {
-            addCashEvents(result.events);
-            toast.success(t.cashImportSuccess(result.events.length));
-            if (result.summary.coverageStart && result.summary.coverageEnd) {
-              toast.message(t.cashCoverage(result.summary.coverageStart, result.summary.coverageEnd));
-            }
-            if (result.summary.unclassifiedEvents > 0) {
-              toast.warning(t.unclassifiedCash(result.summary.unclassifiedEvents));
-            }
-          } else {
-            toast.warning(t.invalidCashFile);
-          }
+          await handleCashFile(file, fileChecksum);
         } catch (err: any) {
           if (err.message?.includes(t.missingHeader)) {
             await handleTradeFile(file, fileChecksum);
@@ -117,7 +121,16 @@ export default function CsvUploaderWithAudit({ language }: { language: Dashboard
           }
         }
       } else {
-        await handleTradeFile(file, fileChecksum);
+        try {
+          await handleTradeFile(file, fileChecksum);
+        } catch (err: any) {
+          const isExcelFile = fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls');
+          if (isExcelFile && err.message?.includes(t.missingHeader)) {
+            await handleCashFile(file, fileChecksum);
+            return;
+          }
+          throw err;
+        }
       }
     } catch (error) {
       toast.error(t.parseError + (error as Error).message);
