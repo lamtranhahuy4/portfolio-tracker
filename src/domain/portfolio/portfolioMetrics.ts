@@ -226,6 +226,9 @@ function buildHoldingsFromState(
   for (const [ticker, holding] of state.holdingsMap.entries()) {
     const fallbackPrice = priceOverrides?.get(ticker) ?? state.lastKnownPrices.get(ticker);
     const costPrice = holding.totalShares.gt(0) ? holding.grossBuyValueRemaining.plus(holding.allocatedBuyFeesRemaining).plus(holding.allocatedBuyTaxRemaining).div(holding.totalShares) : DECIMAL_ZERO;
+    const valuedShares = ticker === 'CASH_VND'
+      ? holding.totalShares
+      : decimalMax(holding.totalShares, DECIMAL_ZERO);
     
     let currentPriceDec = DECIMAL_ONE;
     
@@ -239,8 +242,9 @@ function buildHoldingsFromState(
       }
     }
       
-    // If selling short (negative shares), market value is negative
-    const marketValue = holding.totalShares.times(currentPriceDec);
+    // Partial broker exports can create synthetic negative holdings from missing opening positions.
+    // Keep the share count for diagnostics, but exclude negative lots from valuation.
+    const marketValue = valuedShares.times(currentPriceDec);
     const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining.plus(holding.allocatedBuyFeesRemaining).plus(holding.allocatedBuyTaxRemaining);
     const unrealizedPnL = ticker === 'CASH_VND' ? DECIMAL_ZERO : marketValue.minus(netCostBasis);
 

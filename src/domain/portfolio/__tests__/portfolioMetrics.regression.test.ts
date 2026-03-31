@@ -202,6 +202,7 @@ describe('portfolioMetrics regression coverage', () => {
     
     expect(holding?.totalShares).toBe(-50); // Negative shares allowed
     expect(metrics.calculationWarnings.some(w => w.includes('Oversell'))).toBe(true);
+    expect(holding?.marketValue).toBe(0);
   });
 
   it('detects ledger drift and generates reconciliation warnings', () => {
