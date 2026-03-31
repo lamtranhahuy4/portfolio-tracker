@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
-import { importPortfolioFile } from '@/actions/importFile';
+import { importPortfolioFormData } from '@/actions/importFile';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -16,7 +16,7 @@ async function computeFileChecksum(file: File) {
     .join('');
 }
 
-export default function CsvUploaderWithAudit({ language }: { language: DashboardLanguage }) {
+export default function CsvUploaderServerImport({ language }: { language: DashboardLanguage }) {
   const t = i18n[language].csvUploader;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -24,8 +24,6 @@ export default function CsvUploaderWithAudit({ language }: { language: Dashboard
   const addCashEvents = usePortfolioStore((state) => state.addCashEvents);
   const setLastImportResult = usePortfolioStore((state) => state.setLastImportResult);
   const setLastCashImportSummary = usePortfolioStore((state) => state.setLastCashImportSummary);
-  const handleTradeFile = async (_file: File, _fileChecksum: string) => {};
-  const handleCashFile = async (_file: File, _fileChecksum: string) => {};
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,29 +32,56 @@ export default function CsvUploaderWithAudit({ language }: { language: Dashboard
     setIsUploading(true);
     try {
       const fileChecksum = await computeFileChecksum(file);
-      const fileNameLower = file.name.toLowerCase();
-      const isLikelyCashReport = fileNameLower.includes('tiá»n') || fileNameLower.includes('tien') || fileNameLower.includes('cash');
+      const formData = new FormData();
+      formData.set('file', file);
+      formData.set('fileChecksum', fileChecksum);
 
-      if (isLikelyCashReport) {
-        try {
-          await handleCashFile(file, fileChecksum);
-        } catch (err: any) {
-          if (err.message?.includes(t.missingHeader)) {
-            await handleTradeFile(file, fileChecksum);
-          } else {
-            throw err;
+      const payload = await importPortfolioFormData(formData);
+
+      if (payload.importKind === 'TRANSACTION') {
+        const { result, audit } = payload;
+        setLastImportResult({
+          ...result,
+          summary: {
+            ...result.summary,
+            batchId: audit.batchId,
+            status: audit.status,
+            importedAt: audit.importedAt,
+          },
+          importedAt: audit.importedAt,
+        });
+
+        if (result.transactions.length > 0) {
+          addTransactions(result.transactions);
+          toast.success(t.tradeImportSuccess(result.transactions.length));
+          if (result.warnings.length > 0) {
+            toast.warning(t.skippedRows(result.warnings.length));
           }
+        } else if (result.warnings.length > 0) {
+          toast.warning(result.warnings[0].message);
+        } else {
+          toast.warning(t.invalidFile);
         }
       } else {
-        try {
-          await handleTradeFile(file, fileChecksum);
-        } catch (err: any) {
-          const isExcelFile = fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls');
-          if (isExcelFile && err.message?.includes(t.missingHeader)) {
-            await handleCashFile(file, fileChecksum);
-            return;
+        const { result, audit } = payload;
+        setLastCashImportSummary({
+          ...result.summary,
+          batchId: audit.batchId,
+          status: audit.status,
+          importedAt: audit.importedAt,
+        });
+
+        if (result.events.length > 0) {
+          addCashEvents(result.events);
+          toast.success(t.cashImportSuccess(result.events.length));
+          if (result.summary.coverageStart && result.summary.coverageEnd) {
+            toast.message(t.cashCoverage(result.summary.coverageStart, result.summary.coverageEnd));
           }
-          throw err;
+          if (result.summary.unclassifiedEvents > 0) {
+            toast.warning(t.unclassifiedCash(result.summary.unclassifiedEvents));
+          }
+        } else {
+          toast.warning(t.invalidCashFile);
         }
       }
     } catch (error) {

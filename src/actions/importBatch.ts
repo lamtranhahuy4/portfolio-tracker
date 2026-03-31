@@ -19,6 +19,23 @@ async function assertNoActiveDuplicateBatch(userId: string, input: ImportBatchIn
   )).limit(1);
 
   if (existingBatch) {
+    const hasChildRows = input.importKind === 'TRANSACTION'
+      ? await db.query.transactions.findFirst({
+          where: eq(transactions.batchId, existingBatch.id),
+          columns: { id: true },
+        })
+      : await db.query.cashLedgerEvents.findFirst({
+          where: eq(cashLedgerEvents.batchId, existingBatch.id),
+          columns: { id: true },
+        });
+
+    if (!hasChildRows) {
+      await db.delete(importBatches).where(and(
+        eq(importBatches.id, existingBatch.id),
+        eq(importBatches.userId, userId)
+      ));
+      return;
+    }
     throw new Error('File này đã được import trước đó và chưa rollback.');
   }
 }

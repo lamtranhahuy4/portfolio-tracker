@@ -1,11 +1,11 @@
 'use server';
 
 import Decimal from 'decimal.js';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { createImportBatch } from '@/actions/importBatch';
 import { db } from '@/db/index';
-import { transactions } from '@/db/schema';
+import { importBatches, transactions } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
 import { NormalizedTransaction } from '@/types/portfolio';
 import { ImportBatchInput } from '@/types/importAudit';
@@ -25,29 +25,36 @@ function toLegacyImportInput(data: NormalizedTransaction[]): ImportBatchInput {
 export async function saveTransactionsBatch(data: NormalizedTransaction[], importInput?: ImportBatchInput) {
   const user = await requireUser();
   const batch = await createImportBatch(importInput ?? toLegacyImportInput(data));
+  try {
+    const mappedData = data.map((tx) => ({
+      id: tx.id,
+      userId: user.id,
+      batchId: batch.batchId,
+      assetClass: tx.assetClass,
+      asset: tx.ticker,
+      type: tx.type,
+      amount: tx.quantity.toString(),
+      price: tx.price.toString(),
+      fee: tx.fee.toString(),
+      tax: tx.tax.toString(),
+      notes: tx.notes ?? null,
+      source: tx.source ?? null,
+      date: new Date(tx.date),
+    }));
 
-  const mappedData = data.map((tx) => ({
-    id: tx.id,
-    userId: user.id,
-    batchId: batch.batchId,
-    assetClass: tx.assetClass,
-    asset: tx.ticker,
-    type: tx.type,
-    amount: tx.quantity.toString(),
-    price: tx.price.toString(),
-    fee: tx.fee.toString(),
-    tax: tx.tax.toString(),
-    notes: tx.notes ?? null,
-    source: tx.source ?? null,
-    date: new Date(tx.date),
-  }));
+    if (mappedData.length > 0) {
+      await db.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
+    }
+    revalidatePath('/');
 
-  if (mappedData.length > 0) {
-    await db.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
+    return batch;
+  } catch (error) {
+    await db.delete(importBatches).where(and(
+      eq(importBatches.id, batch.batchId),
+      eq(importBatches.userId, user.id)
+    ));
+    throw error;
   }
-  revalidatePath('/');
-
-  return batch;
 }
 
 export async function fetchTransactions() {
