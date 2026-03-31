@@ -410,12 +410,16 @@ function findDnseCashHeader(rows: string[][]) {
   const includesAny = (cells: string[], aliases: string[]) =>
     aliases.some((alias) => cells.some((cell) => cell.includes(alias)));
 
-  const findIndex = (cells: string[], aliases: string[]) =>
-    cells.findIndex((cell) => aliases.some((alias) => cell.includes(alias)));
+  const findIndex = (cells: Array<{ index: number; text: string }>, aliases: string[]) =>
+    cells.find((cell) => aliases.some((alias) => cell.text.includes(alias)))?.index ?? -1;
 
   const resolveHeader = (top: string[], bottom?: string[]) => {
-    const merged = top.map((cell, index) => [cell, bottom?.[index] ?? ''].filter(Boolean).join(' ').trim());
-    const allCandidates = [...top, ...merged];
+    const merged = top.map((cell, index) => ({
+      index,
+      text: [cell, bottom?.[index] ?? ''].filter(Boolean).join(' ').trim(),
+    }));
+    const topCandidates = top.map((text, index) => ({ index, text }));
+    const allCandidates = [...topCandidates, ...merged];
 
     const dateAliases = ['ngay gd', 'ngay giao dich', 'ngay'];
     const descAliases = ['mo ta', 'dien giai', 'noi dung', 'dien giai giao dich'];
