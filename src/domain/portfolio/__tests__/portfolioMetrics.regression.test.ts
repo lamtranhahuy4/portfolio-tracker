@@ -228,4 +228,41 @@ describe('portfolioMetrics regression coverage', () => {
     expect(metrics.cashBalanceEOD).toBe(500);
     expect(metrics.calculationWarnings.some(w => w.includes('[Reconciliation]'))).toBe(true);
   });
+
+  it('breaks down NAV and excludes cash from current cost basis', () => {
+    const transactions = [
+      {
+        id: 'd1',
+        date: new Date('2024-06-01T00:00:00.000Z'),
+        type: 'DEPOSIT',
+        assetClass: 'CASH',
+        ticker: 'CASH_VND',
+        quantity: 2000,
+        price: 1,
+        fee: 0,
+        tax: 0,
+        totalValue: 2000,
+      },
+      {
+        id: 'b1',
+        date: new Date('2024-06-02T00:00:00.000Z'),
+        type: 'BUY',
+        assetClass: 'STOCK',
+        ticker: 'EEE',
+        quantity: 100,
+        price: 10,
+        fee: 0,
+        tax: 0,
+        totalValue: 1000,
+      },
+    ] as any;
+
+    const metrics = calculatePortfolioMetrics(transactions, { EEE: 12 }, [], null, null, 50);
+
+    expect(metrics.currentCostBasis).toBe(1000);
+    expect(metrics.reconciliation.cashBalance).toBe(1000);
+    expect(metrics.reconciliation.stockMarketValue).toBe(1200);
+    expect(metrics.reconciliation.grossNavBeforeDebt).toBe(2200);
+    expect(metrics.reconciliation.netNav).toBe(2150);
+  });
 });

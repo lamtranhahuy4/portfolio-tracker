@@ -109,6 +109,32 @@ export interface NavPoint {
   reconciled?: boolean;
 }
 
+export interface ReconciliationInsight {
+  code: string;
+  level: 'info' | 'warning';
+  message: string;
+}
+
+export interface ReconciliationBreakdown {
+  cashBalance: Money;
+  stockMarketValue: Money;
+  grossNavBeforeDebt: Money;
+  feeDebt: Money;
+  netNav: Money;
+  currentCostBasis: Money;
+  totalUnrealizedPnL: Money;
+  averageCostRealizedPnL: Money;
+  fifoRealizedPnL: Money;
+  positiveStockCount: number;
+  negativeStockCount: number;
+  openingPositionCount: number;
+  livePriceCoverageCount: number;
+  fallbackPriceCount: number;
+  derivedCashBalance?: Money;
+  cashDrift?: Money;
+  insights: ReconciliationInsight[];
+}
+
 export interface PortfolioMetrics {
   holdings: Holding[];
   totalMarketValue: Money;
@@ -125,6 +151,7 @@ export interface PortfolioMetrics {
   cashBalanceEOD?: Money;
   cashLedgerCoverageStart?: string;
   cashLedgerCoverageEnd?: string;
+  reconciliation: ReconciliationBreakdown;
 }
 
 export interface OpeningPosition {

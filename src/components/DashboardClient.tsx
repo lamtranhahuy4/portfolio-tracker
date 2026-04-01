@@ -9,6 +9,7 @@ import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHisto
 import HeroBanner from '@/components/HeroBanner';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
 import OpeningPositionCard from '@/components/OpeningPositionCard';
+import ReconciliationPanel from '@/components/ReconciliationPanel';
 import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
@@ -224,6 +225,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
             <NetWorthChart series={metrics.navSeries} language={language} />
+            <ReconciliationPanel language={language} />
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>

@@ -1,6 +1,6 @@
 import Decimal from 'decimal.js';
 import { DECIMAL_ONE, DECIMAL_ZERO, decimalMax, decimalMin, decimalSum, decimalToNumber, toDecimal, DecimalInput } from './decimal';
-import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, OpeningPositionSnapshot, PortfolioMetrics, Transaction } from '@/types/portfolio';
+import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, OpeningPositionSnapshot, PortfolioMetrics, ReconciliationInsight, Transaction } from '@/types/portfolio';
 import { toMoney, toQuantity, toPrice } from './primitives';
 
 type HoldingState = {
@@ -496,6 +496,11 @@ export function calculatePortfolioMetrics(
   }
 
   const totalMarketValueDec = decimalSum(holdings.map((holding) => holding.marketValue));
+  const cashBalanceDec = toDecimal(holdings.find((holding) => holding.ticker === 'CASH_VND')?.marketValue ?? 0);
+  const stockHoldings = holdings.filter((holding) => holding.ticker !== 'CASH_VND');
+  const positiveStockHoldings = stockHoldings.filter((holding) => holding.totalShares > 0);
+  const negativeStockHoldings = stockHoldings.filter((holding) => holding.totalShares < 0);
+  const stockMarketValueDec = decimalSum(stockHoldings.map((holding) => holding.marketValue));
   const currentCostBasisDec = decimalSum(holdings.map((holding) => (
     holding.ticker === 'CASH_VND'
       ? DECIMAL_ZERO
@@ -507,10 +512,62 @@ export function calculatePortfolioMetrics(
   const netPnLDec = totalUnrealizedPnLDec.plus(averageCostRealizedPnLDec);
   const activeNetContributionsDec = ledgerMode ? finalNetContributionsLedger : state.netContributions;
   const feeDebtDec = decimalMax(toDecimal(feeDebtInput ?? 0), DECIMAL_ZERO);
+  const netNavDec = totalMarketValueDec.minus(feeDebtDec);
+  const finalDerivedCashDec = state.holdingsMap.get('CASH_VND')?.totalShares ?? DECIMAL_ZERO;
+  const cashDriftDec = ledgerMode ? finalLedgerBalance.minus(finalDerivedCashDec).abs() : DECIMAL_ZERO;
+  const livePriceCoverageCount = positiveStockHoldings.filter((holding) => currentPrices[holding.ticker] !== undefined).length;
+  const fallbackPriceCount = positiveStockHoldings.length - livePriceCoverageCount;
+  const reconciliationInsights: ReconciliationInsight[] = [];
+
+  if (negativeStockHoldings.length > 0) {
+    reconciliationInsights.push({
+      code: 'negative-holdings',
+      level: 'warning',
+      message: `Detected ${negativeStockHoldings.length} negative holding(s). Missing opening positions before the cut-off date will distort cost basis and realized P&L.`,
+    });
+  }
+
+  if (ledgerMode && cashDriftDec.gt(100)) {
+    reconciliationInsights.push({
+      code: 'cash-drift',
+      level: 'warning',
+      message: `Cash ledger and replayed trade cash differ by ${decimalToNumber(cashDriftDec).toLocaleString('vi-VN')} VND. Review uncaptured cash events or trade coverage gaps.`,
+    });
+  }
+
+  if (feeDebtDec.gt(0)) {
+    reconciliationInsights.push({
+      code: 'fee-debt',
+      level: 'info',
+      message: `NAV is currently reduced by manual fee debt of ${decimalToNumber(feeDebtDec).toLocaleString('vi-VN')} VND.`,
+    });
+  }
+
+  if (fallbackPriceCount > 0) {
+    reconciliationInsights.push({
+      code: 'fallback-prices',
+      level: 'warning',
+      message: `${fallbackPriceCount} holding(s) are still valued from fallback prices instead of the live quote feed.`,
+    });
+  } else if (positiveStockHoldings.length > 0) {
+    reconciliationInsights.push({
+      code: 'live-prices',
+      level: 'info',
+      message: `All ${positiveStockHoldings.length} active stock holding(s) are using live quote overrides from the client feed.`,
+    });
+  }
+
+  if ((openingSnapshot?.positions.length ?? 0) > 0) {
+    reconciliationInsights.push({
+      code: 'opening-snapshot',
+      level: 'info',
+      message: `Opening snapshot is active with ${(openingSnapshot?.positions.length ?? 0).toLocaleString('vi-VN')} position(s) from the selected cut-off date.`,
+    });
+  }
 
   // Final reconciliation check
   if (ledgerMode) {
-     const finalDerivedCash = decimalToNumber(state.holdingsMap.get('CASH_VND')?.totalShares ?? DECIMAL_ZERO);
+     const finalDerivedCash = decimalToNumber(finalDerivedCashDec);
      if (Math.abs(decimalToNumber(finalLedgerBalance) - finalDerivedCash) > 100) {
        state.calculationWarnings.push(`[Reconciliation] Final cash drift: Ledger(${decimalToNumber(finalLedgerBalance)}) vs Derived(${finalDerivedCash})`);
      }
@@ -532,6 +589,25 @@ export function calculatePortfolioMetrics(
     cashBalanceEOD: ledgerMode ? toMoney(finalLedgerBalance) : undefined,
     cashLedgerCoverageStart: ledgerMode && sortedCashEvents.length > 0 ? sortedCashEvents[0].date.toISOString() : undefined,
     cashLedgerCoverageEnd: ledgerMode && sortedCashEvents.length > 0 ? sortedCashEvents[sortedCashEvents.length - 1].date.toISOString() : undefined,
+    reconciliation: {
+      cashBalance: toMoney(cashBalanceDec),
+      stockMarketValue: toMoney(stockMarketValueDec),
+      grossNavBeforeDebt: toMoney(totalMarketValueDec),
+      feeDebt: toMoney(feeDebtDec),
+      netNav: toMoney(netNavDec),
+      currentCostBasis: toMoney(currentCostBasisDec),
+      totalUnrealizedPnL: toMoney(totalUnrealizedPnLDec),
+      averageCostRealizedPnL: toMoney(averageCostRealizedPnLDec),
+      fifoRealizedPnL: toMoney(fifoRealizedPnLDec),
+      positiveStockCount: positiveStockHoldings.length,
+      negativeStockCount: negativeStockHoldings.length,
+      openingPositionCount: openingSnapshot?.positions.length ?? 0,
+      livePriceCoverageCount,
+      fallbackPriceCount,
+      derivedCashBalance: ledgerMode ? toMoney(finalDerivedCashDec) : undefined,
+      cashDrift: ledgerMode ? toMoney(cashDriftDec) : undefined,
+      insights: reconciliationInsights,
+    },
   };
 }
 
