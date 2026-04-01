@@ -35,6 +35,8 @@ interface PortfolioState {
   openingCutoffDate: Date | null;
   openingPositions: OpeningPosition[];
   setOpeningSnapshot: (cutoffDate: Date | null, positions: OpeningPosition[]) => void;
+  feeDebt: number;
+  setFeeDebt: (feeDebt: number) => void;
 }
 
 function sortTransactions(txs: Transaction[]) {
@@ -50,11 +52,13 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
   valuationDate: null,
   openingCutoffDate: null,
   openingPositions: [],
+  feeDebt: 0,
 
   setLastImportResult: (result) => set({ lastImportResult: result }),
   setLastCashImportSummary: (summary) => set({ lastCashImportSummary: summary }),
   setValuationDate: (date) => set({ valuationDate: date }),
   setOpeningSnapshot: (cutoffDate, positions) => set({ openingCutoffDate: cutoffDate, openingPositions: positions }),
+  setFeeDebt: (feeDebt) => set({ feeDebt }),
 
   setTransactions: (txs) => set({ transactions: sortTransactions(txs) }),
   
@@ -97,13 +101,15 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
   const openingCutoffDate = usePortfolioStore((state) => state.openingCutoffDate);
   const openingPositions = usePortfolioStore((state) => state.openingPositions);
+  const feeDebt = usePortfolioStore((state) => state.feeDebt);
 
   return calculatePortfolioMetrics(
     transactions,
     currentPrices,
     cashEvents,
     valuationDate,
-    { cutoffDate: openingCutoffDate, positions: openingPositions }
+    { cutoffDate: openingCutoffDate, positions: openingPositions },
+    feeDebt
   );
 };
 

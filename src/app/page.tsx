@@ -1,6 +1,7 @@
 import { fetchTransactions } from '@/actions/transaction';
 import { fetchCashEvents } from '@/actions/cashLedger';
 import { fetchOpeningPositionSnapshot } from '@/actions/openingPositions';
+import { fetchPortfolioSettings } from '@/actions/portfolioSettings';
 import AuthPanel from '@/components/AuthPanel';
 import DashboardClient from '@/components/DashboardClient';
 import StoreInitializer from '@/components/StoreInitializer';
@@ -18,10 +19,12 @@ export default async function DashboardPage() {
   let initialTransactions = [];
   let initialCashEvents = [];
   let openingPositionSnapshot = { cutoffDate: null, positions: [] };
+  let portfolioSettings = { feeDebt: 0 };
   try {
     initialTransactions = await fetchTransactions();
     initialCashEvents = await fetchCashEvents();
     openingPositionSnapshot = await fetchOpeningPositionSnapshot();
+    portfolioSettings = await fetchPortfolioSettings();
   } catch (error) {
     console.error('Failed to load portfolio data for current user.', error);
   }
@@ -33,6 +36,7 @@ export default async function DashboardPage() {
         initialCashEvents={initialCashEvents}
         initialOpeningPositions={openingPositionSnapshot.positions}
         initialOpeningCutoffDate={openingPositionSnapshot.cutoffDate}
+        initialFeeDebt={portfolioSettings.feeDebt}
       />
       <DashboardClient userEmail={user.email} />
     </>

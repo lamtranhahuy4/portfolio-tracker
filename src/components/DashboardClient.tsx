@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages } from 'lucide-react';
 import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
+import FeeDebtCard from '@/components/FeeDebtCard';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
 import HeroBanner from '@/components/HeroBanner';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
@@ -13,6 +14,7 @@ import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
+import { fetchRealtimeQuotes } from '@/actions/market';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
@@ -50,6 +52,31 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
       window.localStorage.setItem(DASHBOARD_LANGUAGE_STORAGE_KEY, language);
     }
   }, [isMounted, language]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const tickers = metrics.holdings
+      .filter((holding) => holding.assetClass === 'STOCK' && holding.totalShares > 0)
+      .map((holding) => holding.ticker);
+
+    if (tickers.length === 0) return;
+
+    let active = true;
+    const refresh = async () => {
+      const quotes = await fetchRealtimeQuotes(tickers);
+      if (!active) return;
+      Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
+    };
+
+    refresh();
+    const interval = window.setInterval(refresh, 60000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [isMounted, metrics.holdings, updatePrice]);
 
   if (!isMounted) {
     return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">{i18n.vi.dashboard.loading}</div>;
@@ -215,6 +242,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
               <CsvUploaderServerImport language={language} />
             </div>
+            <FeeDebtCard />
             <OpeningPositionCard />
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (

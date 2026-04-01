@@ -438,7 +438,8 @@ export function calculatePortfolioMetrics(
   currentPrices: Record<string, number>,
   cashEvents: CashLedgerEvent[],
   valuationDate?: Date | null,
-  openingSnapshot?: OpeningPositionSnapshot | null
+  openingSnapshot?: OpeningPositionSnapshot | null,
+  feeDebtInput?: number
 ): PortfolioMetrics {
   const cutoffTime = openingSnapshot?.cutoffDate
     ? new Date(openingSnapshot.cutoffDate).setHours(0, 0, 0, 0)
@@ -505,6 +506,7 @@ export function calculatePortfolioMetrics(
   const totalUnrealizedPnLDec = decimalSum(holdings.map((holding) => holding.unrealizedPnL));
   const netPnLDec = totalUnrealizedPnLDec.plus(averageCostRealizedPnLDec);
   const activeNetContributionsDec = ledgerMode ? finalNetContributionsLedger : state.netContributions;
+  const feeDebtDec = decimalMax(toDecimal(feeDebtInput ?? 0), DECIMAL_ZERO);
 
   // Final reconciliation check
   if (ledgerMode) {
@@ -516,7 +518,8 @@ export function calculatePortfolioMetrics(
 
   return {
     holdings,
-    totalMarketValue: toMoney(totalMarketValueDec),
+    totalMarketValue: toMoney(totalMarketValueDec.minus(feeDebtDec)),
+    feeDebt: toMoney(feeDebtDec),
     currentCostBasis: toMoney(currentCostBasisDec),
     averageCostRealizedPnL: toMoney(averageCostRealizedPnLDec),
     fifoRealizedPnL: toMoney(fifoRealizedPnLDec),

@@ -81,3 +81,12 @@ export const openingPositions = pgTable('opening_positions', {
   userAssetIdx: uniqueIndex('opening_positions_user_asset_idx').on(table.userId, table.asset),
 }));
 
+export const portfolioSettings = pgTable('portfolio_settings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  feeDebt: numeric('fee_debt').notNull().default('0'),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: uniqueIndex('portfolio_settings_user_idx').on(table.userId),
+}));
+

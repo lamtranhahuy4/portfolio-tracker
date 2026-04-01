@@ -27,6 +27,17 @@ async function fetchDNSE(symbol: string, isIndex = false) {
   }
 }
 
+export async function fetchRealtimeQuotes(symbols: string[]) {
+  noStore();
+  const uniqueSymbols = [...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))];
+  const entries = await Promise.all(uniqueSymbols.map(async (symbol) => {
+    const data = await fetchDNSE(symbol, false);
+    return [symbol, data ? data.price * 1000 : null] as const;
+  }));
+
+  return Object.fromEntries(entries.filter((entry): entry is readonly [string, number] => entry[1] !== null));
+}
+
 // Helper: Fetch CoinGecko (Quốc tế, miễn phí, KHÔNG CHẶN IP MỸ NHƯ BINANCE)
 async function fetchCoinGecko() {
   try {

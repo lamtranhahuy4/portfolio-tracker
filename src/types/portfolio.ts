@@ -112,6 +112,7 @@ export interface NavPoint {
 export interface PortfolioMetrics {
   holdings: Holding[];
   totalMarketValue: Money;
+  feeDebt: Money;
   currentCostBasis: Money;
   averageCostRealizedPnL: Money;
   fifoRealizedPnL: Money;
