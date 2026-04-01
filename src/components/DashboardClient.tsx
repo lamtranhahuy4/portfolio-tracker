@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages } from 'lucide-react';
 import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
@@ -14,7 +14,6 @@ import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
-import { fetchRealtimeQuotes } from '@/actions/market';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
@@ -46,6 +45,12 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   }, []);
 
   const t = i18n[language].dashboard;
+  const liveTickerSymbols = useMemo(() => Array.from(new Set(
+    metrics.holdings
+      .filter((holding) => holding.assetClass === 'STOCK' && holding.totalShares > 0)
+      .map((holding) => holding.ticker)
+  )).sort(), [metrics.holdings]);
+  const liveTickerQuery = liveTickerSymbols.join(',');
 
   useEffect(() => {
     if (isMounted) {
@@ -54,35 +59,36 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   }, [isMounted, language]);
 
   useEffect(() => {
-    if (!isMounted) return;
-
-    const tickers = metrics.holdings
-      .filter((holding) => holding.assetClass === 'STOCK' && holding.totalShares > 0)
-      .map((holding) => holding.ticker);
-
-    if (tickers.length === 0) return;
+    if (!isMounted || !liveTickerQuery) return;
 
     let active = true;
     const refresh = async () => {
-      const quotes = await fetchRealtimeQuotes(tickers);
-      if (!active) return;
-      Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
+      try {
+        const response = await fetch(`/api/quotes?symbols=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const quotes = await response.json() as Record<string, number>;
+        if (!active) return;
+        Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
+      } catch {
+        // Keep the last good quotes if the upstream provider is temporarily unavailable.
+      }
     };
 
     refresh();
-    const interval = window.setInterval(refresh, 60000);
+    const interval = window.setInterval(refresh, 15000);
 
     return () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [isMounted, metrics.holdings, updatePrice]);
+  }, [isMounted, liveTickerQuery, updatePrice]);
 
   if (!isMounted) {
     return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">{i18n.vi.dashboard.loading}</div>;
   }
 
   const holdings = metrics.holdings;
+  const unrealizedPnL = metrics.totalUnrealizedPnL;
   const avgPnL = metrics.totalUnrealizedPnL + metrics.averageCostRealizedPnL;
   const fifoPnL = metrics.totalUnrealizedPnL + metrics.fifoRealizedPnL;
   const isLedgerMode = metrics.cashBalanceSource === 'ledger';
@@ -192,9 +198,15 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
         <HeroBanner userEmail={userEmail} language={language} />
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard title={t.totalNav} value={formatCurrency(metrics.totalMarketValue)} icon={<Wallet className="h-5 w-5 text-blue-300" />} />
           <StatCard title={t.costBasis} value={formatCurrency(metrics.currentCostBasis)} icon={<PieChartIcon className="h-5 w-5 text-indigo-300" />} />
+          <StatCard
+            title={t.unrealizedPnL}
+            value={`${unrealizedPnL > 0 ? '+' : ''}${formatCurrency(unrealizedPnL)}`}
+            valueColor={unrealizedPnL > 0 ? 'text-emerald-400' : unrealizedPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
+            icon={<TrendingUp className="h-5 w-5 text-amber-300" />}
+          />
           <StatCard
             title={t.avgPnL}
             value={`${avgPnL > 0 ? '+' : ''}${formatCurrency(avgPnL)}`}

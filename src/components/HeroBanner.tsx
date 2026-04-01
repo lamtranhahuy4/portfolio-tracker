@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles } from 'lucide-react';
-import { fetchMarketIndices } from '@/actions/market';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 
 type MarketCard = {
@@ -89,9 +88,11 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
 
     const loadMarkets = async () => {
       try {
-        const marketData = await fetchMarketIndices();
+        const response = await fetch('/api/market-indices', { cache: 'no-store' });
+        if (!response.ok) return;
+        const marketData = await response.json() as MarketCard[];
         if (active) {
-          setMarkets(marketData ?? []);
+          setMarkets(marketData);
         }
       } finally {
         if (active) {
@@ -101,7 +102,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
     };
 
     loadMarkets();
-    const interval = window.setInterval(loadMarkets, 300000);
+    const interval = window.setInterval(loadMarkets, 15000);
 
     return () => {
       active = false;

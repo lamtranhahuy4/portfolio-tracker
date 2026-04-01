@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Clock, Activity, Globe, AlertCircle, RefreshCw } from 'lucide-react';
-import { fetchMarketIndices, fetchTrendingAssets } from '@/actions/market';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 
@@ -18,22 +17,26 @@ export default function MarketOverview({ language }: { language: DashboardLangua
   const [trending, setTrending] = useState<any[]>(TRENDING_ASSETS);
   const [loading, setLoading] = useState(true);
   
-  const refreshData = () => {
+  const refreshData = async () => {
     setLoading(true);
-    Promise.all([
-      fetchMarketIndices(),
-      fetchTrendingAssets()
-    ]).then(([indicesData, trendingData]) => {
+    try {
+      const [indicesResponse, trendingResponse] = await Promise.all([
+        fetch('/api/market-indices', { cache: 'no-store' }),
+        fetch('/api/trending-assets', { cache: 'no-store' }),
+      ]);
+      const indicesData = indicesResponse.ok ? await indicesResponse.json() : null;
+      const trendingData = trendingResponse.ok ? await trendingResponse.json() : null;
+
       if (indicesData) setIndices(indicesData);
       if (trendingData && trendingData.length > 0) setTrending(trendingData);
+    } finally {
       setLoading(false);
-    });
+    }
   };
 
   useEffect(() => {
     refreshData();
-    // Auto refresh every 5 phút
-    const interval = setInterval(refreshData, 300000);
+    const interval = setInterval(refreshData, 15000);
     return () => clearInterval(interval);
   }, []);
 

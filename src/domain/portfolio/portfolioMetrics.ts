@@ -498,8 +498,8 @@ export function calculatePortfolioMetrics(
   const totalMarketValueDec = decimalSum(holdings.map((holding) => holding.marketValue));
   const currentCostBasisDec = decimalSum(holdings.map((holding) => (
     holding.ticker === 'CASH_VND'
-      ? holding.marketValue
-      : toDecimal(holding.totalShares).times(holding.netAverageCost)
+      ? DECIMAL_ZERO
+      : toDecimal(decimalMax(holding.totalShares, DECIMAL_ZERO)).times(holding.netAverageCost)
   )));
   const averageCostRealizedPnLDec = decimalSum(holdings.map((holding) => holding.averageCostRealizedPnL));
   const fifoRealizedPnLDec = decimalSum(holdings.map((holding) => holding.fifoRealizedPnL));

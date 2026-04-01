@@ -1,6 +1,7 @@
 'use server';
 
 import { unstable_noStore as noStore } from 'next/cache';
+import { getMarketIndices, getRealtimeQuotes, getTrendingAssets } from '@/lib/marketData';
 
 // Helper: Fetch DNSE Chart API (Public, Không Key, miễn nhiễm Block IP của Vercel)
 async function fetchDNSE(symbol: string, isIndex = false) {
@@ -29,6 +30,9 @@ async function fetchDNSE(symbol: string, isIndex = false) {
 
 export async function fetchRealtimeQuotes(symbols: string[]) {
   noStore();
+  if (process.env.NODE_ENV !== 'test') {
+    return getRealtimeQuotes(symbols);
+  }
   const uniqueSymbols = [...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))];
   const entries = await Promise.all(uniqueSymbols.map(async (symbol) => {
     const data = await fetchDNSE(symbol, false);
@@ -51,6 +55,9 @@ async function fetchCoinGecko() {
 
 export async function fetchMarketIndices() {
   noStore();
+  if (process.env.NODE_ENV !== 'test') {
+    return getMarketIndices();
+  }
   const formattedData: any[] = [];
 
   // 1. Fetch VN-INDEX từ DNSE
@@ -102,6 +109,9 @@ export async function fetchMarketIndices() {
 
 export async function fetchTrendingAssets() {
   noStore();
+  if (process.env.NODE_ENV !== 'test') {
+    return getTrendingAssets();
+  }
   const formattedData: any[] = [];
 
   const stocks = [
