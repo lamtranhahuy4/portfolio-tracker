@@ -7,6 +7,7 @@ import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
 import HeroBanner from '@/components/HeroBanner';
 import ImportWarningsPanel from '@/components/ImportWarningsPanel';
+import OpeningPositionCard from '@/components/OpeningPositionCard';
 import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
@@ -214,6 +215,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
               <CsvUploaderServerImport language={language} />
             </div>
+            <OpeningPositionCard />
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (
               <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">

@@ -2,22 +2,28 @@
 
 import { useEffect } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { CashLedgerEvent, Transaction } from '@/types/portfolio';
+import { CashLedgerEvent, OpeningPosition, Transaction } from '@/types/portfolio';
 
 export default function StoreInitializer({ 
   initialTransactions,
-  initialCashEvents = []
+  initialCashEvents = [],
+  initialOpeningPositions = [],
+  initialOpeningCutoffDate = null,
 }: { 
   initialTransactions: Transaction[],
-  initialCashEvents?: CashLedgerEvent[]
+  initialCashEvents?: CashLedgerEvent[],
+  initialOpeningPositions?: OpeningPosition[],
+  initialOpeningCutoffDate?: Date | null,
 }) {
   const setTransactions = usePortfolioStore((state) => state.setTransactions);
   const setCashEvents = usePortfolioStore((state) => state.setCashEvents);
+  const setOpeningSnapshot = usePortfolioStore((state) => state.setOpeningSnapshot);
 
   useEffect(() => {
     setTransactions(initialTransactions);
     setCashEvents(initialCashEvents);
-  }, [initialTransactions, initialCashEvents, setTransactions, setCashEvents]);
+    setOpeningSnapshot(initialOpeningCutoffDate, initialOpeningPositions);
+  }, [initialTransactions, initialCashEvents, initialOpeningCutoffDate, initialOpeningPositions, setTransactions, setCashEvents, setOpeningSnapshot]);
 
   return null;
 }

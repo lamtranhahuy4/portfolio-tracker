@@ -68,3 +68,16 @@ export const cashLedgerEvents = pgTable('cash_ledger_events', {
   ),
 }));
 
+export const openingPositions = pgTable('opening_positions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  cutoffDate: timestamp('cutoff_date', { mode: 'date' }).notNull(),
+  asset: varchar('asset', { length: 32 }).notNull(),
+  quantity: numeric('quantity').notNull(),
+  averageCost: numeric('average_cost').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  userCutoffIdx: index('opening_positions_user_cutoff_idx').on(table.userId, table.cutoffDate),
+  userAssetIdx: uniqueIndex('opening_positions_user_asset_idx').on(table.userId, table.asset),
+}));
+

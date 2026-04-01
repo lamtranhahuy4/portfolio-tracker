@@ -126,6 +126,17 @@ export interface PortfolioMetrics {
   cashLedgerCoverageEnd?: string;
 }
 
+export interface OpeningPosition {
+  ticker: string;
+  quantity: Quantity;
+  averageCost: Price;
+}
+
+export interface OpeningPositionSnapshot {
+  cutoffDate: Date | null;
+  positions: OpeningPosition[];
+}
+
 export interface GroupedTransactionsByDay {
   dateKey: string;
   displayDate: string;

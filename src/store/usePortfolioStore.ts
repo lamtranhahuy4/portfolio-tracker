@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CashImportSummaryState, CashLedgerEvent, Holding, PortfolioMetrics, Transaction } from '@/types/portfolio';
+import { CashImportSummaryState, CashLedgerEvent, Holding, OpeningPosition, PortfolioMetrics, Transaction } from '@/types/portfolio';
 import { calculatePortfolioMetrics } from '@/domain/portfolio/portfolioMetrics';
 import { ImportBatchStatus } from '@/types/importAudit';
 
@@ -32,6 +32,9 @@ interface PortfolioState {
   setLastCashImportSummary: (summary: CashImportState | null) => void;
   valuationDate: Date | null;
   setValuationDate: (date: Date | null) => void;
+  openingCutoffDate: Date | null;
+  openingPositions: OpeningPosition[];
+  setOpeningSnapshot: (cutoffDate: Date | null, positions: OpeningPosition[]) => void;
 }
 
 function sortTransactions(txs: Transaction[]) {
@@ -45,10 +48,13 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
   lastImportResult: null,
   lastCashImportSummary: null,
   valuationDate: null,
+  openingCutoffDate: null,
+  openingPositions: [],
 
   setLastImportResult: (result) => set({ lastImportResult: result }),
   setLastCashImportSummary: (summary) => set({ lastCashImportSummary: summary }),
   setValuationDate: (date) => set({ valuationDate: date }),
+  setOpeningSnapshot: (cutoffDate, positions) => set({ openingCutoffDate: cutoffDate, openingPositions: positions }),
 
   setTransactions: (txs) => set({ transactions: sortTransactions(txs) }),
   
@@ -89,7 +95,15 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
   const cashEvents = usePortfolioStore((state) => state.cashEvents);
   const currentPrices = usePortfolioStore((state) => state.currentPrices);
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
+  const openingCutoffDate = usePortfolioStore((state) => state.openingCutoffDate);
+  const openingPositions = usePortfolioStore((state) => state.openingPositions);
 
-  return calculatePortfolioMetrics(transactions, currentPrices, cashEvents, valuationDate);
+  return calculatePortfolioMetrics(
+    transactions,
+    currentPrices,
+    cashEvents,
+    valuationDate,
+    { cutoffDate: openingCutoffDate, positions: openingPositions }
+  );
 };
 

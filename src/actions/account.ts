@@ -4,7 +4,7 @@ import { eq, count, max, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { fetchImportBatches } from '@/actions/importBatch';
 import { db } from '@/db/index';
-import { users, transactions, cashLedgerEvents } from '@/db/schema';
+import { users, transactions, cashLedgerEvents, openingPositions } from '@/db/schema';
 import { requireUser, hashPassword, verifyPassword } from '@/lib/auth';
 
 export async function getAccountSummary() {
@@ -75,6 +75,7 @@ export async function deleteMyTransactionsAction(confirmText: string) {
 
   await db.delete(transactions).where(eq(transactions.userId, user.id));
   await db.delete(cashLedgerEvents).where(eq(cashLedgerEvents.userId, user.id));
+  await db.delete(openingPositions).where(eq(openingPositions.userId, user.id));
 
   revalidatePath('/');
   revalidatePath('/account');

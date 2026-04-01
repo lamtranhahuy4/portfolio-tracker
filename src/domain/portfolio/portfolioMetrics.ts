@@ -1,6 +1,6 @@
 import Decimal from 'decimal.js';
 import { DECIMAL_ONE, DECIMAL_ZERO, decimalMax, decimalMin, decimalSum, decimalToNumber, toDecimal, DecimalInput } from './decimal';
-import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, PortfolioMetrics, Transaction } from '@/types/portfolio';
+import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, OpeningPositionSnapshot, PortfolioMetrics, Transaction } from '@/types/portfolio';
 import { toMoney, toQuantity, toPrice } from './primitives';
 
 type HoldingState = {
@@ -291,24 +291,63 @@ function getCashContributionDelta(evt: CashLedgerEvent): Decimal {
   }
 }
 
+function seedOpeningSnapshot(state: ReplayState, snapshot?: OpeningPositionSnapshot | null) {
+  if (!snapshot?.positions?.length) return;
+
+  snapshot.positions.forEach((position) => {
+    const ticker = position.ticker.trim().toUpperCase();
+    if (!ticker) return;
+
+    const quantity = toDecimal(position.quantity);
+    const averageCost = toDecimal(position.averageCost);
+    if (quantity.lte(0) || averageCost.lt(0)) return;
+
+    const stock = getStockHolding(state.holdingsMap, ticker);
+    const lots = getLots(state.lotsMap, ticker);
+    const grossValue = quantity.times(averageCost);
+
+    stock.totalShares = stock.totalShares.plus(quantity);
+    stock.grossBuyValueRemaining = stock.grossBuyValueRemaining.plus(grossValue);
+    stock.allocatedBuyFeesRemaining = stock.allocatedBuyFeesRemaining.plus(DECIMAL_ZERO);
+    stock.allocatedBuyTaxRemaining = stock.allocatedBuyTaxRemaining.plus(DECIMAL_ZERO);
+
+    lots.push({
+      remainingQty: quantity,
+      unitCostNet: averageCost,
+      unitCostFee: DECIMAL_ZERO,
+      unitCostTax: DECIMAL_ZERO,
+    });
+
+    state.lastKnownPrices.set(ticker, averageCost);
+  });
+}
+
 export function buildDailyNavSeries(
   transactions: Transaction[],
   currentPrices: Record<string, number>,
   cashEvents: CashLedgerEvent[],
-  valuationDate?: Date | null
+  valuationDate?: Date | null,
+  openingSnapshot?: OpeningPositionSnapshot | null
 ): NavPoint[] {
-  const sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const cutoffTime = openingSnapshot?.cutoffDate
+    ? new Date(openingSnapshot.cutoffDate).setHours(0, 0, 0, 0)
+    : null;
+  const sortedTx = [...transactions]
+    .filter((tx) => cutoffTime === null || new Date(tx.date).getTime() >= cutoffTime)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const ledgerMode = sortedCashEvents.length > 0;
 
-  if (sortedTx.length === 0 && sortedCashEvents.length === 0) return [];
+  if (sortedTx.length === 0 && sortedCashEvents.length === 0 && !openingSnapshot?.positions.length) return [];
 
   const state = createEmptyState();
+  seedOpeningSnapshot(state, openingSnapshot);
   const navSeries: NavPoint[] = [];
 
   const firstDateTx = sortedTx.length > 0 ? new Date(sortedTx[0].date).getTime() : Infinity;
   const firstDateCash = sortedCashEvents.length > 0 ? new Date(sortedCashEvents[0].date).getTime() : Infinity;
-  const startDate = new Date(Math.min(firstDateTx, firstDateCash));
+  const firstOpeningDate = cutoffTime ?? Infinity;
+  const startDate = new Date(Math.min(firstDateTx, firstDateCash, firstOpeningDate));
   const endDate = valuationDate ? new Date(valuationDate) : new Date();
   startDate.setHours(0, 0, 0, 0);
   endDate.setHours(0, 0, 0, 0);
@@ -398,9 +437,15 @@ export function calculatePortfolioMetrics(
   transactions: Transaction[],
   currentPrices: Record<string, number>,
   cashEvents: CashLedgerEvent[],
-  valuationDate?: Date | null
+  valuationDate?: Date | null,
+  openingSnapshot?: OpeningPositionSnapshot | null
 ): PortfolioMetrics {
-  let sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const cutoffTime = openingSnapshot?.cutoffDate
+    ? new Date(openingSnapshot.cutoffDate).setHours(0, 0, 0, 0)
+    : null;
+  let sortedTx = [...transactions]
+    .filter((tx) => cutoffTime === null || new Date(tx.date).getTime() >= cutoffTime)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   let sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
   if (valuationDate) {
@@ -413,6 +458,7 @@ export function calculatePortfolioMetrics(
 
   const ledgerMode = sortedCashEvents.length > 0;
   const state = createEmptyState();
+  seedOpeningSnapshot(state, openingSnapshot);
 
   sortedTx.forEach((tx) => applyTransaction(state, tx, ledgerMode));
 
@@ -477,7 +523,7 @@ export function calculatePortfolioMetrics(
     totalUnrealizedPnL: toMoney(totalUnrealizedPnLDec),
     netContributions: toMoney(activeNetContributionsDec),
     returnVsCostBasis: activeNetContributionsDec.eq(0) ? 0 : decimalToNumber(netPnLDec.div(activeNetContributionsDec)),
-    navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate),
+    navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate, openingSnapshot),
     calculationWarnings: state.calculationWarnings,
     cashBalanceSource: ledgerMode ? 'ledger' : 'derived',
     cashBalanceEOD: ledgerMode ? toMoney(finalLedgerBalance) : undefined,
