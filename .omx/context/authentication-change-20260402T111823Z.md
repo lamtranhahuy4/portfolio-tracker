@@ -1,0 +1,37 @@
+# Context Snapshot: authentication-change
+
+- Task statement: clarify the authentication change
+- Desired outcome: turn the vague auth request into an execution-ready spec for planning and implementation
+- Stated solution: authentication change in the existing portfolio tracker auth flow
+- Probable intent hypothesis: the user wants to modify or improve the app's current email/password authentication behavior, but has not yet specified whether the change is about security, UX, session handling, signup/signin behavior, or account management
+- Known facts/evidence:
+  - Current auth helpers live in `src/lib/auth.ts`
+  - Current auth actions live in `src/actions/auth.ts`
+  - Current auth UI lives in `src/components/AuthPanel.tsx`
+  - Password change flow exists in `src/actions/account.ts` and `src/components/ChangePasswordForm.tsx`
+  - Sessions use a signed cookie named `portfolio_session` with a 30-day TTL
+  - Passwords are hashed with Node `scryptSync` + random salt
+  - Session token format is `userId.expiresAt.signature`
+  - Signup/signin are email+password only; no OAuth or magic link flow is present in the repo evidence reviewed so far
+- Constraints:
+  - Brownfield Next.js app with existing custom auth implementation
+  - Need clarified scope before ralplan/ralph/team handoff
+  - `omx explore` is currently unavailable locally because the Rust/cargo-backed harness is missing
+- Unknowns/open questions:
+  - What exact auth change is desired?
+  - Is the goal security hardening, product behavior, UX, infrastructure/provider migration, or bug fixing?
+  - What should remain explicitly out of scope?
+  - What decisions may be made autonomously without further confirmation?
+  - What acceptance criteria will define completion?
+- Decision-boundary unknowns:
+  - May the implementation change the current custom cookie/session approach?
+  - May the implementation change database schema or add auth-related pages/components?
+  - May the implementation add third-party auth providers or dependencies?
+- Likely codebase touchpoints:
+  - `src/lib/auth.ts`
+  - `src/actions/auth.ts`
+  - `src/actions/account.ts`
+  - `src/components/AuthPanel.tsx`
+  - `src/components/ChangePasswordForm.tsx`
+  - `src/app/page.tsx`
+  - `src/db/schema.ts`
