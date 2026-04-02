@@ -31,3 +31,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# system generate logs
+.omx/
+.serena/
+
+# data examples
+*.xlsx
+*.xls
+*.csv
