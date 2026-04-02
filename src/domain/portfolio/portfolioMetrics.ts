@@ -132,9 +132,6 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
         state.calculationWarnings.push(`[Oversell] Sell quantity ${txQuantity.toNumber()} exceeds holdings ${stock.totalShares.toNumber()} for ${tx.ticker} on ${dateLabel}.`);
       }
 
-      // Instead of clamping at 0, we now support negative shares (oversell)
-      // but if we sell more than we have, we only deduct cost basis based on what we had.
-      // If we are already negative, we have 0 cost basis.
       const quantityCostBasis = decimalMin(txQuantity, decimalMax(0, stock.totalShares));
       const ratioRemaining = stock.totalShares.gt(0) ? quantityCostBasis.div(stock.totalShares) : DECIMAL_ZERO;
       
@@ -148,7 +145,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
       stock.grossBuyValueRemaining = stock.grossBuyValueRemaining.minus(grossCostBasisOfSold);
       stock.allocatedBuyFeesRemaining = stock.allocatedBuyFeesRemaining.minus(feeBasisOfSold);
       stock.allocatedBuyTaxRemaining = stock.allocatedBuyTaxRemaining.minus(taxBasisOfSold);
-      stock.totalShares = stock.totalShares.minus(txQuantity); // negative if oversell
+      stock.totalShares = stock.totalShares.minus(txQuantity);
       
       if (stock.totalShares.lte(0)) {
         stock.grossBuyValueRemaining = DECIMAL_ZERO;
@@ -156,8 +153,6 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
         stock.allocatedBuyTaxRemaining = DECIMAL_ZERO;
       }
 
-      // PnL only considers the portion we had cost basis for, or all proceeds if we are overselling?
-      // For simplicity, realized PnL = Proceeds - Cost Basis
       stock.averageCostRealizedPnL = stock.averageCostRealizedPnL.plus(averageCostNetProceeds.minus(averageCostBasisOfSoldShares));
 
       let fifoCostBasis = DECIMAL_ZERO;
@@ -242,8 +237,6 @@ function buildHoldingsFromState(
       }
     }
       
-    // Partial broker exports can create synthetic negative holdings from missing opening positions.
-    // Keep the share count for diagnostics, but exclude negative lots from valuation.
     const marketValue = valuedShares.times(currentPriceDec);
     const netCostBasis = ticker === 'CASH_VND' ? marketValue : holding.grossBuyValueRemaining.plus(holding.allocatedBuyFeesRemaining).plus(holding.allocatedBuyTaxRemaining);
     const unrealizedPnL = ticker === 'CASH_VND' ? DECIMAL_ZERO : marketValue.minus(netCostBasis);
@@ -292,6 +285,12 @@ function getCashContributionDelta(evt: CashLedgerEvent): Decimal {
 }
 
 function seedOpeningSnapshot(state: ReplayState, snapshot?: OpeningPositionSnapshot | null) {
+  if (snapshot?.settings) {
+    const cash = getCashHolding(state.holdingsMap);
+    cash.totalShares = cash.totalShares.plus(toDecimal(snapshot.settings.initialCashBalance));
+    state.netContributions = state.netContributions.plus(toDecimal(snapshot.settings.initialNetContributions));
+  }
+
   if (!snapshot?.positions?.length) return;
 
   snapshot.positions.forEach((position) => {
@@ -329,8 +328,8 @@ export function buildDailyNavSeries(
   valuationDate?: Date | null,
   openingSnapshot?: OpeningPositionSnapshot | null
 ): NavPoint[] {
-  const cutoffTime = openingSnapshot?.cutoffDate
-    ? new Date(openingSnapshot.cutoffDate).setHours(0, 0, 0, 0)
+  const cutoffTime = openingSnapshot?.settings?.globalCutoffDate
+    ? new Date(openingSnapshot.settings.globalCutoffDate).setHours(0, 0, 0, 0)
     : null;
   const sortedTx = [...transactions]
     .filter((tx) => cutoffTime === null || new Date(tx.date).getTime() >= cutoffTime)
@@ -338,7 +337,7 @@ export function buildDailyNavSeries(
   const sortedCashEvents = [...cashEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const ledgerMode = sortedCashEvents.length > 0;
 
-  if (sortedTx.length === 0 && sortedCashEvents.length === 0 && !openingSnapshot?.positions.length) return [];
+  if (sortedTx.length === 0 && sortedCashEvents.length === 0 && !openingSnapshot?.positions?.length && !openingSnapshot?.settings) return [];
 
   const state = createEmptyState();
   seedOpeningSnapshot(state, openingSnapshot);
@@ -349,17 +348,18 @@ export function buildDailyNavSeries(
   const firstOpeningDate = cutoffTime ?? Infinity;
   const startDate = new Date(Math.min(firstDateTx, firstDateCash, firstOpeningDate));
   const endDate = valuationDate ? new Date(valuationDate) : new Date();
+  
+  if (startDate.getTime() === Infinity) return [];
   startDate.setHours(0, 0, 0, 0);
   endDate.setHours(0, 0, 0, 0);
   
-  let currentLedgerBalance = DECIMAL_ZERO;
-  let currentNetContributionsLedger = DECIMAL_ZERO;
+  let currentLedgerBalance = openingSnapshot?.settings?.initialCashBalance ? toDecimal(openingSnapshot.settings.initialCashBalance) : DECIMAL_ZERO;
+  let currentNetContributionsLedger = openingSnapshot?.settings?.initialNetContributions ? toDecimal(openingSnapshot.settings.initialNetContributions) : DECIMAL_ZERO;
 
   let txIndex = 0;
   let cashIndex = 0;
 
   for (const cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
-    // Collect all events for the current day
     const dayTxs: Transaction[] = [];
     while (txIndex < sortedTx.length) {
       const txDate = new Date(sortedTx[txIndex].date);
@@ -378,8 +378,6 @@ export function buildDailyNavSeries(
       cashIndex += 1;
     }
 
-    // Mix snapshot application priority: Interest -> Deposit -> Transaction -> Withdraw -> others
-    // For cash events, we update ledger balance directly sequentially
     dayCashEvents.forEach(evt => {
        currentLedgerBalance = toDecimal(evt.balanceAfter);
        currentNetContributionsLedger = currentNetContributionsLedger.plus(getCashContributionDelta(evt));
@@ -398,13 +396,12 @@ export function buildDailyNavSeries(
     const holdings = buildHoldingsFromState(state, currentPrices, false, dayPriceOverrides);
     let cashValue = 0;
     
-    // Ledger vs. Derived reconciliation
     const derivedCash = decimalToNumber(state.holdingsMap.get('CASH_VND')?.totalShares ?? DECIMAL_ZERO);
     const ledgerCash = decimalToNumber(currentLedgerBalance);
 
     if (ledgerMode) {
       cashValue = ledgerCash;
-      if (Math.abs(ledgerCash - derivedCash) > 100) { // 100 VND tolerence
+      if (Math.abs(ledgerCash - derivedCash) > 100) {
          state.calculationWarnings.push(`[Reconciliation] Cash drift on ${dayKey}: Ledger(${ledgerCash}) vs Derived(${derivedCash})`);
       }
     } else {
@@ -441,8 +438,8 @@ export function calculatePortfolioMetrics(
   openingSnapshot?: OpeningPositionSnapshot | null,
   feeDebtInput?: number
 ): PortfolioMetrics {
-  const cutoffTime = openingSnapshot?.cutoffDate
-    ? new Date(openingSnapshot.cutoffDate).setHours(0, 0, 0, 0)
+  const cutoffTime = openingSnapshot?.settings?.globalCutoffDate
+    ? new Date(openingSnapshot.settings.globalCutoffDate).setHours(0, 0, 0, 0)
     : null;
   let sortedTx = [...transactions]
     .filter((tx) => cutoffTime === null || new Date(tx.date).getTime() >= cutoffTime)
@@ -463,8 +460,8 @@ export function calculatePortfolioMetrics(
 
   sortedTx.forEach((tx) => applyTransaction(state, tx, ledgerMode));
 
-  let finalLedgerBalance = DECIMAL_ZERO;
-  let finalNetContributionsLedger = DECIMAL_ZERO;
+  let finalLedgerBalance = openingSnapshot?.settings?.initialCashBalance ? toDecimal(openingSnapshot.settings.initialCashBalance) : DECIMAL_ZERO;
+  let finalNetContributionsLedger = openingSnapshot?.settings?.initialNetContributions ? toDecimal(openingSnapshot.settings.initialNetContributions) : DECIMAL_ZERO;
   sortedCashEvents.forEach((evt) => {
     finalLedgerBalance = toDecimal(evt.balanceAfter);
     finalNetContributionsLedger = finalNetContributionsLedger.plus(getCashContributionDelta(evt));
@@ -565,7 +562,6 @@ export function calculatePortfolioMetrics(
     });
   }
 
-  // Final reconciliation check
   if (ledgerMode) {
      const finalDerivedCash = decimalToNumber(finalDerivedCashDec);
      if (Math.abs(decimalToNumber(finalLedgerBalance) - finalDerivedCash) > 100) {
@@ -583,6 +579,7 @@ export function calculatePortfolioMetrics(
     totalUnrealizedPnL: toMoney(totalUnrealizedPnLDec),
     netContributions: toMoney(activeNetContributionsDec),
     returnVsCostBasis: activeNetContributionsDec.eq(0) ? 0 : decimalToNumber(netPnLDec.div(activeNetContributionsDec)),
+    returnOnInvestmentPercent: activeNetContributionsDec.eq(0) ? 0 : decimalToNumber(netNavDec.div(activeNetContributionsDec).minus(DECIMAL_ONE)),
     navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate, openingSnapshot),
     calculationWarnings: state.calculationWarnings,
     cashBalanceSource: ledgerMode ? 'ledger' : 'derived',

@@ -8,26 +8,35 @@ export default function StoreInitializer({
   initialTransactions,
   initialCashEvents = [],
   initialOpeningPositions = [],
-  initialOpeningCutoffDate = null,
-  initialFeeDebt = 0,
+  initialPortfolioSettings,
 }: { 
   initialTransactions: Transaction[],
   initialCashEvents?: CashLedgerEvent[],
   initialOpeningPositions?: OpeningPosition[],
-  initialOpeningCutoffDate?: Date | null,
-  initialFeeDebt?: number,
+  initialPortfolioSettings: {
+    feeDebt: number,
+    globalCutoffDate: Date | null,
+    initialNetContributions: number,
+    initialCashBalance: number
+  }
 }) {
   const setTransactions = usePortfolioStore((state) => state.setTransactions);
   const setCashEvents = usePortfolioStore((state) => state.setCashEvents);
   const setOpeningSnapshot = usePortfolioStore((state) => state.setOpeningSnapshot);
   const setFeeDebt = usePortfolioStore((state) => state.setFeeDebt);
+  const setPortfolioSettings = usePortfolioStore((state) => state.setPortfolioSettings);
 
   useEffect(() => {
     setTransactions(initialTransactions);
     setCashEvents(initialCashEvents);
-    setOpeningSnapshot(initialOpeningCutoffDate, initialOpeningPositions);
-    setFeeDebt(initialFeeDebt);
-  }, [initialTransactions, initialCashEvents, initialOpeningCutoffDate, initialOpeningPositions, initialFeeDebt, setTransactions, setCashEvents, setOpeningSnapshot, setFeeDebt]);
+    setOpeningSnapshot(initialOpeningPositions);
+    setFeeDebt(initialPortfolioSettings.feeDebt);
+    setPortfolioSettings({
+      globalCutoffDate: initialPortfolioSettings.globalCutoffDate,
+      initialNetContributions: initialPortfolioSettings.initialNetContributions,
+      initialCashBalance: initialPortfolioSettings.initialCashBalance
+    });
+  }, [initialTransactions, initialCashEvents, initialOpeningPositions, initialPortfolioSettings, setTransactions, setCashEvents, setOpeningSnapshot, setFeeDebt, setPortfolioSettings]);
 
   return null;
 }

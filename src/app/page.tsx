@@ -18,8 +18,8 @@ export default async function DashboardPage() {
 
   let initialTransactions = [];
   let initialCashEvents = [];
-  let openingPositionSnapshot = { cutoffDate: null, positions: [] };
-  let portfolioSettings = { feeDebt: 0 };
+  let openingPositionSnapshot = { positions: [] };
+  let portfolioSettings = { feeDebt: 0, globalCutoffDate: null as Date | null, initialNetContributions: 0, initialCashBalance: 0 };
   try {
     initialTransactions = await fetchTransactions();
     initialCashEvents = await fetchCashEvents();
@@ -35,8 +35,7 @@ export default async function DashboardPage() {
         initialTransactions={initialTransactions}
         initialCashEvents={initialCashEvents}
         initialOpeningPositions={openingPositionSnapshot.positions}
-        initialOpeningCutoffDate={openingPositionSnapshot.cutoffDate}
-        initialFeeDebt={portfolioSettings.feeDebt}
+        initialPortfolioSettings={portfolioSettings}
       />
       <DashboardClient userEmail={user.email} />
     </>

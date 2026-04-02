@@ -200,7 +200,19 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         <HeroBanner userEmail={userEmail} language={language} />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard title={t.totalNav} value={formatCurrency(metrics.totalMarketValue)} icon={<Wallet className="h-5 w-5 text-blue-300" />} />
+          <StatCard 
+            title={t.totalNav} 
+            value={formatCurrency(metrics.totalMarketValue)} 
+            icon={<Wallet className="h-5 w-5 text-blue-300" />} 
+            subValue={
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="text-slate-400">{t.roi}:</span>
+                <span className={metrics.returnOnInvestmentPercent > 0 ? 'text-emerald-400' : metrics.returnOnInvestmentPercent < 0 ? 'text-rose-400' : 'text-slate-300'}>
+                  {metrics.returnOnInvestmentPercent > 0 ? '+' : ''}{formatPercent(metrics.returnOnInvestmentPercent)}
+                </span>
+              </span>
+            }
+          />
           <StatCard title={t.costBasis} value={formatCurrency(metrics.currentCostBasis)} icon={<PieChartIcon className="h-5 w-5 text-indigo-300" />} />
           <StatCard
             title={t.unrealizedPnL}
@@ -252,6 +264,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             </section>
           </div>
 
+
           <aside className="flex flex-col gap-6 lg:col-span-1">
             <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
               <CsvUploaderServerImport language={language} />
@@ -271,16 +284,19 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   );
 }
 
-function StatCard({ title, value, valueColor, icon }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; }) {
+function StatCard({ title, value, valueColor, icon, subValue }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; subValue?: React.ReactNode; }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{title}</h3>
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">{icon}</div>
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm flex flex-col justify-between">
+      <div>
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{title}</h3>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">{icon}</div>
+        </div>
       </div>
-      <div className="mt-5">
+      <div className="mt-5 flex flex-col gap-1">
         <div className={cn('text-3xl font-semibold tracking-tight text-slate-100', valueColor)}>{value}</div>
+        {subValue && <div className="text-sm mt-1">{subValue}</div>}
       </div>
     </div>
   );

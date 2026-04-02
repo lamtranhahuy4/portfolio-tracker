@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { CashImportSummaryState, CashLedgerEvent, Holding, OpeningPosition, PortfolioMetrics, Transaction } from '@/types/portfolio';
 import { calculatePortfolioMetrics } from '@/domain/portfolio/portfolioMetrics';
 import { ImportBatchStatus } from '@/types/importAudit';
+import { toMoney } from '@/domain/portfolio/primitives';
 
 type TradeImportState = import('@/types/portfolio').ImportParseResult & {
   importedAt: Date;
@@ -32,11 +33,14 @@ interface PortfolioState {
   setLastCashImportSummary: (summary: CashImportState | null) => void;
   valuationDate: Date | null;
   setValuationDate: (date: Date | null) => void;
-  openingCutoffDate: Date | null;
+  globalCutoffDate: Date | null;
+  initialNetContributions: number;
+  initialCashBalance: number;
   openingPositions: OpeningPosition[];
-  setOpeningSnapshot: (cutoffDate: Date | null, positions: OpeningPosition[]) => void;
+  setOpeningSnapshot: (positions: OpeningPosition[]) => void;
   feeDebt: number;
   setFeeDebt: (feeDebt: number) => void;
+  setPortfolioSettings: (settings: { globalCutoffDate: Date | null, initialNetContributions: number, initialCashBalance: number }) => void;
 }
 
 function sortTransactions(txs: Transaction[]) {
@@ -50,15 +54,22 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
   lastImportResult: null,
   lastCashImportSummary: null,
   valuationDate: null,
-  openingCutoffDate: null,
+  globalCutoffDate: null,
+  initialNetContributions: 0,
+  initialCashBalance: 0,
   openingPositions: [],
   feeDebt: 0,
 
   setLastImportResult: (result) => set({ lastImportResult: result }),
   setLastCashImportSummary: (summary) => set({ lastCashImportSummary: summary }),
   setValuationDate: (date) => set({ valuationDate: date }),
-  setOpeningSnapshot: (cutoffDate, positions) => set({ openingCutoffDate: cutoffDate, openingPositions: positions }),
+  setOpeningSnapshot: (positions) => set({ openingPositions: positions }),
   setFeeDebt: (feeDebt) => set({ feeDebt }),
+  setPortfolioSettings: (settings) => set({ 
+    globalCutoffDate: settings.globalCutoffDate,
+    initialNetContributions: settings.initialNetContributions,
+    initialCashBalance: settings.initialCashBalance
+  }),
 
   setTransactions: (txs) => set({ transactions: sortTransactions(txs) }),
   
@@ -99,7 +110,9 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
   const cashEvents = usePortfolioStore((state) => state.cashEvents);
   const currentPrices = usePortfolioStore((state) => state.currentPrices);
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
-  const openingCutoffDate = usePortfolioStore((state) => state.openingCutoffDate);
+  const globalCutoffDate = usePortfolioStore((state) => state.globalCutoffDate);
+  const initialNetContributions = usePortfolioStore((state) => state.initialNetContributions);
+  const initialCashBalance = usePortfolioStore((state) => state.initialCashBalance);
   const openingPositions = usePortfolioStore((state) => state.openingPositions);
   const feeDebt = usePortfolioStore((state) => state.feeDebt);
 
@@ -108,8 +121,15 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
     currentPrices,
     cashEvents,
     valuationDate,
-    { cutoffDate: openingCutoffDate, positions: openingPositions },
+    { 
+      positions: openingPositions, 
+      settings: { 
+        globalCutoffDate, 
+        initialNetContributions: toMoney(initialNetContributions), 
+        initialCashBalance: toMoney(initialCashBalance), 
+        feeDebt: toMoney(feeDebt)
+      } 
+    },
     feeDebt
   );
 };
-

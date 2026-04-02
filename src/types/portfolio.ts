@@ -145,6 +145,7 @@ export interface PortfolioMetrics {
   totalUnrealizedPnL: Money;
   netContributions: Money;
   returnVsCostBasis: number;
+  returnOnInvestmentPercent: number;
   navSeries: NavPoint[];
   calculationWarnings: string[];
   cashBalanceSource?: 'derived' | 'ledger';
@@ -160,8 +161,15 @@ export interface OpeningPosition {
   averageCost: Price;
 }
 
+export interface PortfolioSettingsConfig {
+  globalCutoffDate: Date | null;
+  initialNetContributions: Money;
+  initialCashBalance: Money;
+  feeDebt: Money;
+}
+
 export interface OpeningPositionSnapshot {
-  cutoffDate: Date | null;
+  settings?: PortfolioSettingsConfig;
   positions: OpeningPosition[];
 }
 

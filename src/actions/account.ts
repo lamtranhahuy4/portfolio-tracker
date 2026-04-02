@@ -3,6 +3,7 @@
 import { eq, count, max, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { fetchImportBatches } from '@/actions/importBatch';
+import { fetchPortfolioSettings } from '@/actions/portfolioSettings';
 import { db } from '@/db/index';
 import { users, transactions, cashLedgerEvents, openingPositions } from '@/db/schema';
 import { requireUser, hashPassword, verifyPassword } from '@/lib/auth';
@@ -27,6 +28,7 @@ export async function getAccountSummary() {
     createdAt: users.createdAt,
   }).from(users).where(eq(users.id, user.id));
   const importBatches = await fetchImportBatches();
+  const portfolioSettings = await fetchPortfolioSettings();
 
   return {
     user: userInfo,
@@ -35,6 +37,7 @@ export async function getAccountSummary() {
     lastTransactionAt: stats?.lastTransactionAt ?? null,
     sourceBreakdown: sources.map((s) => ({ source: s.source || 'manual', count: Number(s.count) })),
     importBatches,
+    portfolioSettings,
   };
 }
 

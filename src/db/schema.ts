@@ -71,13 +71,11 @@ export const cashLedgerEvents = pgTable('cash_ledger_events', {
 export const openingPositions = pgTable('opening_positions', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  cutoffDate: timestamp('cutoff_date', { mode: 'date' }).notNull(),
   asset: varchar('asset', { length: 32 }).notNull(),
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   averageCost: numeric('average_cost', { precision: 18, scale: 4 }).notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, (table) => ({
-  userCutoffIdx: index('opening_positions_user_cutoff_idx').on(table.userId, table.cutoffDate),
   userAssetIdx: uniqueIndex('opening_positions_user_asset_idx').on(table.userId, table.asset),
 }));
 
@@ -85,6 +83,9 @@ export const portfolioSettings = pgTable('portfolio_settings', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   feeDebt: numeric('fee_debt', { precision: 18, scale: 4 }).notNull().default('0'),
+  globalCutoffDate: timestamp('global_cutoff_date', { mode: 'date' }),
+  initialNetContributions: numeric('initial_net_contributions', { precision: 18, scale: 4 }).notNull().default('0'),
+  initialCashBalance: numeric('initial_cash_balance', { precision: 18, scale: 4 }).notNull().default('0'),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: uniqueIndex('portfolio_settings_user_idx').on(table.userId),

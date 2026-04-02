@@ -6,6 +6,7 @@ import { ArrowLeft, UserCircle2, Activity, HardDrive, Filter, Clock, Languages }
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import DeletePortfolioDataForm from '@/components/DeletePortfolioDataForm';
 import ImportHistoryCard from '@/components/ImportHistoryCard';
+import CutoffSetupForm from '@/components/CutoffSetupForm';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { ImportBatchRecord } from '@/types/importAudit';
 
@@ -20,6 +21,12 @@ interface AccountSummary {
   lastTransactionAt: Date | null;
   sourceBreakdown: Array<{ source: string; count: number }>;
   importBatches: ImportBatchRecord[];
+  portfolioSettings: {
+    feeDebt: number;
+    globalCutoffDate: Date | null;
+    initialNetContributions: number;
+    initialCashBalance: number;
+  };
 }
 
 const copy = {
@@ -171,6 +178,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
           </div>
         </div>
 
+        <CutoffSetupForm initialSettings={summary.portfolioSettings} language={language} />
         <ImportHistoryCard batches={summary.importBatches} language={language} />
         <ChangePasswordForm language={language} />
         <DeletePortfolioDataForm language={language} />
