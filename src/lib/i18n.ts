@@ -29,6 +29,14 @@ export const i18n = {
       language: 'Ngôn ngữ',
       vietnamese: 'VI',
       english: 'EN',
+      glossary: {
+        totalNav: 'Tổng giá trị tài sản ròng. Bao gồm Tiền mặt và Thị giá cổ phiếu, sau khi trừ nợ phí.',
+        avgPnL: 'Lợi nhuận được tính theo Nguyên tắc Bình quân gia quyền. Ước tính mức sinh lời dàn đều trên mọi cổ phiếu.',
+        fifoPnL: 'Lợi nhuận tính theo phương pháp Nhập trước - Xuất trước. Ưu tiên chốt các lô cổ phiếu mua cũ nhất. Dùng làm chuẩn mực khai báo thuế.',
+        unrealizedPnL: 'Lãi/Lỗ của các vị thế cổ phiếu vẫn còn đang nắm giữ (chưa bán).',
+        ledgerCash: 'Tiền mặt đọc từ sao kê nạp/rút thực tế.',
+        replayCash: 'Tiền mặt tạm tính bằng cách mô phỏng lại dòng tiền từ lịch sử giao dịch mua/bán.',
+      }
     },
     csvUploader: {
       reading: 'Đang đọc...',
@@ -119,6 +127,14 @@ export const i18n = {
       language: 'Language',
       vietnamese: 'VI',
       english: 'EN',
+      glossary: {
+        totalNav: 'Total Net Asset Value. Includes available cash and market value of stocks, minus any fees.',
+        avgPnL: 'Profit calculated using the Weighted Average Cost basis. Estimates overall blended profit.',
+        fifoPnL: 'Profit calculated using First In, First Out logic. Prioritizes selling the oldest shares first. Standard for tax reporting.',
+        unrealizedPnL: 'Profit/Loss of currently open (unsold) stock positions.',
+        ledgerCash: 'Cash balance derived from explicit deposit/withdrawal ledger events.',
+        replayCash: 'Cash balance estimated by re-playing trade inflows and outflows.',
+      }
     },
     csvUploader: {
       reading: 'Reading...',

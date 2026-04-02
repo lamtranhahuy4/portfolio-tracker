@@ -13,6 +13,10 @@ import ReconciliationPanel from '@/components/ReconciliationPanel';
 import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
+import OnboardingWizard from '@/components/OnboardingWizard';
+import EmptyStateHero from '@/components/EmptyStateHero';
+import TooltipInfo from '@/components/TooltipInfo';
+import { AlertCircle } from 'lucide-react';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
@@ -33,6 +37,8 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const [language, setLanguage] = useState<DashboardLanguage>('vi');
   const metrics = usePortfolioMetrics();
+  const transactions = usePortfolioStore((state) => state.transactions);
+  const globalCutoffDate = usePortfolioStore((state) => state.globalCutoffDate);
   const updatePrice = usePortfolioStore((state) => state.updatePrice);
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
   const setValuationDate = usePortfolioStore((state) => state.setValuationDate);
@@ -85,7 +91,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   }, [isMounted, liveTickerQuery, updatePrice]);
 
   if (!isMounted) {
-    return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-400">{i18n.vi.dashboard.loading}</div>;
+    return null;
+  }
+
+  if (transactions.length === 0 && !globalCutoffDate) {
+    return <OnboardingWizard language={language} />;
   }
 
   const holdings = metrics.holdings;
@@ -94,8 +104,26 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const fifoPnL = metrics.totalUnrealizedPnL + metrics.fifoRealizedPnL;
   const isLedgerMode = metrics.cashBalanceSource === 'ledger';
 
+  const isDemoMode = transactions.some(t => String(t.id).startsWith('mock-'));
+  const hasData = transactions.length > 0;
+  
+  const clearDemo = () => {
+    usePortfolioStore.getState().setTransactions([]);
+    usePortfolioStore.getState().setCashEvents([]);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950">
+      {isDemoMode && (
+        <div className="bg-rose-500/10 border-b border-rose-500/30 px-4 py-2.5 flex items-center justify-center gap-3 animate-in slide-in-from-top-full z-50">
+          <AlertCircle className="w-5 h-5 text-rose-400" />
+          <p className="text-rose-300 text-sm font-medium">Bạn đang trong chế độ Demo. Lưu ý dữ liệu không được sao lưu.</p>
+          <button onClick={clearDemo} className="ml-4 px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-bold rounded-lg transition-colors">
+            Xóa Demo & Bắt đầu thật
+          </button>
+        </div>
+      )}
+
       <main className="mx-auto flex w-[95%] max-w-[1680px] flex-col gap-6 py-6">
         <header className="rounded-[28px] border border-slate-800/80 bg-slate-900/60 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <div className="flex flex-col gap-6">
@@ -194,14 +222,21 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                 </div>
               </div>
             </div>
+
+
           </div>
         </header>
 
         <HeroBanner userEmail={userEmail} language={language} />
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {!hasData ? (
+          <EmptyStateHero language={language} />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard 
             title={t.totalNav} 
+            tooltip={t.glossary?.totalNav}
             value={formatCurrency(metrics.totalMarketValue)} 
             icon={<Wallet className="h-5 w-5 text-blue-300" />} 
             subValue={
@@ -216,18 +251,21 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
           <StatCard title={t.costBasis} value={formatCurrency(metrics.currentCostBasis)} icon={<PieChartIcon className="h-5 w-5 text-indigo-300" />} />
           <StatCard
             title={t.unrealizedPnL}
+            tooltip={t.glossary?.unrealizedPnL}
             value={`${unrealizedPnL > 0 ? '+' : ''}${formatCurrency(unrealizedPnL)}`}
             valueColor={unrealizedPnL > 0 ? 'text-emerald-400' : unrealizedPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
             icon={<TrendingUp className="h-5 w-5 text-amber-300" />}
           />
           <StatCard
             title={t.avgPnL}
+            tooltip={t.glossary?.avgPnL}
             value={`${avgPnL > 0 ? '+' : ''}${formatCurrency(avgPnL)}`}
             valueColor={avgPnL > 0 ? 'text-emerald-400' : avgPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
             icon={<TrendingUp className="h-5 w-5 text-emerald-300" />}
           />
           <StatCard
             title={t.fifoPnL}
+            tooltip={t.glossary?.fifoPnL}
             value={`${fifoPnL > 0 ? '+' : ''}${formatCurrency(fifoPnL)}`}
             valueColor={fifoPnL > 0 ? 'text-emerald-400' : fifoPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
             icon={<CheckCircle2 className="h-5 w-5 text-cyan-300" />}
@@ -279,18 +317,23 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             )}
           </aside>
         </div>
+        </>
+        )}
       </main>
     </div>
   );
 }
 
-function StatCard({ title, value, valueColor, icon, subValue }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; subValue?: React.ReactNode; }) {
+function StatCard({ title, value, valueColor, icon, subValue, tooltip }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; subValue?: React.ReactNode; tooltip?: string; }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm flex flex-col justify-between">
       <div>
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
         <div className="flex items-center justify-between gap-4">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{title}</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 flex items-center">
+            {title}
+            {tooltip && <TooltipInfo content={tooltip} />}
+          </h3>
           <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">{icon}</div>
         </div>
       </div>

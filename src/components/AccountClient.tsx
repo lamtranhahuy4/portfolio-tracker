@@ -64,6 +64,7 @@ const copy = {
 
 export default function AccountClient({ summary }: { summary: AccountSummary }) {
   const [language, setLanguage] = useState<DashboardLanguage>('vi');
+  const [showCutoff, setShowCutoff] = useState(false);
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
@@ -178,7 +179,25 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
           </div>
         </div>
 
-        <CutoffSetupForm initialSettings={summary.portfolioSettings} language={language} />
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-200">Cấu hình chốt sổ đầu kỳ / Cut-off Settings</h3>
+              <p className="text-sm text-slate-400">Thiết lập nguồn vốn và ngày bắt đầu để engine tính toán.</p>
+            </div>
+            <button 
+              onClick={() => setShowCutoff(!showCutoff)} 
+              className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors whitespace-nowrap"
+            >
+              {showCutoff ? 'Đóng lại / Close' : 'Sửa đổi cấu hình chốt sổ / Edit'}
+            </button>
+          </div>
+          {showCutoff && (
+            <div className="mt-2 pt-6 border-t border-slate-800">
+              <CutoffSetupForm initialSettings={summary.portfolioSettings} language={language} />
+            </div>
+          )}
+        </div>
         <ImportHistoryCard batches={summary.importBatches} language={language} />
         <ChangePasswordForm language={language} />
         <DeletePortfolioDataForm language={language} />
