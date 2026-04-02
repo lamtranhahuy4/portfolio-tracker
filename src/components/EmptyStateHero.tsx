@@ -3,6 +3,7 @@
 import { Play, UploadCloud } from 'lucide-react';
 import { MOCK_TRANSACTIONS, MOCK_CASH_EVENTS } from '@/lib/mockData';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
 
 export default function EmptyStateHero({ language }: { language: 'vi' | 'en' }) {
   const setTransactions = usePortfolioStore((state) => state.setTransactions);
@@ -12,12 +13,10 @@ export default function EmptyStateHero({ language }: { language: 'vi' | 'en' }) 
     title: 'Bắt đầu hành trình đầu tư của bạn',
     desc: 'Bảng điều khiển hiện đang trống. Hãy nhập file lịch sử giao dịch để xem sức mạnh phân tích của hệ thống.',
     demoBtn: 'Trải nghiệm Dữ liệu Mẫu',
-    uploadBtn: 'Tải file dữ liệu',
   } : {
     title: 'Begin your investment journey',
     desc: 'The dashboard is currently empty. Import your transaction ledger to see the analytical power of the system.',
     demoBtn: 'Try Demo Data',
-    uploadBtn: 'Upload Data',
   };
 
   const handleLoadDemo = () => {
@@ -34,10 +33,20 @@ export default function EmptyStateHero({ language }: { language: 'vi' | 'en' }) 
       <h2 className="text-3xl font-bold text-slate-100 mb-4">{t.title}</h2>
       <p className="text-slate-400 mb-10 text-center max-w-xl text-lg leading-relaxed">{t.desc}</p>
       
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col gap-6 w-full max-w-xl">
+        <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm w-full mx-auto">
+          <CsvUploaderServerImport language={language} />
+        </div>
+        
+        <div className="relative flex items-center py-5">
+          <div className="flex-grow border-t border-slate-700/50"></div>
+          <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-medium">{language === 'vi' ? 'HOẶC' : 'OR'}</span>
+          <div className="flex-grow border-t border-slate-700/50"></div>
+        </div>
+
         <button 
           onClick={handleLoadDemo}
-          className="flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-2xl shadow-xl shadow-blue-900/30 transition-all hover:scale-105"
+          className="flex items-center justify-center gap-2 px-8 py-3.5 mx-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-2xl shadow-xl shadow-blue-900/30 transition-all hover:scale-105"
         >
           <Play className="w-5 h-5 fill-current" />
           {t.demoBtn}

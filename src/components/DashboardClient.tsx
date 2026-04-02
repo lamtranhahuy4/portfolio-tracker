@@ -105,7 +105,12 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const isLedgerMode = metrics.cashBalanceSource === 'ledger';
 
   const isDemoMode = transactions.some(t => String(t.id).startsWith('mock-'));
-  const hasData = transactions.length > 0;
+  
+  const cashEvents = usePortfolioStore.getState().cashEvents;
+  const openingPositions = usePortfolioStore.getState().openingPositions;
+  const initialNetContributions = usePortfolioStore.getState().initialNetContributions;
+  
+  const hasData = transactions.length > 0 || cashEvents.length > 0 || openingPositions.length > 0 || initialNetContributions > 0;
   
   const clearDemo = () => {
     usePortfolioStore.getState().setTransactions([]);
