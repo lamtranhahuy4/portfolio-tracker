@@ -12,24 +12,16 @@ type DraftPosition = {
   averageCost: string;
 };
 
-function toDateInputValue(value: Date | null) {
-  if (!value) return '';
-  const date = new Date(value);
-  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-  return date.toISOString().split('T')[0];
-}
+
 
 export default function OpeningPositionCard() {
   const metrics = usePortfolioMetrics();
-  const openingCutoffDate = usePortfolioStore((state) => state.openingCutoffDate);
   const openingPositions = usePortfolioStore((state) => state.openingPositions);
   const setOpeningSnapshot = usePortfolioStore((state) => state.setOpeningSnapshot);
   const [isPending, startTransition] = useTransition();
-  const [cutoffDate, setCutoffDate] = useState(toDateInputValue(openingCutoffDate));
   const [rows, setRows] = useState<DraftPosition[]>([]);
 
   useEffect(() => {
-    setCutoffDate(toDateInputValue(openingCutoffDate));
     setRows(
       openingPositions.length > 0
         ? openingPositions.map((position) => ({
@@ -39,7 +31,7 @@ export default function OpeningPositionCard() {
           }))
         : [{ ticker: '', quantity: '', averageCost: '' }]
     );
-  }, [openingCutoffDate, openingPositions]);
+  }, [openingPositions]);
 
   const oversoldSuggestions = useMemo(
     () => metrics.holdings.filter((holding) => holding.assetClass === 'STOCK' && holding.totalShares < 0),
@@ -57,8 +49,8 @@ export default function OpeningPositionCard() {
           }))
           .filter((row) => row.ticker && row.quantity > 0 && row.averageCost >= 0);
 
-        const result = await saveOpeningPositionSnapshot(cutoffDate, payload);
-        setOpeningSnapshot(result.cutoffDate, result.positions);
+        const result = await saveOpeningPositionSnapshot(payload);
+        setOpeningSnapshot(result.positions);
         toast.success(`Đã lưu ${result.positions.length} opening position.`);
       } catch (error) {
         toast.error((error as Error).message);
@@ -70,8 +62,7 @@ export default function OpeningPositionCard() {
     startTransition(async () => {
       try {
         await clearOpeningPositionSnapshot();
-        setOpeningSnapshot(null, []);
-        setCutoffDate('');
+        setOpeningSnapshot([]);
         setRows([{ ticker: '', quantity: '', averageCost: '' }]);
         toast.success('Đã xóa opening snapshot.');
       } catch (error) {
@@ -92,15 +83,7 @@ export default function OpeningPositionCard() {
         <ArchiveRestore className="mt-1 h-5 w-5 text-blue-400" />
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
-        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Cut-off Date</label>
-        <input
-          type="date"
-          value={cutoffDate}
-          onChange={(e) => setCutoffDate(e.target.value)}
-          className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none [color-scheme:dark]"
-        />
-      </div>
+
 
       {oversoldSuggestions.length > 0 && (
         <div className="mt-4 rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4 text-sm text-amber-200">
@@ -150,7 +133,7 @@ export default function OpeningPositionCard() {
         <button
           type="button"
           onClick={saveSnapshot}
-          disabled={isPending || !cutoffDate}
+          disabled={isPending}
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           <Save className="h-4 w-4" />

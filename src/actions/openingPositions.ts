@@ -23,15 +23,11 @@ export async function fetchOpeningPositionSnapshot(): Promise<OpeningPositionSna
 
   if (rows.length === 0) {
     return {
-      cutoffDate: null,
       positions: [],
     };
   }
 
-  const cutoffDate = rows[0].cutoffDate;
-
   return {
-    cutoffDate,
     positions: rows
       .sort((a, b) => a.asset.localeCompare(b.asset))
       .map((row) => ({
@@ -42,13 +38,8 @@ export async function fetchOpeningPositionSnapshot(): Promise<OpeningPositionSna
   };
 }
 
-export async function saveOpeningPositionSnapshot(cutoffDateRaw: string, positions: OpeningPositionInput[]) {
+export async function saveOpeningPositionSnapshot(positions: OpeningPositionInput[]) {
   const user = await requireUser();
-
-  const cutoffDate = new Date(cutoffDateRaw);
-  if (Number.isNaN(cutoffDate.getTime())) {
-    throw new Error('Ngày chốt sổ không hợp lệ.');
-  }
 
   const sanitized = positions
     .map((item) => ({
@@ -64,7 +55,6 @@ export async function saveOpeningPositionSnapshot(cutoffDateRaw: string, positio
     await db.insert(openingPositions).values(
       sanitized.map((item) => ({
         userId: user.id,
-        cutoffDate,
         asset: item.ticker,
         quantity: item.quantity.toString(),
         averageCost: item.averageCost.toString(),
@@ -75,7 +65,6 @@ export async function saveOpeningPositionSnapshot(cutoffDateRaw: string, positio
   revalidatePath('/');
 
   return {
-    cutoffDate,
     positions: sanitized.map((item) => ({
       ticker: item.ticker,
       quantity: toQuantity(item.quantity),
