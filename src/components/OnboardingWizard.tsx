@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Calendar, Landmark, Save, ArrowRight, ArrowLeft, Upload, FileSpreadsheet } from 'lucide-react';
+import { Save, ArrowRight, ArrowLeft, Upload, FileSpreadsheet, Calendar, Landmark } from 'lucide-react';
 import { saveCutoffSettings } from '@/actions/portfolioSettings';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { MOCK_TRANSACTIONS, MOCK_CASH_EVENTS } from '@/lib/mockData';
 
 export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }) {
   const [step, setStep] = useState(1);
@@ -32,7 +33,10 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
     saveAndStart: 'Bắt Đầu Sử Dụng',
     saving: 'Đang lưu...',
     uploadHint: 'Tải CSV',
-    manualHint: 'Nhập tay vị thế'
+    manualHint: 'Nhập tay vị thế',
+    demoTitle: 'Dùng thử hệ thống ngay',
+    demoDesc: 'Bỏ qua bước này và nạp dữ liệu định sẵn để trải nghiệm nhanh.',
+    demoBtn: 'Tải Dữ Liệu Demo'
   } : {
     welcome: 'Welcome to Portfolio Tracker',
     subtitle: 'Let\'s set up the initial parameters so the engine can accurately track your assets.',
@@ -50,7 +54,10 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
     saveAndStart: 'Get Started',
     saving: 'Saving...',
     uploadHint: 'Upload CSV',
-    manualHint: 'Add trades manually'
+    manualHint: 'Add trades manually',
+    demoTitle: 'Try the system now',
+    demoDesc: 'Skip this step and load mock data for a quick tour.',
+    demoBtn: 'Load Demo Data'
   };
 
   const handleFinish = () => {
@@ -121,6 +128,29 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
                   />
                 </div>
               </div>
+
+              <div className="relative flex items-center py-8">
+                <div className="flex-grow border-t border-slate-700/50"></div>
+                <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-medium">{language === 'vi' ? 'HOẶC' : 'OR'}</span>
+                <div className="flex-grow border-t border-slate-700/50"></div>
+              </div>
+
+              <div className="bg-slate-950 border border-blue-500/30 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-slate-200 font-medium">{t.demoTitle || (language === 'vi' ? 'Dùng thử hệ thống ngay' : 'Try the system now')}</h3>
+                  <p className="text-slate-400 text-sm mt-1">{t.demoDesc || (language === 'vi' ? 'Bỏ qua bước này và nạp dữ liệu rác để trải nghiệm nhanh.' : 'Skip this step and load mock data for a quick tour.')}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    usePortfolioStore.getState().setTransactions(MOCK_TRANSACTIONS);
+                    usePortfolioStore.getState().setCashEvents(MOCK_CASH_EVENTS);
+                  }}
+                  className="whitespace-nowrap px-5 py-2.5 bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 border border-blue-600/30 hover:text-blue-100 font-medium rounded-lg transition-colors"
+                >
+                  {t.demoBtn || (language === 'vi' ? 'Tải Dữ Liệu Demo' : 'Load Demo Data')}
+                </button>
+              </div>
+
             </div>
           )}
 
