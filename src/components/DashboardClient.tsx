@@ -44,6 +44,9 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const updatePrice = usePortfolioStore((state) => state.updatePrice);
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
   const setValuationDate = usePortfolioStore((state) => state.setValuationDate);
+  const cashEvents = usePortfolioStore((state) => state.cashEvents);
+  const openingPositions = usePortfolioStore((state) => state.openingPositions);
+  const initialNetContributions = usePortfolioStore((state) => state.initialNetContributions);
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
@@ -109,9 +112,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
   const isDemoMode = transactions.some(t => String(t.id).startsWith('mock-'));
   
-  const cashEvents = usePortfolioStore((state) => state.cashEvents);
-  const openingPositions = usePortfolioStore((state) => state.openingPositions);
-  const initialNetContributions = usePortfolioStore((state) => state.initialNetContributions);
+
   
   const hasData = transactions.length > 0 || cashEvents.length > 0 || openingPositions.length > 0 || initialNetContributions > 0;
   
