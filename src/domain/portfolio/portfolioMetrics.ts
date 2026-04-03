@@ -155,9 +155,9 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
       stock.grossBuyValueRemaining = stock.grossBuyValueRemaining.minus(grossCostBasisOfSold);
       stock.allocatedBuyFeesRemaining = stock.allocatedBuyFeesRemaining.minus(feeBasisOfSold);
       stock.allocatedBuyTaxRemaining = stock.allocatedBuyTaxRemaining.minus(taxBasisOfSold);
-      stock.totalShares = stock.totalShares.minus(actualSellQuantity);
+      stock.totalShares = decimalMax(DECIMAL_ZERO, stock.totalShares.minus(actualSellQuantity));
       
-      if (stock.totalShares.lte(0)) {
+      if (stock.totalShares.lte(DECIMAL_ZERO)) {
         stock.grossBuyValueRemaining = DECIMAL_ZERO;
         stock.allocatedBuyFeesRemaining = DECIMAL_ZERO;
         stock.allocatedBuyTaxRemaining = DECIMAL_ZERO;
@@ -167,15 +167,16 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
 
       let fifoCostBasis = DECIMAL_ZERO;
       let remainingQtyToClear = actualSellQuantity;
-      let allocatedFifoFee = DECIMAL_ZERO;
-      let allocatedFifoTax = DECIMAL_ZERO;
 
       while (remainingQtyToClear.gt(0) && lots.length > 0) {
         const lot = lots[0];
         const consumed = decimalMin(remainingQtyToClear, lot.remainingQty);
-        fifoCostBasis = fifoCostBasis.plus(consumed.times(lot.unitCostNet));
-        allocatedFifoFee = allocatedFifoFee.plus(consumed.times(lot.unitCostFee));
-        allocatedFifoTax = allocatedFifoTax.plus(consumed.times(lot.unitCostTax));
+        
+        const lotTotalCost = consumed.times(lot.unitCostNet)
+          .plus(consumed.times(lot.unitCostFee))
+          .plus(consumed.times(lot.unitCostTax));
+        
+        fifoCostBasis = fifoCostBasis.plus(lotTotalCost);
         
         lot.remainingQty = lot.remainingQty.minus(consumed);
         remainingQtyToClear = remainingQtyToClear.minus(consumed);
@@ -185,7 +186,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
       }
 
       const fifoNetProceeds = txPrice.times(actualSellQuantity).minus(actualFee).minus(actualTax);
-      stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(fifoNetProceeds.minus(fifoCostBasis).minus(allocatedFifoFee).minus(allocatedFifoTax));
+      stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(fifoNetProceeds.minus(fifoCostBasis));
       
       cash.totalShares = cash.totalShares.plus(fifoNetProceeds);
       state.lastKnownPrices.set(tx.ticker, txPrice);
@@ -262,14 +263,20 @@ function buildHoldingsFromState(
       !holding.averageCostRealizedPnL.eq(0) ||
       !holding.fifoRealizedPnL.eq(0)
     ) {
-      const gAP = ticker === 'CASH_VND' ? DECIMAL_ONE : (holding.totalShares.gt(0) ? holding.grossBuyValueRemaining.div(holding.totalShares) : DECIMAL_ZERO);
-      const nAC = ticker === 'CASH_VND' ? DECIMAL_ONE : (holding.totalShares.gt(0) ? netCostBasis.div(holding.totalShares) : DECIMAL_ZERO);
+      const shares = holding.totalShares;
+      const gCP = ticker === 'CASH_VND' ? DECIMAL_ONE : (shares.gt(0) ? holding.grossBuyValueRemaining.div(shares) : DECIMAL_ZERO);
+      const fCP = ticker === 'CASH_VND' ? DECIMAL_ZERO : (shares.gt(0) ? holding.allocatedBuyFeesRemaining.div(shares) : DECIMAL_ZERO);
+      const tCP = ticker === 'CASH_VND' ? DECIMAL_ZERO : (shares.gt(0) ? holding.allocatedBuyTaxRemaining.div(shares) : DECIMAL_ZERO);
+      const nAC = ticker === 'CASH_VND' ? DECIMAL_ONE : gCP.plus(fCP).plus(tCP);
       
       holdings.push({
         assetClass: holding.assetClass,
         ticker: holding.ticker,
         totalShares: toQuantity(holding.totalShares),
-        grossAveragePrice: toPrice(gAP),
+        grossAveragePrice: toPrice(gCP),
+        grossCostPrice: toPrice(gCP),
+        feeCostPrice: toPrice(fCP),
+        taxCostPrice: toPrice(tCP),
         netAverageCost: toPrice(nAC),
         currentPrice: toPrice(currentPriceDec),
         marketValue: toMoney(marketValue),
@@ -497,6 +504,9 @@ export function calculatePortfolioMetrics(
         ticker: 'CASH_VND',
         totalShares: toQuantity(finalLedgerBalanceNum),
         grossAveragePrice: toPrice(1),
+        grossCostPrice: toPrice(1),
+        feeCostPrice: toPrice(0),
+        taxCostPrice: toPrice(0),
         netAverageCost: toPrice(1),
         currentPrice: toPrice(1),
         marketValue: toMoney(finalLedgerBalanceNum),

@@ -87,6 +87,9 @@ export interface Holding {
   netAverageCost: Price;
   /** Giá mua trung bình (chỉ tiền mua khớp lệnh) */
   grossAveragePrice: Price;
+  grossCostPrice: Price;
+  feeCostPrice: Price;
+  taxCostPrice: Price;
   /** Giá thị trường hiện tại (lấy từ API hoặc tự cập nhật) */
   currentPrice: Price;
   /** Tổng giá trị thị trường = totalShares * currentPrice */
