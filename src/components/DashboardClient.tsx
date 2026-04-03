@@ -17,6 +17,7 @@ import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
 import TooltipInfo from '@/components/TooltipInfo';
 import { AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
@@ -76,8 +77,9 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         const quotes = await response.json() as Record<string, number>;
         if (!active) return;
         Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
-      } catch {
-        // Keep the last good quotes if the upstream provider is temporarily unavailable.
+      } catch (error) {
+        console.error('Failed to fetch quotes:', error);
+        toast.error('Không thể cập nhật giá. Vui lòng thử lại.');
       }
     };
 
@@ -106,9 +108,9 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
   const isDemoMode = transactions.some(t => String(t.id).startsWith('mock-'));
   
-  const cashEvents = usePortfolioStore.getState().cashEvents;
-  const openingPositions = usePortfolioStore.getState().openingPositions;
-  const initialNetContributions = usePortfolioStore.getState().initialNetContributions;
+  const cashEvents = usePortfolioStore((state) => state.cashEvents);
+  const openingPositions = usePortfolioStore((state) => state.openingPositions);
+  const initialNetContributions = usePortfolioStore((state) => state.initialNetContributions);
   
   const hasData = transactions.length > 0 || cashEvents.length > 0 || openingPositions.length > 0 || initialNetContributions > 0;
   

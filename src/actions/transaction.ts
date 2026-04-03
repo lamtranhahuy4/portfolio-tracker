@@ -49,10 +49,14 @@ export async function saveTransactionsBatch(data: NormalizedTransaction[], impor
 
     return batch;
   } catch (error) {
-    await db.delete(importBatches).where(and(
-      eq(importBatches.id, batch.batchId),
-      eq(importBatches.userId, user.id)
-    ));
+    try {
+      await db.delete(importBatches).where(and(
+        eq(importBatches.id, batch.batchId),
+        eq(importBatches.userId, user.id)
+      ));
+    } catch (rollbackError) {
+      console.error('Rollback failed:', rollbackError);
+    }
     throw error;
   }
 }
@@ -60,36 +64,41 @@ export async function saveTransactionsBatch(data: NormalizedTransaction[], impor
 export async function fetchTransactions() {
   const user = await requireUser();
 
-  const dbTxs = await db.query.transactions.findMany({
-    where: eq(transactions.userId, user.id),
-    orderBy: [asc(transactions.date)],
-  });
+  try {
+    const dbTxs = await db.query.transactions.findMany({
+      where: eq(transactions.userId, user.id),
+      orderBy: [asc(transactions.date)],
+    });
 
-  return dbTxs.map((tx) => {
-    const quantity = new Decimal(tx.amount).toNumber();
-    const price = new Decimal(tx.price).toNumber();
-    const fee = new Decimal(tx.fee).toNumber();
-    const tax = new Decimal(tx.tax).toNumber();
-    const grossValue = new Decimal(tx.amount).times(tx.price);
-    const totalValue = tx.type === 'SELL'
-      ? grossValue.minus(tx.fee).minus(tx.tax)
-      : grossValue.plus(tx.fee).plus(tx.tax);
+    return dbTxs.map((tx) => {
+      const quantity = new Decimal(tx.amount).toNumber();
+      const price = new Decimal(tx.price).toNumber();
+      const fee = new Decimal(tx.fee).toNumber();
+      const tax = new Decimal(tx.tax).toNumber();
+      const grossValue = new Decimal(tx.amount).times(tx.price);
+      const totalValue = tx.type === 'SELL'
+        ? grossValue.minus(tx.fee).minus(tx.tax)
+        : grossValue.plus(tx.fee).plus(tx.tax);
 
-    return {
-      id: tx.id,
-      batchId: tx.batchId ?? undefined,
-      date: tx.date,
-      assetClass: tx.assetClass as 'STOCK' | 'CASH' | 'SAVING',
-      ticker: tx.asset,
-      type: tx.type as NormalizedTransaction['type'],
-      quantity,
-      price,
-      fee,
-      tax,
-      totalValue: totalValue.toNumber(),
-      notes: tx.notes ?? undefined,
-      source: tx.source ?? undefined,
-    };
-  });
+      return {
+        id: tx.id,
+        batchId: tx.batchId ?? undefined,
+        date: tx.date,
+        assetClass: tx.assetClass as 'STOCK' | 'CASH' | 'SAVING',
+        ticker: tx.asset,
+        type: tx.type as NormalizedTransaction['type'],
+        quantity,
+        price,
+        fee,
+        tax,
+        totalValue: totalValue.toNumber(),
+        notes: tx.notes ?? undefined,
+        source: tx.source ?? undefined,
+      };
+    });
+  } catch (error) {
+    console.error('Failed to fetch transactions:', error);
+    throw new Error('Không thể tải danh sách giao dịch.');
+  }
 }
 
