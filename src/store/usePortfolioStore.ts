@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useMemo } from 'react';
 import { CashImportSummaryState, CashLedgerEvent, Holding, OpeningPosition, PortfolioMetrics, Transaction } from '@/types/portfolio';
 import { calculatePortfolioMetrics } from '@/domain/portfolio/portfolioMetrics';
 import { ImportBatchStatus } from '@/types/importAudit';
@@ -116,20 +117,32 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
   const openingPositions = usePortfolioStore((state) => state.openingPositions);
   const feeDebt = usePortfolioStore((state) => state.feeDebt);
 
-  return calculatePortfolioMetrics(
+  return useMemo(() => {
+    return calculatePortfolioMetrics(
+      transactions,
+      currentPrices,
+      cashEvents,
+      valuationDate,
+      { 
+        positions: openingPositions, 
+        settings: { 
+          globalCutoffDate, 
+          initialNetContributions: toMoney(initialNetContributions), 
+          initialCashBalance: toMoney(initialCashBalance), 
+          feeDebt: toMoney(feeDebt)
+        } 
+      },
+      feeDebt
+    );
+  }, [
     transactions,
     currentPrices,
     cashEvents,
     valuationDate,
-    { 
-      positions: openingPositions, 
-      settings: { 
-        globalCutoffDate, 
-        initialNetContributions: toMoney(initialNetContributions), 
-        initialCashBalance: toMoney(initialCashBalance), 
-        feeDebt: toMoney(feeDebt)
-      } 
-    },
+    globalCutoffDate,
+    initialNetContributions,
+    initialCashBalance,
+    openingPositions,
     feeDebt
-  );
+  ]);
 };

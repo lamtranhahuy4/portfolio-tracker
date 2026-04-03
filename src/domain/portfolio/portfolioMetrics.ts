@@ -128,24 +128,34 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
     }
 
     if (tx.type === 'SELL') {
+      let actualSellQuantity = txQuantity;
+
       if (stock.totalShares.lt(txQuantity)) {
         state.calculationWarnings.push(`[Oversell] Sell quantity ${txQuantity.toNumber()} exceeds holdings ${stock.totalShares.toNumber()} for ${tx.ticker} on ${dateLabel}.`);
+        actualSellQuantity = decimalMax(DECIMAL_ZERO, stock.totalShares);
       }
 
-      const quantityCostBasis = decimalMin(txQuantity, decimalMax(0, stock.totalShares));
-      const ratioRemaining = stock.totalShares.gt(0) ? quantityCostBasis.div(stock.totalShares) : DECIMAL_ZERO;
+      if (actualSellQuantity.lte(DECIMAL_ZERO)) {
+        return; // Nothing to sell, avoid doing math on 0 shares
+      }
+
+      const sellRatio = actualSellQuantity.div(txQuantity);
+      const actualFee = txFee.times(sellRatio);
+      const actualTax = txTax.times(sellRatio);
+
+      const ratioRemaining = stock.totalShares.gt(0) ? actualSellQuantity.div(stock.totalShares) : DECIMAL_ZERO;
       
       const grossCostBasisOfSold = stock.grossBuyValueRemaining.times(ratioRemaining);
       const feeBasisOfSold = stock.allocatedBuyFeesRemaining.times(ratioRemaining);
       const taxBasisOfSold = stock.allocatedBuyTaxRemaining.times(ratioRemaining);
 
       const averageCostBasisOfSoldShares = grossCostBasisOfSold.plus(feeBasisOfSold).plus(taxBasisOfSold);
-      const averageCostNetProceeds = txPrice.times(txQuantity).minus(txFee).minus(txTax);
+      const averageCostNetProceeds = txPrice.times(actualSellQuantity).minus(actualFee).minus(actualTax);
       
       stock.grossBuyValueRemaining = stock.grossBuyValueRemaining.minus(grossCostBasisOfSold);
       stock.allocatedBuyFeesRemaining = stock.allocatedBuyFeesRemaining.minus(feeBasisOfSold);
       stock.allocatedBuyTaxRemaining = stock.allocatedBuyTaxRemaining.minus(taxBasisOfSold);
-      stock.totalShares = stock.totalShares.minus(txQuantity);
+      stock.totalShares = stock.totalShares.minus(actualSellQuantity);
       
       if (stock.totalShares.lte(0)) {
         stock.grossBuyValueRemaining = DECIMAL_ZERO;
@@ -156,20 +166,26 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
       stock.averageCostRealizedPnL = stock.averageCostRealizedPnL.plus(averageCostNetProceeds.minus(averageCostBasisOfSoldShares));
 
       let fifoCostBasis = DECIMAL_ZERO;
-      let remainingQty = txQuantity;
-      while (remainingQty.gt(0) && lots.length > 0) {
+      let remainingQtyToClear = actualSellQuantity;
+      let allocatedFifoFee = DECIMAL_ZERO;
+      let allocatedFifoTax = DECIMAL_ZERO;
+
+      while (remainingQtyToClear.gt(0) && lots.length > 0) {
         const lot = lots[0];
-        const consumed = decimalMin(remainingQty, lot.remainingQty);
+        const consumed = decimalMin(remainingQtyToClear, lot.remainingQty);
         fifoCostBasis = fifoCostBasis.plus(consumed.times(lot.unitCostNet));
+        allocatedFifoFee = allocatedFifoFee.plus(consumed.times(lot.unitCostFee));
+        allocatedFifoTax = allocatedFifoTax.plus(consumed.times(lot.unitCostTax));
+        
         lot.remainingQty = lot.remainingQty.minus(consumed);
-        remainingQty = remainingQty.minus(consumed);
+        remainingQtyToClear = remainingQtyToClear.minus(consumed);
         if (lot.remainingQty.lte(0)) {
           lots.shift();
         }
       }
 
-      const fifoNetProceeds = txPrice.times(txQuantity).minus(txFee).minus(txTax);
-      stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(fifoNetProceeds.minus(fifoCostBasis));
+      const fifoNetProceeds = txPrice.times(actualSellQuantity).minus(actualFee).minus(actualTax);
+      stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(fifoNetProceeds.minus(fifoCostBasis).minus(allocatedFifoFee).minus(allocatedFifoTax));
       
       cash.totalShares = cash.totalShares.plus(fifoNetProceeds);
       state.lastKnownPrices.set(tx.ticker, txPrice);

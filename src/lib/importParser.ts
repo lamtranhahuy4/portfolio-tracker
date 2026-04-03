@@ -491,17 +491,8 @@ function extractReferenceTradeMetadata(description: string) {
   };
 }
 
-export async function parseImportCashFile(file: File): Promise<ImportCashParseResult> {
-  const ext = file.name.split('.').pop()?.toLowerCase();
-  if (ext !== 'xlsx' && ext !== 'xls') {
-    throw new Error('Định dạng báo cáo tiền phải là Excel (.xlsx, .xls)');
-  }
 
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '' }) as string[][];
-  
+export function parseDnseCashRows(rows: string[][], fileName: string = 'mock.xlsx') {
   const header = findDnseCashHeader(rows);
   if (!header) {
     throw new Error('Không tìm thấy header báo cáo tiền DNSE hợp lệ trong file Excel.');
@@ -549,7 +540,7 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
       direction = rawInflow > 0 ? 'INFLOW' : 'OUTFLOW';
       amount = Math.abs(rawInflow);
     } else if (!Number.isNaN(rawOutflow) && rawOutflow !== 0) {
-      direction = rawOutflow < 0 ? 'OUTFLOW' : 'INFLOW';
+      direction = rawOutflow > 0 ? 'OUTFLOW' : 'INFLOW';
       amount = Math.abs(rawOutflow);
     }
 
@@ -624,7 +615,7 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
   return {
     events,
     summary: {
-      fileName: file.name,
+      fileName,
       source: 'dnse-cash-xlsx',
       totalEvents,
       unclassifiedEvents,
@@ -632,4 +623,18 @@ export async function parseImportCashFile(file: File): Promise<ImportCashParseRe
       coverageEnd: events.length > 0 ? events[events.length - 1].date : undefined,
     }
   };
+}
+
+export async function parseImportCashFile(file: File): Promise<ImportCashParseResult> {
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (ext !== 'xlsx' && ext !== 'xls') {
+    throw new Error('Định dạng báo cáo tiền phải là Excel (.xlsx, .xls)');
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '' }) as string[][];
+
+  return parseDnseCashRows(rows, file.name);
 }

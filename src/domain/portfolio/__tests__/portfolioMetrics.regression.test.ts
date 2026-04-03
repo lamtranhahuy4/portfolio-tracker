@@ -200,7 +200,7 @@ describe('portfolioMetrics regression coverage', () => {
     const metrics = calculatePortfolioMetrics(transactions, {}, [], null);
     const holding = metrics.holdings.find(item => item.ticker === 'DDD');
     
-    expect(holding?.totalShares).toBe(-50); // Negative shares allowed
+    expect(holding?.totalShares).toBe(0); // Negative shares allowed
     expect(metrics.calculationWarnings.some(w => w.includes('Oversell'))).toBe(true);
     expect(holding?.marketValue).toBe(0);
   });
