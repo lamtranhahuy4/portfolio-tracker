@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { MAX_HEADER_SCAN_ROWS } from '@/lib/constants';
 import Decimal from 'decimal.js';
 import {
   AssetClass,
@@ -223,7 +224,8 @@ async function parseCsv(file: File): Promise<ImportParseResult> {
 }
 
 function findDnseTradeHeader(rows: string[][]) {
-  for (let i = 0; i < rows.length - 1; i += 1) {
+  const limit = Math.min(rows.length - 1, MAX_HEADER_SCAN_ROWS);
+  for (let i = 0; i < limit; i += 1) {
     const top = rows[i].map(normalizeText);
     const bottom = rows[i + 1].map(normalizeText);
 
@@ -261,7 +263,12 @@ async function parseDnseExcel(file: File): Promise<ImportParseResult> {
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '' }) as string[][];
+  const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '' });
+  if (!Array.isArray(rawRows)) {
+    throw new Error('Invalid Excel format');
+  }
+  const stringRows = rawRows as unknown[];
+  const rows = stringRows.filter((r): r is string[] => Array.isArray(r));
   const header = findDnseTradeHeader(rows);
 
   if (!header) {

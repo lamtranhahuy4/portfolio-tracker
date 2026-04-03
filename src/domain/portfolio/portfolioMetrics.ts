@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 import { DECIMAL_ONE, DECIMAL_ZERO, decimalMax, decimalMin, decimalSum, decimalToNumber, toDecimal, DecimalInput } from './decimal';
 import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, OpeningPositionSnapshot, PortfolioMetrics, ReconciliationInsight, Transaction } from '@/types/portfolio';
+import { CASH_DRIFT_THRESHOLD_VND } from '@/lib/constants';
 import { toMoney, toQuantity, toPrice } from './primitives';
 
 type HoldingState = {
@@ -550,7 +551,7 @@ export function calculatePortfolioMetrics(
     });
   }
 
-  if (ledgerMode && cashDriftDec.gt(100)) {
+  if (ledgerMode && cashDriftDec.gt(CASH_DRIFT_THRESHOLD_VND)) {
     reconciliationInsights.push({
       code: 'cash-drift',
       level: 'warning',
@@ -590,7 +591,7 @@ export function calculatePortfolioMetrics(
 
   if (ledgerMode) {
      const finalDerivedCash = decimalToNumber(finalDerivedCashDec);
-     if (Math.abs(decimalToNumber(finalLedgerBalance) - finalDerivedCash) > 100) {
+     if (Math.abs(decimalToNumber(finalLedgerBalance) - finalDerivedCash) > CASH_DRIFT_THRESHOLD_VND) {
        state.calculationWarnings.push(`[Reconciliation] Final cash drift: Ledger(${decimalToNumber(finalLedgerBalance)}) vs Derived(${finalDerivedCash})`);
      }
   }

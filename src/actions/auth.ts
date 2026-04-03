@@ -15,6 +15,11 @@ function validateCredentials(email: string, password: string) {
     throw new Error('Email và mật khẩu là bắt buộc.');
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error('Định dạng email không hợp lệ.');
+  }
+
   if (password.length < 8) {
     throw new Error('Mật khẩu phải có ít nhất 8 ký tự.');
   }

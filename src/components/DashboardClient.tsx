@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
+import { QUOTE_REFRESH_INTERVAL_MS } from '@/lib/constants';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -84,7 +85,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     };
 
     refresh();
-    const interval = window.setInterval(refresh, 15000);
+    const interval = window.setInterval(refresh, QUOTE_REFRESH_INTERVAL_MS);
 
     return () => {
       active = false;
