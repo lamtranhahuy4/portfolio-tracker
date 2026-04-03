@@ -7,6 +7,7 @@ import { createImportBatch } from '@/actions/importBatch';
 import { db } from '@/db/index';
 import { importBatches, transactions } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
+import { withErrorHandler } from '@/lib/errorHandler';
 import { NormalizedTransaction } from '@/types/portfolio';
 import { ImportBatchInput } from '@/types/importAudit';
 
@@ -22,7 +23,7 @@ function toLegacyImportInput(data: NormalizedTransaction[]): ImportBatchInput {
   };
 }
 
-export async function saveTransactionsBatch(data: NormalizedTransaction[], importInput?: ImportBatchInput) {
+export const saveTransactionsBatch = withErrorHandler(async function saveTransactionsBatch(data: NormalizedTransaction[], importInput?: ImportBatchInput) {
   const user = await requireUser();
   const batch = await createImportBatch(importInput ?? toLegacyImportInput(data));
   try {
@@ -59,9 +60,9 @@ export async function saveTransactionsBatch(data: NormalizedTransaction[], impor
     }
     throw error;
   }
-}
+});
 
-export async function fetchTransactions() {
+export const fetchTransactions = withErrorHandler(async function fetchTransactions() {
   const user = await requireUser();
 
   try {
@@ -100,5 +101,4 @@ export async function fetchTransactions() {
     console.error('Failed to fetch transactions:', error);
     throw new Error('Không thể tải danh sách giao dịch.');
   }
-}
-
+});
