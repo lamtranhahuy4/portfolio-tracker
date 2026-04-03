@@ -3,32 +3,8 @@ import { DECIMAL_ONE, DECIMAL_ZERO, decimalMax, decimalMin, decimalSum, decimalT
 import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, OpeningPositionSnapshot, PortfolioMetrics, ReconciliationInsight, Transaction } from '@/types/portfolio';
 import { CASH_DRIFT_THRESHOLD_VND } from '@/lib/constants';
 import { toMoney, toQuantity, toPrice } from './primitives';
+import { HoldingState, Lot, ReplayState } from './entities/ReplayEntities';
 
-type HoldingState = {
-  assetClass: Holding['assetClass'];
-  ticker: string;
-  totalShares: Decimal;
-  grossBuyValueRemaining: Decimal;
-  allocatedBuyFeesRemaining: Decimal;
-  allocatedBuyTaxRemaining: Decimal;
-  averageCostRealizedPnL: Decimal;
-  fifoRealizedPnL: Decimal;
-};
-
-type Lot = {
-  remainingQty: Decimal;
-  unitCostNet: Decimal;
-  unitCostFee: Decimal;
-  unitCostTax: Decimal;
-};
-
-type ReplayState = {
-  holdingsMap: Map<string, HoldingState>;
-  lotsMap: Map<string, Lot[]>;
-  lastKnownPrices: Map<string, Decimal>;
-  netContributions: Decimal;
-  calculationWarnings: string[];
-};
 
 function getDateKey(date: Date | string) {
   const parsed = new Date(date);
