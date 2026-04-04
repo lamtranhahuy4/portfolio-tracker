@@ -15,26 +15,28 @@ type MarketCard = {
 
 const copy = {
   vi: {
-    ready: 'Phiên bản 1.0 Đã Sẵn Sàng',
+    ready: 'Dữ liệu thị trường real-time',
     greeting: 'Xin chào',
-    subtitle: 'Bảng điều khiển thị trường trực tiếp kết nối từ các nguồn dữ liệu hiện có trong hệ thống.',
+    subtitle: 'Cập nhật liên tục từ DNSE, CoinGecko và các nguồn dữ liệu uy tín.',
     marketLabel: 'Widget Thị trường Live',
     loading: 'Đang tải thị trường...',
     unavailable: 'Chưa có dữ liệu',
     vnIndex: 'VN-INDEX',
     gold: 'VÀNG SJC 9999',
     btc: 'BTC/USD',
+    eth: 'ETH/USD',
   },
   en: {
-    ready: 'Version 1.0 Ready',
+    ready: 'Real-time Market Data',
     greeting: 'Welcome back',
-    subtitle: 'A live market widget wired to the current price sources already available in the system.',
+    subtitle: 'Continuously updated from DNSE, CoinGecko and other reliable sources.',
     marketLabel: 'Live Market Widget',
     loading: 'Loading markets...',
     unavailable: 'Unavailable',
     vnIndex: 'VN-INDEX',
     gold: 'SJC GOLD 9999',
     btc: 'BTC/USD',
+    eth: 'ETH/USD',
   },
 } satisfies Record<DashboardLanguage, Record<string, string>>;
 
@@ -51,21 +53,26 @@ function normalizeMarketCards(data: MarketCard[], language: DashboardLanguage) {
   const t = copy[language];
   const byName = new Map(data.map((item) => [item.name.toUpperCase(), item]));
 
-  return [
+  const cards = [
     {
       label: t.vnIndex,
       symbol: 'VNINDEX',
       ...byName.get('VN-INDEX'),
     },
     {
-      label: t.gold,
-      symbol: 'SJC',
-      ...Array.from(byName.values()).find((item) => item.name.toUpperCase().includes('VÀNG') || item.name.toUpperCase().includes('VANG')),
-    },
-    {
       label: t.btc,
       symbol: 'BTC',
       ...Array.from(byName.values()).find((item) => item.name.toUpperCase().includes('BITCOIN')),
+    },
+    {
+      label: t.eth,
+      symbol: 'ETH',
+      ...Array.from(byName.values()).find((item) => item.name.toUpperCase().includes('ETHEREUM')),
+    },
+    {
+      label: t.gold,
+      symbol: 'SJC',
+      ...Array.from(byName.values()).find((item) => item.name.toUpperCase().includes('VÀNG') || item.name.toUpperCase().includes('VANG')),
     },
   ].map((item) => ({
     label: item.label,
@@ -75,6 +82,8 @@ function normalizeMarketCards(data: MarketCard[], language: DashboardLanguage) {
     percent: item.percent ?? '--',
     up: item.up ?? true,
   }));
+
+  return cards.filter(card => card.price !== t.unavailable);
 }
 
 export default function HeroBanner({ userEmail, language }: { userEmail: string; language: DashboardLanguage }) {
@@ -102,7 +111,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
     };
 
     loadMarkets();
-    const interval = window.setInterval(loadMarkets, 15000);
+    const interval = window.setInterval(loadMarkets, 10000);
 
     return () => {
       active = false;
