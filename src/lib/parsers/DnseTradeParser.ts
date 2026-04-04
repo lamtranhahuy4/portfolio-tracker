@@ -79,9 +79,12 @@ function processTradeRows(
     const quantity = parseNumber(row[columns.quantity]);
     const price = parseNumber(row[columns.price]);
     const grossValue = parseNumber(row[columns.grossValue]);
-    const feeSo = Number.isNaN(parseNumber(row[columns.feeSo])) ? 0 : parseNumber(row[columns.feeSo]);
-    const feeDnse = Number.isNaN(parseNumber(row[columns.feeDnse])) ? 0 : parseNumber(row[columns.feeDnse]);
-    const tax = Number.isNaN(parseNumber(row[columns.tax])) ? 0 : parseNumber(row[columns.tax]);
+    const rawFeeSo = parseNumber(row[columns.feeSo]);
+    const rawFeeDnse = parseNumber(row[columns.feeDnse]);
+    const rawTax = parseNumber(row[columns.tax]);
+    const feeSo = Number.isNaN(rawFeeSo) ? 0 : rawFeeSo;
+    const feeDnse = Number.isNaN(rawFeeDnse) ? 0 : rawFeeDnse;
+    const tax = Number.isNaN(rawTax) ? 0 : rawTax;
     const date = parseViDate(row[columns.date]);
 
     const pushWarning = (msg: string) => {

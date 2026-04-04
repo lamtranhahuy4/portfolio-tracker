@@ -5,19 +5,18 @@
  * All orchestration logic lives in `src/services/ImportService.ts`.
  */
 import { processImportFile, validateImportFile, ImportServiceResult } from '@/services/ImportService';
-import { parseImportFile } from '@/lib/importParser';
 import { saveTransactionsBatch } from '@/actions/transaction';
 import { saveCashEventsBatch } from '@/actions/cashLedger';
-import { parseImportCashFile } from '@/lib/importParser';
+import type { ImportParseResult, ImportCashParseResult } from '@/types/portfolio';
 
 // Re-export the DTO type so consumers don't need to import from two places
 export type ImportFileResultDto =
   | {
       importKind: 'TRANSACTION';
       result: {
-        transactions: Array<Omit<Awaited<ReturnType<typeof parseImportFile>>['transactions'][number], 'date'> & { date: string }>;
-        warnings: Awaited<ReturnType<typeof parseImportFile>>['warnings'];
-        summary: Awaited<ReturnType<typeof parseImportFile>>['summary'];
+        transactions: Array<Omit<ImportParseResult['transactions'][number], 'date'> & { date: string }>;
+        warnings: ImportParseResult['warnings'];
+        summary: ImportParseResult['summary'];
       };
       audit: {
         batchId: string;
@@ -29,12 +28,12 @@ export type ImportFileResultDto =
       importKind: 'CASH_LEDGER';
       result: {
         events: Array<
-          Omit<Awaited<ReturnType<typeof parseImportCashFile>>['events'][number], 'date' | 'referenceTradeDate'> & {
+          Omit<ImportCashParseResult['events'][number], 'date' | 'referenceTradeDate'> & {
             date: string;
             referenceTradeDate?: string;
           }
         >;
-        summary: Omit<Awaited<ReturnType<typeof parseImportCashFile>>['summary'], 'coverageStart' | 'coverageEnd'> & {
+        summary: Omit<ImportCashParseResult['summary'], 'coverageStart' | 'coverageEnd'> & {
           coverageStart?: string;
           coverageEnd?: string;
         };
