@@ -8,8 +8,14 @@ import { deriveImportBatchStatus } from '@/lib/importBatches';
 import { requireUser } from '@/lib/auth';
 import { ImportBatchInput, ImportBatchRecord } from '@/types/importAudit';
 
-async function assertNoActiveDuplicateBatch(userId: string, input: ImportBatchInput) {
-  const [existingBatch] = await db.select({
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function assertNoActiveDuplicateBatch(
+  tx: DbTransaction,
+  userId: string,
+  input: ImportBatchInput
+) {
+  const [existingBatch] = await tx.select({
     id: importBatches.id,
   }).from(importBatches).where(and(
     eq(importBatches.userId, userId),
@@ -20,17 +26,17 @@ async function assertNoActiveDuplicateBatch(userId: string, input: ImportBatchIn
 
   if (existingBatch) {
     const hasChildRows = input.importKind === 'TRANSACTION'
-      ? await db.query.transactions.findFirst({
+      ? await tx.query.transactions.findFirst({
           where: eq(transactions.batchId, existingBatch.id),
           columns: { id: true },
         })
-      : await db.query.cashLedgerEvents.findFirst({
+      : await tx.query.cashLedgerEvents.findFirst({
           where: eq(cashLedgerEvents.batchId, existingBatch.id),
           columns: { id: true },
         });
 
     if (!hasChildRows) {
-      await db.delete(importBatches).where(and(
+      await tx.delete(importBatches).where(and(
         eq(importBatches.id, existingBatch.id),
         eq(importBatches.userId, userId)
       ));
@@ -42,22 +48,24 @@ async function assertNoActiveDuplicateBatch(userId: string, input: ImportBatchIn
 
 export async function createImportBatch(input: ImportBatchInput) {
   const user = await requireUser();
-  await assertNoActiveDuplicateBatch(user.id, input);
 
-  const [batch] = await db.insert(importBatches).values({
-    userId: user.id,
-    fileName: input.fileName,
-    fileChecksum: input.fileChecksum,
-    source: input.source,
-    importKind: input.importKind,
-    status: deriveImportBatchStatus(input),
-    totalRows: input.totalRows,
-    acceptedRows: input.acceptedRows,
-    rejectedRows: input.rejectedRows,
-  }).returning({
-    id: importBatches.id,
-    status: importBatches.status,
-    importedAt: importBatches.importedAt,
+  const [batch] = await db.transaction(async (tx) => {
+    await assertNoActiveDuplicateBatch(tx, user.id, input);
+    return tx.insert(importBatches).values({
+      userId: user.id,
+      fileName: input.fileName,
+      fileChecksum: input.fileChecksum,
+      source: input.source,
+      importKind: input.importKind,
+      status: deriveImportBatchStatus(input),
+      totalRows: input.totalRows,
+      acceptedRows: input.acceptedRows,
+      rejectedRows: input.rejectedRows,
+    }).returning({
+      id: importBatches.id,
+      status: importBatches.status,
+      importedAt: importBatches.importedAt,
+    });
   });
 
   return {
@@ -111,21 +119,23 @@ export async function rollbackImportBatchAction(batchId: string) {
     throw new Error('Batch import này đã được rollback trước đó.');
   }
 
-  await db.delete(transactions).where(and(
-    eq(transactions.userId, user.id),
-    eq(transactions.batchId, batchId)
-  ));
-  await db.delete(cashLedgerEvents).where(and(
-    eq(cashLedgerEvents.userId, user.id),
-    eq(cashLedgerEvents.batchId, batchId)
-  ));
-  await db.update(importBatches).set({
-    status: 'ROLLED_BACK',
-    rolledBackAt: new Date(),
-  }).where(and(
-    eq(importBatches.id, batchId),
-    eq(importBatches.userId, user.id)
-  ));
+  await db.transaction(async (tx) => {
+    await tx.delete(transactions).where(and(
+      eq(transactions.userId, user.id),
+      eq(transactions.batchId, batchId)
+    ));
+    await tx.delete(cashLedgerEvents).where(and(
+      eq(cashLedgerEvents.userId, user.id),
+      eq(cashLedgerEvents.batchId, batchId)
+    ));
+    await tx.update(importBatches).set({
+      status: 'ROLLED_BACK',
+      rolledBackAt: new Date(),
+    }).where(and(
+      eq(importBatches.id, batchId),
+      eq(importBatches.userId, user.id)
+    ));
+  });
 
   revalidatePath('/');
   revalidatePath('/account');

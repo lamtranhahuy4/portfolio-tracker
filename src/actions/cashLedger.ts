@@ -7,6 +7,7 @@ import { createImportBatch } from '@/actions/importBatch';
 import { db } from '@/db/index';
 import { cashLedgerEvents, importBatches } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
+import { withErrorHandler } from '@/lib/errorHandler';
 import { CashLedgerEvent } from '@/types/portfolio';
 import { ImportBatchInput } from '@/types/importAudit';
 import { toMoney, toQuantity } from '@/domain/portfolio/primitives';
@@ -23,7 +24,8 @@ function toLegacyImportInput(data: CashLedgerEvent[]): ImportBatchInput {
   };
 }
 
-export async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: ImportBatchInput) {
+export const saveCashEventsBatch = withErrorHandler(
+async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: ImportBatchInput) {
   const user = await requireUser();
   const batch = await createImportBatch(importInput ?? toLegacyImportInput(data));
   try {
@@ -58,13 +60,17 @@ export async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?:
 
     return batch;
   } catch (error) {
-    await db.delete(importBatches).where(and(
-      eq(importBatches.id, batch.batchId),
-      eq(importBatches.userId, user.id)
-    ));
+    try {
+      await db.delete(importBatches).where(and(
+        eq(importBatches.id, batch.batchId),
+        eq(importBatches.userId, user.id)
+      ));
+    } catch (rollbackError) {
+      console.error('[saveCashEventsBatch] Rollback failed:', rollbackError);
+    }
     throw error;
   }
-}
+});
 
 export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
   try {
@@ -81,7 +87,7 @@ export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
       direction: record.direction as 'INFLOW' | 'OUTFLOW',
       amount: toMoney(record.amount),
       balanceAfter: toMoney(record.balanceAfter),
-      eventType: record.eventType as any,
+      eventType: record.eventType as CashLedgerEvent['eventType'],
       description: record.description,
       source: record.source,
       referenceTicker: record.referenceTicker ?? undefined,

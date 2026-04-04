@@ -57,7 +57,9 @@ export const saveTransactionsBatch = withErrorHandler(async function saveTransac
       ));
     } catch (rollbackError) {
       console.error('Rollback failed:', rollbackError);
+      // Don't overwrite original error - throw it after rollback
     }
+    // Original error will be thrown here
     throw error;
   }
 });
