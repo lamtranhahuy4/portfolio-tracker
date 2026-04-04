@@ -104,6 +104,12 @@ export function shallowEqual<T>(a: T, b: T): boolean {
   if (typeof a !== 'object' || typeof b !== 'object') return false;
   if (a === null || b === null) return false;
 
+  // Handle arrays before falling through to object key comparison
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((item, index) => Object.is(item, b[index]));
+  }
+
   const keysA = Object.keys(a as object);
   const keysB = Object.keys(b as object);
 
