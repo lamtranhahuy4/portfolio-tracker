@@ -4,6 +4,10 @@
  * Each slice is defined as a `StateCreator` factory so it can be composed,
  * tested, and reasoned about independently. The exported `usePortfolioStore`
  * is fully backward-compatible: all existing selectors keep working.
+ *
+ * Memoization: calculatePortfolioMetrics is wrapped with memoizeOne to cache
+ * results based on input arguments, reducing unnecessary recomputations when
+ * price updates trigger re-renders with unchanged portfolio data.
  */
 import { create, StateCreator } from 'zustand';
 import { useMemo } from 'react';
@@ -18,6 +22,41 @@ import {
 import { calculatePortfolioMetrics } from '@/domain/portfolio/portfolioMetrics';
 import { ImportBatchStatus } from '@/types/importAudit';
 import { toMoney } from '@/domain/portfolio/primitives';
+import { memoizeOne, shallowEqual } from '@/lib/memoization';
+
+// ─── Memoized Portfolio Metrics Calculator ──────────────────────────────────
+
+const memoizedCalculateMetrics = memoizeOne(
+  (
+    transactions: Transaction[],
+    currentPrices: Record<string, number>,
+    cashEvents: CashLedgerEvent[],
+    valuationDate: Date | null,
+    globalCutoffDate: Date | null,
+    initialNetContributions: number,
+    initialCashBalance: number,
+    openingPositions: OpeningPosition[],
+    feeDebt: number
+  ): PortfolioMetrics => {
+    return calculatePortfolioMetrics(
+      transactions,
+      currentPrices,
+      cashEvents,
+      valuationDate,
+      {
+        positions: openingPositions,
+        settings: {
+          globalCutoffDate,
+          initialNetContributions: toMoney(initialNetContributions),
+          initialCashBalance: toMoney(initialCashBalance),
+          feeDebt: toMoney(feeDebt),
+        },
+      },
+      feeDebt
+    );
+  },
+  shallowEqual
+);
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -187,20 +226,15 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
 
   return useMemo(
     () =>
-      calculatePortfolioMetrics(
+      memoizedCalculateMetrics(
         transactions,
         currentPrices,
         cashEvents,
         valuationDate,
-        {
-          positions: openingPositions,
-          settings: {
-            globalCutoffDate,
-            initialNetContributions: toMoney(initialNetContributions),
-            initialCashBalance: toMoney(initialCashBalance),
-            feeDebt: toMoney(feeDebt),
-          },
-        },
+        globalCutoffDate,
+        initialNetContributions,
+        initialCashBalance,
+        openingPositions,
         feeDebt
       ),
     [

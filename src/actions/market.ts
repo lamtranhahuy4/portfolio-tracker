@@ -58,10 +58,16 @@ export async function fetchMarketIndices() {
   if (process.env.NODE_ENV !== 'test') {
     return getMarketIndices();
   }
+  
+  // Parallelize VN-INDEX and crypto fetches for better performance
+  const [vnData, cryptoData] = await Promise.all([
+    fetchDNSE('VNINDEX', true),
+    fetchCoinGecko(),
+  ]);
+
   const formattedData: any[] = [];
 
-  // 1. Fetch VN-INDEX từ DNSE
-  const vnData = await fetchDNSE('VNINDEX', true);
+  // Add VN-INDEX if available
   if (vnData) {
     formattedData.push({
       name: 'VN-INDEX',
@@ -72,8 +78,7 @@ export async function fetchMarketIndices() {
     });
   }
 
-  // 2. Fetch Giá crypto từ CoinGecko (Thay thế cho Binance bị chặn)
-  const cryptoData = await fetchCoinGecko();
+  // Add crypto data if available
   if (cryptoData && cryptoData.bitcoin) {
     formattedData.push({
       name: 'BITCOIN',
@@ -94,8 +99,7 @@ export async function fetchMarketIndices() {
     });
   }
 
-  // 3. Tạm thời hiển thị Vàng 9999 (SJC) dạng Fallback 
-  // Vì 100% các API Vàng VN đều đã chặn đứng truy cập từ IP US (Máy chủ Vercel)
+  // Gold fallback (hardcoded as VN gold APIs are blocked from US IP)
   formattedData.push({
     name: 'VÀNG SJC 9999',
     price: '89,500,000 ₫',
@@ -112,8 +116,7 @@ export async function fetchTrendingAssets() {
   if (process.env.NODE_ENV !== 'test') {
     return getTrendingAssets();
   }
-  const formattedData: any[] = [];
-
+  
   const stocks = [
     { ticker: 'FPT', name: 'Công ty Cổ phần FPT' },
     { ticker: 'VCB', name: 'Ngân hàng Vietcombank' },
@@ -122,20 +125,24 @@ export async function fetchTrendingAssets() {
     { ticker: 'POW', name: 'Tổng Công ty Điện lực Dầu khí Việt Nam' }
   ];
 
-  for (const stock of stocks) {
-    const data = await fetchDNSE(stock.ticker, false);
-    if (data) {
-      formattedData.push({
+  // Parallelize all stock fetches for better performance
+  const results = await Promise.all(
+    stocks.map(async (stock) => {
+      const data = await fetchDNSE(stock.ticker, false);
+      if (!data) return null;
+      return {
         ticker: stock.ticker,
         name: stock.name,
-        price: `${new Intl.NumberFormat('vi-VN').format(data.price * 1000)} ₫`, // DNSE trả về giá Đơn vị Nghìn Đồng
+        price: `${new Intl.NumberFormat('vi-VN').format(data.price * 1000)} ₫`,
         change: data.percent > 0 ? `+${data.percent.toFixed(2)}%` : `${data.percent.toFixed(2)}%`,
         up: data.change >= 0
-      });
-    }
-  }
+      };
+    })
+  );
 
-  // Đề phòng DNSE bảo trì
+  const formattedData = results.filter((item): item is NonNullable<typeof item> => item !== null);
+
+  // Fallback if all API calls fail
   if (formattedData.length === 0) {
     return [
       { ticker: 'FPT', name: 'Công ty Cổ phần FPT', price: '115,000 ₫', change: '+2.5%', up: true },
