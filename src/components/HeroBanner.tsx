@@ -136,7 +136,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
       <div className="pointer-events-none absolute right-0 top-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-blue-600/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 left-0 -mb-20 -ml-20 h-60 w-60 rounded-full bg-emerald-600/10 blur-3xl" />
 
-      <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between xl:gap-8">
         <div className="max-w-2xl space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">
             <Sparkles className="h-4 w-4 text-amber-300" />
@@ -155,25 +155,28 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
           </div>
         </div>
 
-        <div className="custom-scrollbar flex gap-3 overflow-x-auto pb-2 lg:max-w-[560px]">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:flex xl:gap-3">
           {cards.map((card) => (
-            <article key={card.label} className="min-w-[160px] rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 shadow-inner backdrop-blur-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{card.symbol}</p>
-                  <h3 className="mt-1 text-sm font-semibold text-slate-100">{card.label}</h3>
+            <article 
+              key={card.label} 
+              className="min-w-0 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 shadow-inner backdrop-blur-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-500">{card.symbol}</p>
+                  <h3 className="truncate text-xs font-semibold text-slate-100">{card.label}</h3>
                 </div>
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
                 ) : card.up ? (
-                  <ArrowUpRight className="h-4 w-4 text-emerald-400" />
+                  <ArrowUpRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 ) : (
-                  <ArrowDownRight className="h-4 w-4 text-rose-400" />
+                  <ArrowDownRight className="h-3.5 w-3.5 text-rose-400 shrink-0" />
                 )}
               </div>
-              <div className="mt-5">
-                <p className="text-2xl font-semibold tracking-tight text-slate-100">{card.price}</p>
-                <div className={`mt-2 inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold ${card.up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+              <div className="mt-3">
+                <p className="truncate text-lg font-semibold tracking-tight text-slate-100">{card.price}</p>
+                <div className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${card.up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                   <span>{card.change}</span>
                   <span>{card.percent}</span>
                 </div>

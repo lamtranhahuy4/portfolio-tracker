@@ -124,15 +124,66 @@ export async function getMarketIndices(): Promise<MarketCard[]> {
     });
   }
 
-  formattedData.push({
-    name: 'VANG SJC 9999',
-    price: '89,500,000 VND',
-    change: '+500,000',
-    percent: '+0.56%',
-    up: true,
-  });
+  const goldData = await fetchGoldPrice();
+  if (goldData) {
+    formattedData.push({
+      name: 'VANG SJC 9999',
+      price: goldData.price,
+      change: goldData.change,
+      percent: goldData.percent,
+      up: goldData.up,
+    });
+  } else {
+    formattedData.push({
+      name: 'VANG SJC 9999',
+      price: '89,500,000 ₫',
+      change: '--',
+      percent: '--',
+      up: true,
+    });
+  }
 
   return formattedData;
+}
+
+async function fetchGoldPrice(): Promise<{ price: string; change: string; percent: string; up: boolean } | null> {
+  try {
+    const res = await fetch('https://gateway.vnexpress.net/gold/v2/gold/getPrice', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+      next: { revalidate: 0 },
+    });
+    
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    
+    const sjc = data?.data?.find((item: { name?: string }) => 
+      item?.name?.toLowerCase()?.includes('sjc') || item?.name?.toLowerCase()?.includes('9999')
+    );
+    
+    if (!sjc) return null;
+    
+    const price = Number(sjc.price);
+    const buyPrice = Number(sjc.buy);
+    const sellPrice = Number(sjc.sell);
+    
+    if (isNaN(price) || isNaN(buyPrice) || isNaN(sellPrice)) return null;
+    
+    const change = price - buyPrice;
+    const percent = (change / buyPrice) * 100;
+    
+    return {
+      price: `${new Intl.NumberFormat('vi-VN').format(price)} ₫`,
+      change: change >= 0 ? `+${new Intl.NumberFormat('vi-VN').format(change)}` : new Intl.NumberFormat('vi-VN').format(change),
+      percent: percent >= 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
+      up: change >= 0,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function getTrendingAssets(): Promise<TrendingAssetCard[]> {
