@@ -136,7 +136,7 @@ export async function getMarketIndices(): Promise<MarketCard[]> {
   } else {
     formattedData.push({
       name: 'VANG SJC 9999',
-      price: '89,500,000 ₫',
+      price: '171,500,000 ₫',
       change: '--',
       percent: '--',
       up: true,
@@ -146,33 +146,36 @@ export async function getMarketIndices(): Promise<MarketCard[]> {
   return formattedData;
 }
 
+type VangTodayResponse = {
+  success: boolean;
+  buy: number;
+  sell: number;
+  change_buy: number;
+  change_sell: number;
+};
+
 async function fetchGoldPrice(): Promise<{ price: string; change: string; percent: string; up: boolean } | null> {
   try {
-    const [goldRes, forexRes] = await Promise.all([
-      fetch('https://api.metals.live/v1/spot/gold', { next: { revalidate: 60 } }),
-      fetch('https://api.exchangerate-api.com/v4/latest/USD', { next: { revalidate: 300 } }),
-    ]);
+    const res = await fetch('https://vang.today/api/prices?type=SJL1L10', { 
+      cache: 'no-store',
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
 
-    if (!goldRes.ok || !forexRes.ok) return null;
+    if (!res.ok) return null;
 
-    const goldData = await goldRes.json();
-    const forexData = await forexRes.json();
+    const data = await res.json() as VangTodayResponse;
+    if (!data.success) return null;
 
-    if (!goldData?.gold || !forexData?.rates?.VND) return null;
-
-    const goldPricePerOz = goldData.gold;
-    const usdToVnd = forexData.rates.VND;
-    const pricePerTael = goldPricePerOz / 12 * usdToVnd;
+    const buyPrice = data.buy;
+    const sellPrice = data.sell;
+    const price = sellPrice || buyPrice;
+    const change = data.change_sell || data.change_buy;
     
-    const premiumRate = 1.13;
-    const sjcPrice = Math.round(pricePerTael * premiumRate / 1000) * 1000;
-    
-    const basePrice = 87500000;
-    const change = sjcPrice - basePrice;
-    const percent = (change / basePrice) * 100;
+    const basePrice = price - change;
+    const percent = basePrice === 0 ? 0 : (change / basePrice) * 100;
 
     return {
-      price: `${new Intl.NumberFormat('vi-VN').format(sjcPrice)} ₫`,
+      price: `${new Intl.NumberFormat('vi-VN').format(price)} ₫`,
       change: change >= 0 ? `+${new Intl.NumberFormat('vi-VN').format(change)}` : new Intl.NumberFormat('vi-VN').format(change),
       percent: percent >= 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
       up: change >= 0,
