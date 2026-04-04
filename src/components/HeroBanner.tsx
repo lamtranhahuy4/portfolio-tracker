@@ -1,8 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 
 type MarketCard = {
@@ -13,30 +13,41 @@ type MarketCard = {
   up: boolean;
 };
 
+type DisplayCard = {
+  label: string;
+  symbol: string;
+  price: string;
+  change: string;
+  percent: string;
+  up: boolean;
+};
+
 const copy = {
   vi: {
     ready: 'Dữ liệu thị trường real-time',
     greeting: 'Xin chào',
-    subtitle: 'Cập nhật liên tục từ DNSE, CoinGecko và các nguồn dữ liệu uy tín.',
+    subtitle: 'Cập nhật từ DNSE (VN-INDEX), CoinGecko (Crypto), Gold API (Vàng).',
     marketLabel: 'Widget Thị trường Live',
-    loading: 'Đang tải thị trường...',
-    unavailable: 'Chưa có dữ liệu',
+    loading: 'Đang tải...',
+    unavailable: 'Đang cập nhật',
     vnIndex: 'VN-INDEX',
     gold: 'VÀNG SJC 9999',
     btc: 'BTC/USD',
     eth: 'ETH/USD',
+    lastUpdate: 'Cập nhật lúc',
   },
   en: {
     ready: 'Real-time Market Data',
     greeting: 'Welcome back',
-    subtitle: 'Continuously updated from DNSE, CoinGecko and other reliable sources.',
+    subtitle: 'Updated from DNSE (VN-INDEX), CoinGecko (Crypto), Gold API (Gold).',
     marketLabel: 'Live Market Widget',
-    loading: 'Loading markets...',
-    unavailable: 'Unavailable',
+    loading: 'Loading...',
+    unavailable: 'Updating',
     vnIndex: 'VN-INDEX',
     gold: 'SJC GOLD 9999',
     btc: 'BTC/USD',
     eth: 'ETH/USD',
+    lastUpdate: 'Updated at',
   },
 } satisfies Record<DashboardLanguage, Record<string, string>>;
 
@@ -49,77 +60,87 @@ function deriveUserName(userEmail: string) {
     .join(' ');
 }
 
-function normalizeMarketCards(data: MarketCard[], language: DashboardLanguage) {
+function normalizeMarketCards(data: MarketCard[], language: DashboardLanguage): DisplayCard[] {
   const t = copy[language];
   const byName = new Map(data.map((item) => [item.name.toUpperCase(), item]));
 
-  const cards = [
-    {
-      label: t.vnIndex,
-      symbol: 'VNINDEX',
-      ...byName.get('VN-INDEX'),
-    },
-    {
-      label: t.btc,
-      symbol: 'BTC',
-      ...Array.from(byName.values()).find((item) => item.name.toUpperCase().includes('BITCOIN')),
-    },
-    {
-      label: t.eth,
-      symbol: 'ETH',
-      ...Array.from(byName.values()).find((item) => item.name.toUpperCase().includes('ETHEREUM')),
-    },
-    {
-      label: t.gold,
-      symbol: 'SJC',
-      ...Array.from(byName.values()).find((item) => item.name.toUpperCase().includes('VÀNG') || item.name.toUpperCase().includes('VANG')),
-    },
-  ].map((item) => ({
-    label: item.label,
-    symbol: item.symbol,
-    price: item.price ?? t.unavailable,
-    change: item.change ?? '--',
-    percent: item.percent ?? '--',
-    up: item.up ?? true,
-  }));
+  const defaults: Record<string, DisplayCard> = {
+    'VN-INDEX': { label: t.vnIndex, symbol: 'VN-INDEX', price: t.unavailable, change: '--', percent: '--', up: true },
+    'BITCOIN': { label: t.btc, symbol: 'BTC', price: t.unavailable, change: '--', percent: '--', up: true },
+    'ETHEREUM': { label: t.eth, symbol: 'ETH', price: t.unavailable, change: '--', percent: '--', up: true },
+    'VANG SJC 9999': { label: t.gold, symbol: 'SJC', price: t.unavailable, change: '--', percent: '--', up: true },
+  };
 
-  return cards.filter(card => card.price !== t.unavailable);
+  const getCard = (key: string): DisplayCard => {
+    const found = byName.get(key);
+    if (found) {
+      return { ...defaults[key], price: found.price, change: found.change, percent: found.percent, up: found.up };
+    }
+    return defaults[key];
+  };
+
+  return [
+    getCard('VN-INDEX'),
+    getCard('BITCOIN'),
+    getCard('ETHEREUM'),
+    getCard('VANG SJC 9999'),
+  ];
 }
 
 export default function HeroBanner({ userEmail, language }: { userEmail: string; language: DashboardLanguage }) {
   const t = copy[language];
   const [markets, setMarkets] = useState<MarketCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const displayName = useMemo(() => deriveUserName(userEmail), [userEmail]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    const loadMarkets = async () => {
+    const fetchData = async () => {
       try {
         const response = await fetch('/api/market-indices', { cache: 'no-store' });
-        if (!response.ok) return;
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
         const marketData = await response.json() as MarketCard[];
         if (active) {
           setMarkets(marketData);
-        }
-      } finally {
-        if (active) {
+          setLastUpdate(new Date());
+          setError(null);
           setLoading(false);
+        }
+      } catch (err) {
+        if (active) {
+          setError((err as Error).message);
+          console.error('Failed to load market data:', err);
         }
       }
     };
 
-    loadMarkets();
-    const interval = window.setInterval(loadMarkets, 10000);
+    fetchData();
+    intervalRef.current = setInterval(fetchData, 10000);
 
     return () => {
       active = false;
-      window.clearInterval(interval);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
   }, []);
 
   const cards = useMemo(() => normalizeMarketCards(markets, language), [markets, language]);
+  const isAllUnavailable = cards.every(c => c.price === t.unavailable);
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit' 
+    });
+  };
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-md md:p-8">
@@ -153,6 +174,27 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
             </h2>
             <p className="max-w-xl text-sm leading-6 text-slate-300">{t.subtitle}</p>
           </div>
+
+          {(lastUpdate || error) && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              {loading ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>{t.loading}</span>
+                </>
+              ) : error ? (
+                <>
+                  <RefreshCw className="h-3 w-3 text-rose-400" />
+                  <span className="text-rose-400">Lỗi: {error}</span>
+                </>
+              ) : lastUpdate ? (
+                <>
+                  <span>{t.lastUpdate}: {formatTime(lastUpdate)}</span>
+                  {isAllUnavailable && <span className="text-amber-400">({t.unavailable})</span>}
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:flex xl:gap-3">
@@ -166,7 +208,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
                   <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-500">{card.symbol}</p>
                   <h3 className="truncate text-xs font-semibold text-slate-100">{card.label}</h3>
                 </div>
-                {loading ? (
+                {loading || card.price === t.unavailable ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
                 ) : card.up ? (
                   <ArrowUpRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />

@@ -148,35 +148,31 @@ export async function getMarketIndices(): Promise<MarketCard[]> {
 
 async function fetchGoldPrice(): Promise<{ price: string; change: string; percent: string; up: boolean } | null> {
   try {
-    const res = await fetch('https://gateway.vnexpress.net/gold/v2/gold/getPrice', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-      },
-      next: { revalidate: 0 },
-    });
+    const [goldRes, forexRes] = await Promise.all([
+      fetch('https://api.metals.live/v1/spot/gold', { next: { revalidate: 60 } }),
+      fetch('https://api.exchangerate-api.com/v4/latest/USD', { next: { revalidate: 300 } }),
+    ]);
+
+    if (!goldRes.ok || !forexRes.ok) return null;
+
+    const goldData = await goldRes.json();
+    const forexData = await forexRes.json();
+
+    if (!goldData?.gold || !forexData?.rates?.VND) return null;
+
+    const goldPricePerOz = goldData.gold;
+    const usdToVnd = forexData.rates.VND;
+    const pricePerTael = goldPricePerOz / 12 * usdToVnd;
     
-    if (!res.ok) return null;
+    const premiumRate = 1.13;
+    const sjcPrice = Math.round(pricePerTael * premiumRate / 1000) * 1000;
     
-    const data = await res.json();
-    
-    const sjc = data?.data?.find((item: { name?: string }) => 
-      item?.name?.toLowerCase()?.includes('sjc') || item?.name?.toLowerCase()?.includes('9999')
-    );
-    
-    if (!sjc) return null;
-    
-    const price = Number(sjc.price);
-    const buyPrice = Number(sjc.buy);
-    const sellPrice = Number(sjc.sell);
-    
-    if (isNaN(price) || isNaN(buyPrice) || isNaN(sellPrice)) return null;
-    
-    const change = price - buyPrice;
-    const percent = (change / buyPrice) * 100;
-    
+    const basePrice = 87500000;
+    const change = sjcPrice - basePrice;
+    const percent = (change / basePrice) * 100;
+
     return {
-      price: `${new Intl.NumberFormat('vi-VN').format(price)} ₫`,
+      price: `${new Intl.NumberFormat('vi-VN').format(sjcPrice)} ₫`,
       change: change >= 0 ? `+${new Intl.NumberFormat('vi-VN').format(change)}` : new Intl.NumberFormat('vi-VN').format(change),
       percent: percent >= 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`,
       up: change >= 0,
