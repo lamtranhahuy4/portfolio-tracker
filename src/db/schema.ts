@@ -1,4 +1,4 @@
-import { index, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -132,4 +132,36 @@ export const accountLockouts = pgTable('account_lockouts', {
   emailLockoutIdx: index('lockouts_email_idx').on(table.email),
   ipLockoutIdx: index('lockouts_ip_idx').on(table.ipAddress),
   userLockoutIdx: index('lockouts_user_idx').on(table.userId),
+}));
+
+// Market prices cache table
+export const marketPrices = pgTable('market_prices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticker: varchar('ticker', { length: 32 }).notNull(),
+  assetClass: varchar('asset_class', { length: 20 }).notNull().default('STOCK'),
+  price: numeric('price', { precision: 18, scale: 6 }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull().default('VND'),
+  source: varchar('source', { length: 50 }),
+  fetchedAt: timestamp('fetched_at', { mode: 'date' }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }),
+  isManualOverride: boolean('is_manual_override').default(false),
+}, (table) => ({
+  tickerIdx: uniqueIndex('market_prices_ticker_idx').on(table.ticker),
+  fetchedAtIdx: index('market_prices_fetched_at_idx').on(table.fetchedAt),
+  expiresAtIdx: index('market_prices_expires_at_idx').on(table.expiresAt),
+}));
+
+// Price history for audit trail
+export const priceHistory = pgTable('price_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticker: varchar('ticker', { length: 32 }).notNull(),
+  assetClass: varchar('asset_class', { length: 20 }).notNull(),
+  price: numeric('price', { precision: 18, scale: 6 }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull().default('VND'),
+  source: varchar('source', { length: 50 }),
+  recordedAt: timestamp('recorded_at', { mode: 'date' }).defaultNow().notNull(),
+  recordedBy: uuid('recorded_by').references(() => users.id, { onDelete: 'set null' }),
+  reason: varchar('reason', { length: 255 }),
+}, (table) => ({
+  tickerRecordedAtIdx: index('price_history_ticker_recorded_idx').on(table.ticker, table.recordedAt),
 }));
