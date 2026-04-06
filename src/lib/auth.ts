@@ -1,11 +1,11 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/db/index';
-import { users } from '@/db/schema';
+import { sessions, users } from '@/db/schema';
 
 const SESSION_COOKIE = 'portfolio_session';
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 function getAuthSecret() {
   return process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? 'dev-only-auth-secret';
@@ -29,6 +29,13 @@ export function verifyPassword(password: string, passwordHash: string) {
   return timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(computedHash, 'hex'));
 }
 
+function createToken(): { token: string; tokenHash: string } {
+  const randomPart = randomBytes(32).toString('hex');
+  const token = `${randomPart}.${Date.now()}`;
+  const tokenHash = hashValue(token);
+  return { token, tokenHash };
+}
+
 function createSessionToken(userId: string) {
   const expiresAt = Date.now() + (SESSION_TTL_SECONDS * 1000);
   const payload = `${userId}.${expiresAt}`;
@@ -49,8 +56,120 @@ function parseSessionToken(token: string | undefined) {
   return { userId };
 }
 
+export interface SessionInfo {
+  id: string;
+  userId: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: Date;
+  lastUsedAt: Date;
+  expiresAt: Date;
+}
+
+export async function createDbSession(
+  userId: string,
+  userAgent?: string,
+  ipAddress?: string
+): Promise<string> {
+  const { token, tokenHash } = createToken();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+
+  await db.insert(sessions).values({
+    userId,
+    tokenHash,
+    expiresAt,
+    userAgent: userAgent ?? null,
+    ipAddress: ipAddress ?? null,
+  });
+
+  return token;
+}
+
+export async function validateDbSession(token: string): Promise<SessionInfo | null> {
+  const tokenHash = hashValue(token);
+
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.tokenHash, tokenHash),
+        gt(sessions.expiresAt, new Date())
+      )
+    )
+    .limit(1);
+
+  if (!session) return null;
+
+  await db
+    .update(sessions)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(sessions.id, session.id));
+
+  return {
+    id: session.id,
+    userId: session.userId,
+    userAgent: session.userAgent,
+    ipAddress: session.ipAddress,
+    createdAt: new Date(session.createdAt),
+    lastUsedAt: new Date(session.lastUsedAt),
+    expiresAt: new Date(session.expiresAt),
+  };
+}
+
+export async function invalidateSession(sessionId: string): Promise<void> {
+  await db.delete(sessions).where(eq(sessions.id, sessionId));
+}
+
+export async function invalidateAllSessionsForUser(userId: string): Promise<number> {
+  const result = await db.delete(sessions).where(eq(sessions.userId, userId));
+  return result.rowCount ?? 0;
+}
+
+export async function getUserSessions(userId: string): Promise<SessionInfo[]> {
+  const userSessions = await db
+    .select()
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        gt(sessions.expiresAt, new Date())
+      )
+    )
+    .orderBy(sessions.lastUsedAt);
+
+  return userSessions.map((session) => ({
+    id: session.id,
+    userId: session.userId,
+    userAgent: session.userAgent,
+    ipAddress: session.ipAddress,
+    createdAt: new Date(session.createdAt),
+    lastUsedAt: new Date(session.lastUsedAt),
+    expiresAt: new Date(session.expiresAt),
+  }));
+}
+
+export async function cleanupExpiredSessions(): Promise<number> {
+  const result = await db
+    .delete(sessions)
+    .where(sql`${sessions.expiresAt} < NOW()`);
+
+  return result.rowCount ?? 0;
+}
+
 export async function setSession(userId: string) {
   cookies().set(SESSION_COOKIE, createSessionToken(userId), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: SESSION_TTL_SECONDS,
+  });
+}
+
+export async function setDbSession(userId: string, userAgent?: string, ipAddress?: string) {
+  const token = await createDbSession(userId, userAgent, ipAddress);
+  cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -63,15 +182,45 @@ export async function clearSession() {
   cookies().delete(SESSION_COOKIE);
 }
 
+export async function clearDbSession(sessionId?: string) {
+  if (sessionId) {
+    await invalidateSession(sessionId);
+  }
+  cookies().delete(SESSION_COOKIE);
+}
+
 export async function getCurrentUser() {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+
+  // Try DB session first (new flow)
+  if (token && !token.includes('.')) {
+    const session = await validateDbSession(token);
+    if (session) {
+      const [user] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, session.userId))
+        .limit(1);
+      return user ?? null;
+    }
+  }
+
+  // Fall back to legacy token format
   const session = parseSessionToken(token);
   if (!session) return null;
 
-  const [user] = await db.select({
-    id: users.id,
-    email: users.email,
-  }).from(users).where(eq(users.id, session.userId)).limit(1);
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+    })
+    .from(users)
+    .where(eq(users.id, session.userId))
+    .limit(1);
 
   return user ?? null;
 }
@@ -83,4 +232,11 @@ export async function requireUser() {
   }
 
   return user;
+}
+
+export function getClientInfo() {
+  return {
+    userAgent: 'Unknown',
+    ipAddress: 'Unknown',
+  };
 }

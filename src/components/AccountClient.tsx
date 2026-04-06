@@ -2,13 +2,31 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, UserCircle2, Activity, HardDrive, Filter, Clock, Languages } from 'lucide-react';
+import { ArrowLeft, UserCircle2, Activity, HardDrive, Filter, Clock, Languages, Smartphone, Monitor, Globe, LogOut, Shield, AlertTriangle } from 'lucide-react';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import DeletePortfolioDataForm from '@/components/DeletePortfolioDataForm';
 import ImportHistoryCard from '@/components/ImportHistoryCard';
 import CutoffSetupForm from '@/components/CutoffSetupForm';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { ImportBatchRecord } from '@/types/importAudit';
+import { toast } from 'sonner';
+
+interface SessionInfo {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: Date | string;
+  lastUsedAt: Date | string;
+  expiresAt: Date | string;
+}
+
+interface SecurityStatus {
+  totalSessions: number;
+  failedAttemptsInWindow: number;
+  isLocked: boolean;
+  lockoutReason: string | null;
+  lockoutUntil: Date | string | null;
+}
 
 interface AccountSummary {
   user: {
@@ -27,6 +45,8 @@ interface AccountSummary {
     initialNetContributions: number;
     initialCashBalance: number;
   };
+  sessions: SessionInfo[];
+  security: SecurityStatus;
 }
 
 const copy = {
@@ -44,6 +64,23 @@ const copy = {
     language: 'Ngôn ngữ',
     vi: 'VI',
     en: 'EN',
+    activeSessions: 'Phiên đăng nhập đang hoạt động',
+    sessionCount: 'thiết bị',
+    lastActive: 'Hoạt động cuối',
+    signOutAll: 'Đăng xuất tất cả thiết bị',
+    signOutConfirm: 'Bạn có chắc muốn đăng xuất khỏi tất cả thiết bị?',
+    signOutDevice: 'Đăng xuất thiết bị này',
+    desktop: 'Máy tính',
+    mobile: 'Di động',
+    unknown: 'Không xác định',
+    securityStatus: 'Tình trạng bảo mật',
+    failedAttempts: 'Lần đăng nhập thất bại (15 phút)',
+    accountLocked: 'Tài khoản bị khóa',
+    lockedUntil: 'Khóa đến',
+    notLocked: 'Không bị khóa',
+    signOutSuccess: 'Đã đăng xuất khỏi thiết bị',
+    signOutAllSuccess: 'Đã đăng xuất khỏi tất cả thiết bị',
+    signOutAllError: 'Không thể đăng xuất',
   },
   en: {
     back: 'Back to Dashboard',
@@ -59,12 +96,31 @@ const copy = {
     language: 'Language',
     vi: 'VI',
     en: 'EN',
+    activeSessions: 'Active Sessions',
+    sessionCount: 'devices',
+    lastActive: 'Last active',
+    signOutAll: 'Sign out all devices',
+    signOutConfirm: 'Are you sure you want to sign out from all devices?',
+    signOutDevice: 'Sign out this device',
+    desktop: 'Desktop',
+    mobile: 'Mobile',
+    unknown: 'Unknown',
+    securityStatus: 'Security Status',
+    failedAttempts: 'Failed attempts (15 min)',
+    accountLocked: 'Account Locked',
+    lockedUntil: 'Locked until',
+    notLocked: 'Not locked',
+    signOutSuccess: 'Device signed out',
+    signOutAllSuccess: 'All devices signed out',
+    signOutAllError: 'Cannot sign out',
   },
 } satisfies Record<DashboardLanguage, Record<string, string>>;
 
 export default function AccountClient({ summary }: { summary: AccountSummary }) {
   const [language, setLanguage] = useState<DashboardLanguage>('vi');
   const [showCutoff, setShowCutoff] = useState(false);
+  const [sessions, setSessions] = useState<SessionInfo[]>(summary.sessions);
+  const [signingOutAll, setSigningOutAll] = useState(false);
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
@@ -80,12 +136,57 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
   const t = copy[language];
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
 
-  const formatDate = useMemo(() => (date: Date | null) => {
+  const formatDate = useMemo(() => (date: Date | string | null) => {
     if (!date) return t.noDate;
     return new Intl.DateTimeFormat(locale, {
       year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
     }).format(new Date(date));
   }, [locale, t.noDate]);
+
+  const getDeviceIcon = (userAgent: string | null) => {
+    if (!userAgent) return Globe;
+    const ua = userAgent.toLowerCase();
+    if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+      return Smartphone;
+    }
+    return Monitor;
+  };
+
+  const getDeviceType = (userAgent: string | null): string => {
+    if (!userAgent) return t.unknown;
+    const ua = userAgent.toLowerCase();
+    if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+      return t.mobile;
+    }
+    return t.desktop;
+  };
+
+  const handleSignOutAll = async () => {
+    if (!window.confirm(t.signOutConfirm)) return;
+
+    setSigningOutAll(true);
+    try {
+      const { signOutAllDevicesAction } = await import('@/actions/auth');
+      await signOutAllDevicesAction();
+      setSessions([]);
+      toast.success(t.signOutAllSuccess);
+    } catch (error) {
+      toast.error(t.signOutAllError);
+    } finally {
+      setSigningOutAll(false);
+    }
+  };
+
+  const handleSignOutDevice = async (sessionId: string) => {
+    try {
+      const { signOutDeviceAction } = await import('@/actions/auth');
+      await signOutDeviceAction(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      toast.success(t.signOutSuccess);
+    } catch {
+      toast.error(t.signOutAllError);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -199,6 +300,84 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
           )}
         </div>
         <ImportHistoryCard batches={summary.importBatches} language={language} />
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/30">
+                <Shield className="h-5 w-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-200">{t.securityStatus}</h3>
+                <p className="text-sm text-slate-400">{summary.security.totalSessions} {t.sessionCount}</p>
+              </div>
+            </div>
+            {sessions.length > 0 && (
+              <button
+                onClick={handleSignOutAll}
+                disabled={signingOutAll}
+                className="px-4 py-2 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm font-medium text-rose-400 hover:bg-rose-500/20 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                {signingOutAll ? '...' : t.signOutAll}
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700">
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${summary.security.isLocked ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+              {summary.security.isLocked ? <AlertTriangle className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+            </div>
+            <div className="flex-1">
+              <p className={`text-sm font-medium ${summary.security.isLocked ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {summary.security.isLocked ? t.accountLocked : t.notLocked}
+              </p>
+              {summary.security.isLocked && summary.security.lockoutUntil && (
+                <p className="text-xs text-slate-400">
+                  {t.lockedUntil}: {formatDate(summary.security.lockoutUntil)}
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500">{t.failedAttempts}</p>
+              <p className={`text-lg font-bold ${summary.security.failedAttemptsInWindow > 3 ? 'text-amber-400' : 'text-slate-300'}`}>
+                {summary.security.failedAttemptsInWindow}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-slate-400">{t.activeSessions}</h4>
+            {sessions.length === 0 ? (
+              <p className="text-sm text-slate-500 py-4 text-center">{t.noData}</p>
+            ) : (
+              sessions.map((session) => {
+                const DeviceIcon = getDeviceIcon(session.userAgent);
+                return (
+                  <div key={session.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                      <DeviceIcon className="h-5 w-5 text-slate-400" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-200">{getDeviceType(session.userAgent)}</p>
+                        <p className="text-xs text-slate-500">
+                          {session.ipAddress || 'Unknown IP'} • {t.lastActive}: {formatDate(session.lastUsedAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleSignOutDevice(session.id)}
+                      className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg border border-slate-700 transition-colors"
+                      title={t.signOutDevice}
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
         <ChangePasswordForm language={language} />
         <DeletePortfolioDataForm language={language} />
       </main>

@@ -90,3 +90,46 @@ export const portfolioSettings = pgTable('portfolio_settings', {
 }, (table) => ({
   userIdx: uniqueIndex('portfolio_settings_user_idx').on(table.userId),
 }));
+
+// Sessions table for secure session management
+export const sessions = pgTable('sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  lastUsedAt: timestamp('last_used_at', { mode: 'date' }).defaultNow().notNull(),
+  userAgent: text('user_agent'),
+  ipAddress: varchar('ip_address', { length: 45 }),
+}, (table) => ({
+  userIdIdx: index('sessions_user_id_idx').on(table.userId),
+  tokenHashIdx: uniqueIndex('sessions_token_hash_idx').on(table.tokenHash),
+  expiresIdx: index('sessions_expires_idx').on(table.expiresAt),
+}));
+
+// Login attempts tracking for rate limiting
+export const loginAttempts = pgTable('login_attempts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull(),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  attemptedAt: timestamp('attempted_at', { mode: 'date' }).defaultNow().notNull(),
+  success: varchar('success', { length: 1 }).notNull().default('0'),
+}, (table) => ({
+  emailAttemptedAtIdx: index('login_attempts_email_at_idx').on(table.email, table.attemptedAt),
+  ipAttemptedAtIdx: index('login_attempts_ip_at_idx').on(table.ipAddress, table.attemptedAt),
+}));
+
+// Account lockouts for brute force protection
+export const accountLockouts = pgTable('account_lockouts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  lockedUntil: timestamp('locked_until', { mode: 'date' }).notNull(),
+  reason: varchar('reason', { length: 255 }),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  emailLockoutIdx: index('lockouts_email_idx').on(table.email),
+  ipLockoutIdx: index('lockouts_ip_idx').on(table.ipAddress),
+  userLockoutIdx: index('lockouts_user_idx').on(table.userId),
+}));

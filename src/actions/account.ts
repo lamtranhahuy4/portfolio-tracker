@@ -5,8 +5,26 @@ import { revalidatePath } from 'next/cache';
 import { fetchImportBatches } from '@/actions/importBatch';
 import { fetchPortfolioSettings } from '@/actions/portfolioSettings';
 import { db } from '@/db/index';
-import { users, transactions, cashLedgerEvents, openingPositions } from '@/db/schema';
-import { requireUser, hashPassword, verifyPassword } from '@/lib/auth';
+import { users, transactions, cashLedgerEvents, openingPositions, sessions } from '@/db/schema';
+import { requireUser, hashPassword, verifyPassword, getUserSessions } from '@/lib/auth';
+import { authRateLimiter } from '@/lib/rateLimiter';
+
+export interface SessionInfo {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: Date;
+  lastUsedAt: Date;
+  expiresAt: Date;
+}
+
+export interface SecurityStatus {
+  totalSessions: number;
+  failedAttemptsInWindow: number;
+  isLocked: boolean;
+  lockoutReason: string | null;
+  lockoutUntil: Date | null;
+}
 
 export async function getAccountSummary() {
   const user = await requireUser();
@@ -27,6 +45,11 @@ export async function getAccountSummary() {
     email: users.email,
     createdAt: users.createdAt,
   }).from(users).where(eq(users.id, user.id));
+
+  const userSessions = await getUserSessions(user.id);
+  const failedAttempts = await authRateLimiter.getFailedAttempts(user.email);
+  const lockoutInfo = await authRateLimiter.isEmailLocked(user.email);
+
   const importBatches = await fetchImportBatches();
   const portfolioSettings = await fetchPortfolioSettings();
 
@@ -38,6 +61,14 @@ export async function getAccountSummary() {
     sourceBreakdown: sources.map((s) => ({ source: s.source || 'manual', count: Number(s.count) })),
     importBatches,
     portfolioSettings,
+    sessions: userSessions,
+    security: {
+      totalSessions: userSessions.length,
+      failedAttemptsInWindow: failedAttempts,
+      isLocked: lockoutInfo.isLocked,
+      lockoutReason: lockoutInfo.reason ?? null,
+      lockoutUntil: lockoutInfo.lockedUntil ?? null,
+    },
   };
 }
 
