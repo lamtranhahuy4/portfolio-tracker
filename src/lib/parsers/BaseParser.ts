@@ -1,8 +1,12 @@
 /**
  * Shared text/number parsing utilities used by all parser implementations.
  * Exported so each concrete parser can import only what it needs.
+ * 
+ * Decimal.js Integration: Financial values are parsed using Decimal.js to avoid
+ * floating-point precision issues (e.g., 0.1 + 0.2 = 0.30000000000000004).
+ * The engine (portfolioMetrics.ts) uses Decimal internally for all calculations.
  */
-import Decimal from 'decimal.js';
+import Decimal, { type Decimal as DecimalType } from 'decimal.js';
 import { AssetClass, ImportWarning, NormalizedTransaction, TransactionType } from '@/types/portfolio';
 import { toMoney, toPrice, toQuantity } from '@/domain/portfolio/primitives';
 
@@ -33,6 +37,50 @@ export function parseNumber(value: unknown): number {
     .replace(/,/g, '')
     .replace(/[^\d.-]/g, '');
   return Number(normalized);
+}
+
+/**
+ * Parse a value to Decimal for precise financial calculations.
+ * This avoids floating-point precision issues inherent in JavaScript numbers.
+ * 
+ * Uses Decimal.js configuration: precision 20, rounding HALF_UP
+ * 
+ * @example
+ * parseNumberToDecimal('0.1').plus('0.2').toString() // "0.3" (not "0.30000000000000004")
+ */
+export function parseNumberToDecimal(value: unknown): DecimalType {
+  if (value === null || value === undefined) {
+    return new Decimal(NaN);
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return new Decimal(NaN);
+  }
+  const normalized = raw
+    .replace(/\s+/g, '')
+    .replace(/,/g, '')
+    .replace(/[^\d.-]/g, '');
+  
+  try {
+    return new Decimal(normalized);
+  } catch {
+    return new Decimal(NaN);
+  }
+}
+
+/**
+ * Check if a Decimal value is a valid number (not NaN or Infinity).
+ */
+export function isValidDecimal(value: DecimalType): boolean {
+  return value.isFinite() && !value.isNaN();
+}
+
+/**
+ * Convert a Decimal to a safe number for boundary display/UI.
+ * Prefer working with Decimal throughout calculations.
+ */
+export function decimalToNumber(value: DecimalType): number {
+  return value.toNumber();
 }
 
 export function parseViDate(value: unknown): Date | null {
@@ -78,21 +126,24 @@ export function buildTransaction(input: {
   row: number;
   ticker: string;
   type: TransactionType;
-  quantity: number;
-  price: number;
-  fee?: number;
-  tax?: number;
+  quantity: DecimalType | number;
+  price: DecimalType | number;
+  fee?: DecimalType | number;
+  tax?: DecimalType | number;
   date: Date;
   notes?: string;
   source: string;
 }): NormalizedTransaction {
   const assetClass = getAssetClass(input.type);
-  const fee = input.fee ?? 0;
-  const tax = input.tax ?? 0;
-  const grossValue = new Decimal(input.quantity).times(input.price);
+  const qty = parseNumberToDecimal(input.quantity);
+  const px = parseNumberToDecimal(input.price);
+  const feeVal = parseNumberToDecimal(input.fee ?? 0);
+  const taxVal = parseNumberToDecimal(input.tax ?? 0);
+  
+  const grossValue = qty.times(px);
   const totalValue = input.type === 'SELL'
-    ? grossValue.minus(fee).minus(tax)
-    : grossValue.plus(fee).plus(tax);
+    ? grossValue.minus(feeVal).minus(taxVal)
+    : grossValue.plus(feeVal).plus(taxVal);
 
   return {
     id: crypto.randomUUID(),
@@ -100,11 +151,11 @@ export function buildTransaction(input: {
     assetClass,
     ticker: toTicker(input.ticker, assetClass),
     type: input.type,
-    quantity: toQuantity(input.quantity),
-    price: toPrice(input.price),
-    fee: toMoney(fee),
-    tax: toMoney(tax),
-    totalValue: toMoney(totalValue.toNumber()),
+    quantity: toQuantity(qty),
+    price: toPrice(px),
+    fee: toMoney(feeVal),
+    tax: toMoney(taxVal),
+    totalValue: toMoney(totalValue),
     notes: input.notes,
     source: input.source,
   };

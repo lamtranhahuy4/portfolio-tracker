@@ -22,3 +22,53 @@ Về cách áp dụng:
 - Lợi ích: Yên tâm 100% trong tất cả phép tính cộng, nhân, chia tỉ rẽ, thuế phí, xử lý FIFO. Codebiz (Logic) đáng tin cậy.
 - Rủi ro nhỏ: Cần ép kiểu rõ ràng tại Controller (`toDecimal()`).
 - Payload Serialization: Cần chú ý khi truyền qua ranh giới Client/Server Components trong NextJS, mọi object kiểu `Decimal` sẽ bị Next.js cảnh báo nếu không deserialize sang String trước.
+
+## Triển khai (Implementation)
+
+### Cấu trúc Files
+
+```
+src/
+├── domain/portfolio/
+│   ├── decimal.ts         # Core Decimal helpers (toDecimal, decimalSum, etc.)
+│   ├── primitives.ts      # Boundary functions (toMoney, toQuantity, toPrice)
+│   └── portfolioMetrics.ts # Engine - sử dụng Decimal nội bộ
+├── lib/parsers/
+│   └── BaseParser.ts      # Parser helpers với parseNumberToDecimal()
+├── db/
+│   └── index.ts           # Database serialization helpers
+```
+
+### Các hàm chính
+
+1. **`parseNumberToDecimal(value)`** - Parse string sang Decimal để tránh mất precision
+2. **`toMoney()`, `toQuantity()`, `toPrice()`** - Boundary functions chuyển Decimal sang number cho UI
+3. **`toDbDecimal()`, `fromDbDecimal()`** - Helpers cho database serialization
+
+### Ví dụ sử dụng
+
+```typescript
+// Parser - tránh mất precision ngay từ đầu
+const price = parseNumberToDecimal('35000.123456');
+const quantity = parseNumberToDecimal('100');
+const total = price.times(quantity); // 3500012.3456 (không có lỗi floating point)
+
+// Engine - tính toán với Decimal
+const costBasis = quantity.times(averageCost);
+const profit = sellPrice.times(quantity).minus(costBasis);
+
+// Boundary - chuyển sang number cho UI
+const uiValue = toMoney(profit);
+
+// Database - lưu dưới dạng string
+const dbValue = toDbDecimal(profit); // "500.12"
+```
+
+## Trạng thái (Status)
+**Implemented** - Đã hoàn thành migration Decimal.js vào:
+- [x] BaseParser với `parseNumberToDecimal()`
+- [x] DnseTradeParser sử dụng Decimal cho tính toán
+- [x] DnseCashParser sử dụng Decimal cho tính toán
+- [x] primitives.ts với documentation
+- [x] Database helpers trong `db/index.ts`
+- [x] Edge case tests cho floating point precision

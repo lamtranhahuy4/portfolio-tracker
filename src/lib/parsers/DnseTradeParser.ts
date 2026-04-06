@@ -3,7 +3,7 @@ import Decimal from 'decimal.js';
 import { ImportParseResult, ImportWarning, NormalizedTransaction } from '@/types/portfolio';
 import { toMoney } from '@/domain/portfolio/primitives';
 import { MAX_HEADER_SCAN_ROWS } from '@/lib/constants';
-import { buildTransaction, normalizeText, parseNumber, parseTransactionType, parseViDate } from './BaseParser';
+import { buildTransaction, normalizeText, parseNumber, parseNumberToDecimal, parseTransactionType, parseViDate, isValidDecimal } from './BaseParser';
 
 // ─── Header detection ────────────────────────────────────────────────────────
 
@@ -102,23 +102,30 @@ function processTradeRows(
     if (!ticker && hasType) { pushWarning('Thiếu mã chứng khoán.'); continue; }
     if (!type && hasTicker) { pushWarning('Không nhận diện được loại lệnh từ file DNSE.'); continue; }
     if (!type && !ticker) { pushWarning('Thiếu cả mã chứng khoán và loại lệnh.'); continue; }
-    if (Number.isNaN(quantity) || quantity <= 0) { pushWarning('Khối lượng không hợp lệ.'); continue; }
-    if (Number.isNaN(price) || price <= 0) { pushWarning('Giá khớp không hợp lệ.'); continue; }
+    
+    const qtyDec = parseNumberToDecimal(quantity);
+    const priceDec = parseNumberToDecimal(price);
+    const grossValueDec = parseNumberToDecimal(grossValue);
+    const taxDec = parseNumberToDecimal(tax);
+    
+    if (!qtyDec.isFinite() || qtyDec.lte(0)) { pushWarning('Khối lượng không hợp lệ.'); continue; }
+    if (!priceDec.isFinite() || priceDec.lte(0)) { pushWarning('Giá khớp không hợp lệ.'); continue; }
     if (!date) { pushWarning('Ngày giao dịch không hợp lệ.'); continue; }
 
     const fee = feeSo + feeDnse;
     const normalized = buildTransaction({
-      row: rowNumber, ticker, type: type!, quantity, price, fee, tax, date,
-      notes: `DNSE gross=${Number.isNaN(grossValue) ? quantity * price : grossValue}`,
+      row: rowNumber, ticker, type: type!, quantity: qtyDec, price: priceDec, fee, tax: taxDec, date,
+      notes: `DNSE gross=${!grossValueDec.isFinite() ? qtyDec.times(priceDec).toString() : grossValueDec.toString()}`,
       source: 'dnse-xlsx',
     });
 
-    if (!Number.isNaN(grossValue) && grossValue > 0) {
-      normalized.totalValue = toMoney((
+    if (grossValueDec.isFinite() && grossValueDec.gt(0)) {
+      const feeDec = parseNumberToDecimal(fee);
+      normalized.totalValue = toMoney(
         type === 'SELL'
-          ? new Decimal(grossValue).minus(fee).minus(tax)
-          : new Decimal(grossValue).plus(fee).plus(tax)
-      ).toNumber());
+          ? grossValueDec.minus(feeDec).minus(taxDec)
+          : grossValueDec.plus(feeDec).plus(taxDec)
+      );
     }
 
     transactions.push(normalized);

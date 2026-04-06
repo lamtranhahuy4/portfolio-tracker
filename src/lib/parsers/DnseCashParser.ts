@@ -1,7 +1,8 @@
 import * as XLSX from 'xlsx';
+import Decimal from 'decimal.js';
 import { CashLedgerEvent, CashLedgerEventType, ImportCashParseResult } from '@/types/portfolio';
 import { toMoney, toQuantity } from '@/domain/portfolio/primitives';
-import { normalizeText, parseNumber, parseViDate } from './BaseParser';
+import { normalizeText, parseNumber, parseNumberToDecimal, parseViDate } from './BaseParser';
 
 // ─── Header detection ─────────────────────────────────────────────────────────
 
@@ -118,24 +119,24 @@ export function parseDnseCashRows(rows: string[][], fileName = 'mock.xlsx'): Imp
       ?? (descLower.includes('du dau ky') ? firstDatedEvent : null)
       ?? new Date();
 
-    const rawInflow = parseNumber(row[columns.inflow]);
-    const rawOutflow = parseNumber(row[columns.outflow]);
-    const rawBalance = parseNumber(row[columns.balance]);
+    const inflowDec = parseNumberToDecimal(row[columns.inflow]);
+    const outflowDec = parseNumberToDecimal(row[columns.outflow]);
+    const balanceDec = parseNumberToDecimal(row[columns.balance]);
 
-    if (Number.isNaN(rawInflow) && Number.isNaN(rawOutflow) && Number.isNaN(rawBalance)) continue;
+    if (!inflowDec.isFinite() && !outflowDec.isFinite() && !balanceDec.isFinite()) continue;
 
     let direction: 'INFLOW' | 'OUTFLOW' = 'INFLOW';
-    let amount = 0;
+    let amount = inflowDec;
 
-    if (!Number.isNaN(rawInflow) && rawInflow !== 0) {
-      direction = rawInflow > 0 ? 'INFLOW' : 'OUTFLOW';
-      amount = Math.abs(rawInflow);
-    } else if (!Number.isNaN(rawOutflow) && rawOutflow !== 0) {
-      direction = rawOutflow > 0 ? 'OUTFLOW' : 'INFLOW';
-      amount = Math.abs(rawOutflow);
+    if (inflowDec.isFinite() && !inflowDec.isZero()) {
+      direction = inflowDec.gt(0) ? 'INFLOW' : 'OUTFLOW';
+      amount = inflowDec.abs();
+    } else if (outflowDec.isFinite() && !outflowDec.isZero()) {
+      direction = outflowDec.gt(0) ? 'OUTFLOW' : 'INFLOW';
+      amount = outflowDec.abs();
     }
 
-    if (amount === 0 && !descLower.includes('du dau ky')) continue;
+    if (amount.isZero() && !descLower.includes('du dau ky')) continue;
 
     totalEvents++;
     const eventType = classifyEventType(descLower);
@@ -148,7 +149,7 @@ export function parseDnseCashRows(rows: string[][], fileName = 'mock.xlsx'): Imp
       date: parsedDate,
       direction,
       amount: toMoney(amount),
-      balanceAfter: toMoney(Number.isNaN(rawBalance) ? 0 : rawBalance),
+      balanceAfter: toMoney(balanceDec.isFinite() ? balanceDec : new Decimal(0)),
       eventType,
       description: descText,
       source: 'dnse-cash-xlsx',
