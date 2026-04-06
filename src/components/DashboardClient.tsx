@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages } from 'lucide-react';
+import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
 import FeeDebtCard from '@/components/FeeDebtCard';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
@@ -16,6 +16,7 @@ import NetWorthChart from '@/components/NetWorthChart';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
 import TooltipInfo from '@/components/TooltipInfo';
+import DataQualityBadge from '@/components/DataQualityBadge';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
@@ -38,6 +39,9 @@ const formatPercent = (value: number) => new Intl.NumberFormat('vi-VN', {
 export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const [language, setLanguage] = useState<DashboardLanguage>('vi');
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
+  const [priceFreshness, setPriceFreshness] = useState<'fresh' | 'stale' | 'unknown'>('unknown');
+  const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
   const metrics = usePortfolioMetrics();
   const transactions = usePortfolioStore((state) => state.transactions);
   const globalCutoffDate = usePortfolioStore((state) => state.globalCutoffDate);
@@ -76,14 +80,20 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     let active = true;
     const refresh = async () => {
       try {
+        setIsRefreshingPrices(true);
         const response = await fetch(`/api/quotes?symbols=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
         if (!response.ok) return;
         const quotes = await response.json() as Record<string, number>;
         if (!active) return;
         Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
+        setLastPriceUpdate(new Date());
+        setPriceFreshness('fresh');
       } catch (error) {
         console.error('Failed to fetch quotes:', error);
         toast.error('Không thể cập nhật giá. Vui lòng thử lại.');
+        setPriceFreshness('stale');
+      } finally {
+        setIsRefreshingPrices(false);
       }
     };
 
@@ -95,6 +105,39 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
       window.clearInterval(interval);
     };
   }, [isMounted, liveTickerQuery, updatePrice]);
+
+  useEffect(() => {
+    if (!lastPriceUpdate) return;
+    const interval = setInterval(() => {
+      const ageMs = Date.now() - lastPriceUpdate.getTime();
+      const ageMinutes = ageMs / (1000 * 60);
+      if (ageMinutes > 15) {
+        setPriceFreshness('stale');
+      } else {
+        setPriceFreshness('fresh');
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [lastPriceUpdate]);
+
+  const handleManualRefresh = async () => {
+    if (!liveTickerQuery) return;
+    setIsRefreshingPrices(true);
+    try {
+      const response = await fetch(`/api/quotes?symbols=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Failed to fetch');
+      const quotes = await response.json() as Record<string, number>;
+      Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
+      setLastPriceUpdate(new Date());
+      setPriceFreshness('fresh');
+      toast.success('Đã cập nhật giá thành công');
+    } catch {
+      toast.error('Không thể cập nhật giá. Vui lòng thử lại.');
+      setPriceFreshness('stale');
+    } finally {
+      setIsRefreshingPrices(false);
+    }
+  };
 
   if (!isMounted) {
     return null;
@@ -211,6 +254,47 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                       {t.english}
                     </button>
                   </div>
+
+                  {liveTickerQuery && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleManualRefresh}
+                        disabled={isRefreshingPrices}
+                        className={cn(
+                          'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all',
+                          priceFreshness === 'fresh'
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                            : priceFreshness === 'stale'
+                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                              : 'border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-700',
+                          isRefreshingPrices && 'opacity-50 cursor-not-allowed'
+                        )}
+                        title={lastPriceUpdate ? `Cập nhật lần cuối: ${lastPriceUpdate.toLocaleTimeString()}` : 'Cập nhật giá'}
+                      >
+                        <RefreshCw className={cn('h-4 w-4', isRefreshingPrices && 'animate-spin')} />
+                        <span>
+                          {priceFreshness === 'fresh' ? (
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              Giá mới
+                            </span>
+                          ) : priceFreshness === 'stale' ? (
+                            <span className="flex items-center gap-1.5">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Cần cập nhật
+                            </span>
+                          ) : (
+                            'Cập nhật giá'
+                          )}
+                        </span>
+                      </button>
+                      {lastPriceUpdate && (
+                        <span className="text-xs text-slate-500">
+                          {lastPriceUpdate.toLocaleTimeString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3">
