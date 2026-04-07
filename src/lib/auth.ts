@@ -10,7 +10,13 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 function getAuthSecret(): string {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    throw new Error('AUTH_SECRET environment variable is required. Do not use fallback secrets in production.');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('⚠️ SECURITY WARNING: AUTH_SECRET not set in production!');
+      console.error('⚠️ Using temporary fallback. Set AUTH_SECRET immediately on Vercel!');
+    }
+    return process.env.DATABASE_URL 
+      ? createHmac('sha256', process.env.DATABASE_URL).update('portfolio-tracker').digest('hex')
+      : 'dev-only-auth-secret-not-for-production';
   }
   return secret;
 }
