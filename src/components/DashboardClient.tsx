@@ -81,11 +81,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     const refresh = async () => {
       try {
         setIsRefreshingPrices(true);
-        const response = await fetch(`/api/quotes?symbols=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
+        const response = await fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
         if (!response.ok) return;
-        const quotes = await response.json() as Record<string, number>;
-        if (!active) return;
-        Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
+        const data = await response.json() as { quotes?: Array<{ ticker: string; price: number }> };
+        if (!active || !data.quotes) return;
+        data.quotes.forEach((quote) => updatePrice(quote.ticker, quote.price));
         setLastPriceUpdate(new Date());
         setPriceFreshness('fresh');
       } catch (error) {
@@ -124,10 +124,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     if (!liveTickerQuery) return;
     setIsRefreshingPrices(true);
     try {
-      const response = await fetch(`/api/quotes?symbols=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch');
-      const quotes = await response.json() as Record<string, number>;
-      Object.entries(quotes).forEach(([ticker, price]) => updatePrice(ticker, price));
+      const data = await response.json() as { quotes?: Array<{ ticker: string; price: number }> };
+      if (!data.quotes) throw new Error('Invalid response');
+      data.quotes.forEach((quote) => updatePrice(quote.ticker, quote.price));
       setLastPriceUpdate(new Date());
       setPriceFreshness('fresh');
       toast.success('Đã cập nhật giá thành công');
