@@ -15,7 +15,8 @@ interface NewsArticle {
 }
 
 interface StockNewsData {
-  news: Record<string, NewsArticle[]>;
+  news?: Record<string, NewsArticle[]>;
+  error?: string;
 }
 
 export default function StockNews() {
@@ -41,8 +42,12 @@ export default function StockNews() {
       try {
         const response = await fetch(`/api/stock-news?tickers=${encodeURIComponent(stockTickers.join(','))}`);
         if (!response.ok) throw new Error('Failed to fetch');
-        const data: StockNewsData = await response.json();
-        setNews(data.news || {});
+        const data = await response.json();
+        if (data.error) {
+          setError('Tin tức tạm thời không khả dụng');
+        } else {
+          setNews(data.news || {});
+        }
       } catch {
         setError('Không thể tải tin tức');
       } finally {
