@@ -2,11 +2,8 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: { ignoreDuringBuilds: false },
   typescript: { ignoreBuildErrors: false },
-  experimental: {
-    serverComponentsExternalPackages: ['yahoo-finance2'],
-  },
+  serverExternalPackages: ['yahoo-finance2'],
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
