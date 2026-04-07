@@ -14,8 +14,18 @@ export class AppError extends Error {
     this.code = code;
     this.statusCode = statusCode;
 
-    // Maintains proper prototype chain in transpiled environments
     Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+function captureError(error: unknown, context?: Record<string, unknown>): void {
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const Sentry = require('@sentry/nextjs');
+      Sentry.captureException(error, { extra: context });
+    } catch {
+      console.error('[Error Handler] Failed to capture error in Sentry:', error);
+    }
   }
 }
 
@@ -24,11 +34,6 @@ export class AppError extends Error {
  * error handling. Known `AppError` instances are re-thrown as-is; unknown
  * errors are logged and converted to a generic `AppError` so the call-site
  * always receives a typed error.
- *
- * @example
- * export const saveTransactionsBatch = withErrorHandler(async (data: ...) => {
- *   // ...
- * });
  */
 export function withErrorHandler<TArgs extends unknown[], TReturn>(
   fn: (...args: TArgs) => Promise<TReturn>
@@ -40,6 +45,9 @@ export function withErrorHandler<TArgs extends unknown[], TReturn>(
       if (error instanceof AppError) {
         throw error;
       }
+      
+      captureError(error, { args: args.map(a => typeof a === 'object' ? JSON.stringify(a)?.slice(0, 200) : a) });
+      
       console.error('[withErrorHandler] Unhandled error:', error);
       throw new AppError(
         'Đã xảy ra lỗi hệ thống. Vui lòng thử lại.',

@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: { ignoreDuringBuilds: false },
@@ -16,4 +18,9 @@ const nextConfig = {
     return config;
   },
 };
-export default nextConfig;
+
+const sentryConfig = {
+  silent: true,
+};
+
+export default withSentryConfig(nextConfig, sentryConfig);

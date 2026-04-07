@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCachedPrices, cachePrice, getFreshnessStats } from '@/lib/priceService';
 import { getRealtimeQuotes } from '@/lib/marketData';
+import { lenientRateLimit, addRateLimitHeaders, checkRateLimit, getRateLimitKey } from '@/lib/apiRateLimiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,15 +11,29 @@ interface QuoteRequest {
 }
 
 export async function GET(request: Request) {
+  const rateLimitKey = getRateLimitKey(request);
+  const rateLimit = checkRateLimit(rateLimitKey, { maxRequests: 60, windowMs: 60000 });
+  
+  if (!rateLimit.allowed) {
+    const response = NextResponse.json(
+      { error: 'Too many requests', message: 'Vui lòng thử lại sau.', retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000) },
+      { status: 429 }
+    );
+    addRateLimitHeaders(response, rateLimit.remaining, rateLimit.resetTime);
+    return response;
+  }
+
   const { searchParams } = new URL(request.url);
   const tickersParam = searchParams.get('tickers');
   const forceRefresh = searchParams.get('forceRefresh') === 'true';
 
   if (!tickersParam) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Missing tickers parameter' },
       { status: 400 }
     );
+    addRateLimitHeaders(response, rateLimit.remaining, rateLimit.resetTime);
+    return response;
   }
 
   const tickers = tickersParam.split(',').map(t => t.trim()).filter(Boolean);
