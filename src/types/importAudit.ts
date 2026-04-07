@@ -25,4 +25,4 @@ export interface TradeImportAuditResult {
   importedAt: Date;
 }
 
-export interface CashImportAuditResult extends TradeImportAuditResult {}
+export type CashImportAuditResult = TradeImportAuditResult;

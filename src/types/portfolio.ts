@@ -46,7 +46,7 @@ export interface Transaction {
   source?: string;
 }
 
-export interface NormalizedTransaction extends Transaction {}
+export type NormalizedTransaction = Transaction;
 
 export interface ImportWarning {
   row: number;

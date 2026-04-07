@@ -15,6 +15,7 @@ import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
 import NetWorthChart from '@/components/NetWorthChart';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
+import StockNews from '@/components/StockNews';
 import TooltipInfo from '@/components/TooltipInfo';
 import DataQualityBadge from '@/components/DataQualityBadge';
 import { AlertCircle } from 'lucide-react';
@@ -403,6 +404,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             </div>
             <FeeDebtCard />
             <OpeningPositionCard />
+            <StockNews />
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (
               <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">

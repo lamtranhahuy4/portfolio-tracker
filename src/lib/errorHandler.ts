@@ -18,10 +18,10 @@ export class AppError extends Error {
   }
 }
 
-function captureError(error: unknown, context?: Record<string, unknown>): void {
+async function captureError(error: unknown, context?: Record<string, unknown>): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     try {
-      const Sentry = require('@sentry/nextjs');
+      const Sentry = await import('@sentry/nextjs');
       Sentry.captureException(error, { extra: context });
     } catch {
       console.error('[Error Handler] Failed to capture error in Sentry:', error);

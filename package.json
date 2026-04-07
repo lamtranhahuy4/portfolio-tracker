@@ -6,8 +6,8 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint",
-        "lint:fix": "next lint --fix",
+        "lint": "eslint . --ext .ts,.tsx",
+        "lint:fix": "eslint . --ext .ts,.tsx --fix",
         "test": "vitest run --config vitest.config.mjs",
         "test:watch": "vitest --config vitest.config.mjs",
         "typecheck": "tsc --noEmit",
@@ -40,6 +40,7 @@
         "zustand": "^4.5.2"
     },
     "devDependencies": {
+        "@eslint/eslintrc": "^3.3.5",
         "@types/node": "^20.12.11",
         "@types/papaparse": "^5.3.14",
         "@types/react": "^18.3.1",
@@ -47,12 +48,14 @@
         "autoprefixer": "^10.4.27",
         "dotenv": "^16.4.5",
         "drizzle-kit": "^0.21.1",
-        "eslint": "^8.57.0",
-        "eslint-config-next": "14.2.3",
+        "eslint": "^9.39.4",
+        "eslint-config-next": "^16.2.2",
+        "globals": "^17.4.0",
         "postcss": "^8.5.8",
         "tailwindcss": "^3.4.19",
         "tsx": "^4.10.1",
         "typescript": "^5.4.5",
+        "typescript-eslint": "^8.58.0",
         "vitest": "^4.1.2"
     }
 }
