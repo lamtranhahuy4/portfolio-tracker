@@ -41,28 +41,27 @@ export function verifyPassword(password: string, passwordHash: string) {
 
 function createToken(): { token: string; tokenHash: string } {
   const randomPart = randomBytes(32).toString('hex');
-  const token = `${randomPart}.${Date.now()}`;
+  const timestamp = Date.now().toString(36);
+  const token = `${randomPart}_${timestamp}`;
   const tokenHash = hashValue(token);
   return { token, tokenHash };
 }
 
-function createSessionToken(userId: string) {
-  const expiresAt = Date.now() + (SESSION_TTL_SECONDS * 1000);
-  const payload = `${userId}.${expiresAt}`;
-  const signature = hashValue(payload);
-  return `${payload}.${signature}`;
-}
-
 function parseSessionToken(token: string | undefined) {
   if (!token) return null;
+  
+  if (token.includes('_')) {
+    return null;
+  }
 
-  const [userId, expiresAt, signature] = token.split('.');
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  
+  const [userId, expiresAt, signature] = parts;
   if (!userId || !expiresAt || !signature) return null;
 
   const payload = `${userId}.${expiresAt}`;
-  const expectedHash = hashValue(payload);
-  
-  const expectedBuffer = Buffer.from(expectedHash, 'hex');
+  const expectedBuffer = Buffer.from(hashValue(payload), 'hex');
   const signatureBuffer = Buffer.from(signature, 'hex');
   
   if (expectedBuffer.length !== signatureBuffer.length) return null;
@@ -174,7 +173,13 @@ export async function cleanupExpiredSessions(): Promise<number> {
 }
 
 export async function setSession(userId: string) {
-  cookies().set(SESSION_COOKIE, createSessionToken(userId), {
+  const randomPart = randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + (SESSION_TTL_SECONDS * 1000);
+  const payload = `${userId}.${expiresAt}`;
+  const signature = hashValue(payload);
+  const token = `${randomPart}_${payload}_${signature}`;
+  
+  (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -185,7 +190,7 @@ export async function setSession(userId: string) {
 
 export async function setDbSession(userId: string, userAgent?: string, ipAddress?: string) {
   const token = await createDbSession(userId, userAgent, ipAddress);
-  cookies().set(SESSION_COOKIE, token, {
+  (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -195,22 +200,23 @@ export async function setDbSession(userId: string, userAgent?: string, ipAddress
 }
 
 export async function clearSession() {
-  cookies().delete(SESSION_COOKIE);
+  (await cookies()).delete(SESSION_COOKIE);
 }
 
 export async function clearDbSession(sessionId?: string) {
   if (sessionId) {
     await invalidateSession(sessionId);
   }
-  cookies().delete(SESSION_COOKIE);
+  (await cookies()).delete(SESSION_COOKIE);
 }
 
 export async function getCurrentUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-  // Try DB session first (new flow)
-  if (token && !token.includes('.')) {
+  if (!token) return null;
+
+  if (token.includes('_')) {
     const session = await validateDbSession(token);
     if (session) {
       const [user] = await db
@@ -225,7 +231,6 @@ export async function getCurrentUser() {
     }
   }
 
-  // Fall back to legacy token format
   const session = parseSessionToken(token);
   if (!session) return null;
 

@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { signInAction, signUpAction } from '@/actions/auth';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 
+const LOGIN_ERROR_VI = 'Bạn đã nhập sai tài khoản/mật khẩu. Nếu không nhớ có thể dùng chức năng Quên mật khẩu.';
+const LOGIN_ERROR_EN = 'Incorrect email or password. If you forgot your password, use the "Forgot password" feature.';
+
 const copy = {
   vi: {
     product: 'Portfolio Tracker',
@@ -19,12 +22,11 @@ const copy = {
     language: 'Ngôn ngữ',
     vi: 'VI',
     en: 'EN',
+    loginError: LOGIN_ERROR_VI,
     errors: {
       'Email và mật khẩu là bắt buộc.': 'Email và mật khẩu là bắt buộc.',
-      'Mat khau phai co it nhat 8 ky tu.': 'Mật khẩu phải có ít nhất 8 ký tự.',
       'Mật khẩu phải có ít nhất 8 ký tự.': 'Mật khẩu phải có ít nhất 8 ký tự.',
       'Email này đã được sử dụng.': 'Email này đã được sử dụng.',
-      'Email hoặc mật khẩu không đúng.': 'Email hoặc mật khẩu không đúng.',
     },
   },
   en: {
@@ -39,22 +41,27 @@ const copy = {
     language: 'Language',
     vi: 'VI',
     en: 'EN',
+    loginError: LOGIN_ERROR_EN,
     errors: {
-      'Email và mật khẩu là bắt buộc.': 'Email and password are required.',
-      'Email va mat khau la bat buoc.': 'Email and password are required.',
-      'Mật khẩu phải có ít nhất 8 ký tự.': 'Password must be at least 8 characters.',
-      'Mat khau phai co it nhat 8 ky tu.': 'Password must be at least 8 characters.',
-      'Email này đã được sử dụng.': 'This email address is already in use.',
-      'Email nay da duoc su dung.': 'This email address is already in use.',
-      'Email hoặc mật khẩu không đúng.': 'Incorrect email or password.',
-      'Email hoac mat khau khong dung.': 'Incorrect email or password.',
+      'Email and password are required.': 'Email and password are required.',
+      'Password must be at least 8 characters.': 'Password must be at least 8 characters.',
+      'This email address is already in use.': 'This email address is already in use.',
     },
   },
 } satisfies Record<DashboardLanguage, any>;
 
-function translateError(message: string, language: DashboardLanguage) {
+function translateError(message: string, language: DashboardLanguage): string {
   const dictionary = copy[language].errors as Record<string, string>;
-  return dictionary[message] ?? message;
+  const translated = dictionary[message];
+  if (translated) return translated;
+  
+  if (message.includes('sai') || message.includes('không') || 
+      message.includes('wrong') || message.includes('incorrect') ||
+      message.includes('khong')) {
+    return copy[language].loginError;
+  }
+  
+  return message;
 }
 
 export default function AuthPanel() {

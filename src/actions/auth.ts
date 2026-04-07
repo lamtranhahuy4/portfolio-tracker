@@ -28,8 +28,8 @@ function validateCredentials(email: string, password: string) {
   }
 }
 
-function getClientIP(): string {
-  const headersList = headers();
+async function getClientIP(): Promise<string> {
+  const headersList = await headers();
   const forwarded = headersList.get('x-forwarded-for');
   const realIP = headersList.get('x-real-ip');
 
@@ -44,8 +44,8 @@ function getClientIP(): string {
   return '127.0.0.1';
 }
 
-function getUserAgent(): string {
-  const headersList = headers();
+async function getUserAgent(): Promise<string> {
+  const headersList = await headers();
   return headersList.get('user-agent') ?? 'Unknown';
 }
 
@@ -68,8 +68,8 @@ export async function signUpAction(email: string, password: string) {
     id: users.id,
   });
 
-  const ipAddress = getClientIP();
-  const userAgent = getUserAgent();
+  const ipAddress = await getClientIP();
+  const userAgent = await getUserAgent();
 
   await setDbSession(newUser.id, userAgent, ipAddress);
   await authRateLimiter.recordAttempt(normalizedEmail, true, ipAddress);
@@ -81,8 +81,8 @@ export async function signInAction(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email);
   validateCredentials(normalizedEmail, password);
 
-  const ipAddress = getClientIP();
-  const userAgent = getUserAgent();
+  const ipAddress = await getClientIP();
+  const userAgent = await getUserAgent();
 
   const emailLockout = await authRateLimiter.isEmailLocked(normalizedEmail);
   if (emailLockout.isLocked) {
