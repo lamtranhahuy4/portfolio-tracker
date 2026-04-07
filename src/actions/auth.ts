@@ -2,9 +2,10 @@
 
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { eq } from 'drizzle-orm';
+import { eq, and, gt, isNull } from 'drizzle-orm';
+import { createHash, randomBytes } from 'crypto';
 import { db } from '@/db/index';
-import { users } from '@/db/schema';
+import { users, passwordResets } from '@/db/schema';
 import { clearSession, clearDbSession, hashPassword, setDbSession, verifyPassword, getUserSessions, invalidateSession, invalidateAllSessionsForUser, getClientInfo } from '@/lib/auth';
 import { authRateLimiter } from '@/lib/rateLimiter';
 
@@ -185,4 +186,124 @@ export async function getSecurityStatusAction() {
     lockoutReason: lockoutInfo.reason,
     lockoutUntil: lockoutInfo.lockedUntil?.toISOString(),
   };
+}
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function generateResetToken(): { token: string; tokenHash: string } {
+  const token = randomBytes(32).toString('hex');
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  return { token, tokenHash };
+}
+
+function getResetTokenExpiry(): Date {
+  return new Date(Date.now() + RESET_TOKEN_TTL_MS);
+}
+
+export async function requestPasswordResetAction(email: string) {
+  const normalizedEmail = normalizeEmail(email);
+  
+  if (!normalizedEmail) {
+    throw new Error('Email là bắt buộc.');
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(normalizedEmail)) {
+    throw new Error('�ịnh dạng email không hợp lệ.');
+  }
+
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, normalizedEmail))
+    .limit(1);
+
+  if (!user) {
+    return { success: true, message: 'Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi.' };
+  }
+
+  await db.delete(passwordResets)
+    .where(eq(passwordResets.email, normalizedEmail));
+
+  const { token, tokenHash } = generateResetToken();
+  const expiresAt = getResetTokenExpiry();
+
+  await db.insert(passwordResets).values({
+    email: normalizedEmail,
+    tokenHash,
+    expiresAt,
+  });
+
+  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+  
+  console.log(`
+╔═══════════════════════════════════════════════════════════════╗
+║              PASSWORD RESET LINK (DEV ONLY)                   ║
+╠═══════════════════════════════════════════════════════════════╣
+║ Email: ${normalizedEmail.padEnd(48)}║
+║ Token: ${token.substring(0, 48).padEnd(48)}║
+║ URL:   ${resetUrl.substring(0, 48).padEnd(48)}║
+╚═══════════════════════════════════════════════════════════════╝
+`);
+
+  return { 
+    success: true, 
+    message: 'Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi.',
+    devPreview: process.env.NODE_ENV !== 'production' ? resetUrl : undefined
+  };
+}
+
+export async function resetPasswordAction(token: string, email: string, newPassword: string) {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!token || !normalizedEmail || !newPassword) {
+    throw new Error('Token, email và mật khẩu mới là bắt buộc.');
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error('Mật khẩu mới phải có ít nhất 8 ký tự.');
+  }
+
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+
+  const [resetRecord] = await db
+    .select()
+    .from(passwordResets)
+    .where(
+      and(
+        eq(passwordResets.email, normalizedEmail),
+        eq(passwordResets.tokenHash, tokenHash),
+        gt(passwordResets.expiresAt, new Date()),
+        isNull(passwordResets.usedAt)
+      )
+    )
+    .limit(1);
+
+  if (!resetRecord) {
+    throw new Error('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+  }
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, normalizedEmail))
+    .limit(1);
+
+  if (!user) {
+    throw new Error('Không tìm thấy người dùng.');
+  }
+
+  await db.update(users)
+    .set({ passwordHash: hashPassword(newPassword) })
+    .where(eq(users.id, user.id));
+
+  await db.update(passwordResets)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResets.id, resetRecord.id));
+
+  await invalidateAllSessionsForUser(user.id);
+
+  console.log(`Password reset successful for user: ${normalizedEmail}`);
+
+  return { success: true, message: 'Mật khẩu đã được đặt lại thành công.' };
 }

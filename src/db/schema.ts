@@ -165,3 +165,16 @@ export const priceHistory = pgTable('price_history', {
 }, (table) => ({
   tickerRecordedAtIdx: index('price_history_ticker_recorded_idx').on(table.ticker, table.recordedAt),
 }));
+
+// Password reset tokens for secure password recovery
+export const passwordResets = pgTable('password_resets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull(),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  usedAt: timestamp('used_at', { mode: 'date' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  emailIdx: index('password_resets_email_idx').on(table.email),
+  tokenHashIdx: uniqueIndex('password_resets_token_hash_idx').on(table.tokenHash),
+}));

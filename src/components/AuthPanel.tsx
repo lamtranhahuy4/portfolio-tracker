@@ -161,6 +161,15 @@ export default function AuthPanel() {
         >
           {mode === 'signup' ? t.hasAccount : t.noAccount}
         </button>
+
+        {mode === 'signin' && (
+          <a
+            href="/forgot-password"
+            className="block text-center text-xs text-slate-500 transition-colors hover:text-indigo-400"
+          >
+            {language === 'vi' ? 'Quên mật khẩu?' : 'Forgot password?'}
+          </a>
+        )}
       </div>
     </main>
   );
