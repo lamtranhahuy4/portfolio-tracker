@@ -91,7 +91,6 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         setPriceFreshness('fresh');
       } catch (error) {
         console.error('Failed to fetch quotes:', error);
-        toast.error('Không thể cập nhật giá. Vui lòng thử lại.');
         setPriceFreshness('stale');
       } finally {
         setIsRefreshingPrices(false);
