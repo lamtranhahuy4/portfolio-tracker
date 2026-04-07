@@ -7,8 +7,12 @@ import { sessions, users } from '@/db/schema';
 const SESSION_COOKIE = 'portfolio_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
-function getAuthSecret() {
-  return process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? 'dev-only-auth-secret';
+function getAuthSecret(): string {
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error('AUTH_SECRET environment variable is required. Do not use fallback secrets in production.');
+  }
+  return secret;
 }
 
 function hashValue(value: string) {
@@ -50,7 +54,13 @@ function parseSessionToken(token: string | undefined) {
   if (!userId || !expiresAt || !signature) return null;
 
   const payload = `${userId}.${expiresAt}`;
-  if (hashValue(payload) !== signature) return null;
+  const expectedHash = hashValue(payload);
+  
+  const expectedBuffer = Buffer.from(expectedHash, 'hex');
+  const signatureBuffer = Buffer.from(signature, 'hex');
+  
+  if (expectedBuffer.length !== signatureBuffer.length) return null;
+  if (!timingSafeEqual(expectedBuffer, signatureBuffer)) return null;
   if (Number(expiresAt) < Date.now()) return null;
 
   return { userId };

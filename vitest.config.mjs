@@ -9,6 +9,15 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    include: [
+      'src/**/*.test.{ts,tsx}',
+      'src/test/**/*.test.{ts,tsx}',
+      'src/test/integration/**/*.test.{ts,tsx}',
+    ],
+    exclude: ['node_modules', '.next', 'dist'],
+    testTimeout: 10000,
+    hookTimeout: 10000,
   },
   resolve: {
     alias: {

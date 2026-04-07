@@ -11,7 +11,14 @@
         "test": "vitest run --config vitest.config.mjs",
         "test:watch": "vitest --config vitest.config.mjs",
         "typecheck": "tsc --noEmit",
-        "check": "npm run typecheck && npm run lint && npm run test"
+        "check": "npm run typecheck && npm run lint && npm run test",
+        "load:health": "k6 run k6/health.js",
+        "load:quotes": "k6 run k6/quotes.js",
+        "load:batch": "k6 run k6/quotes-batch.js",
+        "load:refresh": "k6 run k6/quotes-refresh.js",
+        "load:all": "k6 run k6/comprehensive.js",
+        "load:smoke": "k6 run --env SCENARIO=smoke k6/health.js",
+        "load:stress": "k6 run --env SCENARIO=stress k6/comprehensive.js"
     },
     "dependencies": {
         "@neondatabase/serverless": "^0.9.3",
