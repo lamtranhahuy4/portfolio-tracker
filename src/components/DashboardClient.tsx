@@ -473,7 +473,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
 function StatCard({ title, value, valueColor, icon, subValue, tooltip }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; subValue?: React.ReactNode; tooltip?: string; }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm flex flex-col justify-between">
+    <div className="relative overflow-visible rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm flex flex-col justify-between">
       <div>
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
         <div className="flex items-center justify-between gap-4">
