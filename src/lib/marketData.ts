@@ -16,6 +16,7 @@ export type TrendingAssetCard = {
 
 type DnseSeriesResponse = {
   c?: number[];
+  t?: number[];
 };
 
 const DNSE_BASE_URL = 'https://services.entrade.com.vn/chart-api/v2/ohlcs';
@@ -80,6 +81,54 @@ async function fetchDnseLatest(symbol: string, isIndex = false) {
   const percent = previous === 0 ? 0 : (change / previous) * 100;
 
   return { price: latest, change, percent };
+}
+
+async function fetchDnseSeriesWithDates(
+  symbol: string,
+  from: number,
+  to: number
+): Promise<{ date: string; close: number }[] | null> {
+  const url = `${DNSE_BASE_URL}/stock?resolution=1D&symbol=${symbol}&from=${from}&to=${to}`;
+
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json() as DnseSeriesResponse;
+    if (!Array.isArray(json.c) || json.c.length === 0 || !Array.isArray(json.t)) return null;
+
+    return json.t.map((timestamp, i) => ({
+      date: new Date(timestamp * 1000).toISOString().split('T')[0],
+      close: json.c![i],
+    }));
+  } catch {
+    return null;
+  }
+}
+
+export async function getHistoricalPrices(symbols: string[]): Promise<Record<string, Record<string, number>>> {
+  const now = Math.floor(Date.now() / 1000);
+  const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
+  
+  const uniqueSyms = uniqueSymbols(symbols);
+  const results: Record<string, Record<string, number>> = {};
+
+  await Promise.all(
+    uniqueSyms.map(async (symbol) => {
+      const data = await fetchDnseSeriesWithDates(symbol, thirtyDaysAgo, now);
+      if (data) {
+        results[symbol] = {};
+        data.forEach(({ date, close }) => {
+          results[symbol][date] = close * 1000;
+        });
+      }
+    })
+  );
+
+  return results;
 }
 
 async function fetchCoinGecko() {

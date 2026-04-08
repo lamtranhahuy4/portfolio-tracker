@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
@@ -16,6 +16,7 @@ import NetWorthChart from '@/components/NetWorthChart';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
 import StockNews from '@/components/StockNews';
+import AssetAllocationChart from '@/components/AssetAllocationChart';
 import TooltipInfo from '@/components/TooltipInfo';
 import DataQualityBadge from '@/components/DataQualityBadge';
 import { AlertCircle } from 'lucide-react';
@@ -47,6 +48,9 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const transactions = usePortfolioStore((state) => state.transactions);
   const globalCutoffDate = usePortfolioStore((state) => state.globalCutoffDate);
   const updatePrice = usePortfolioStore((state) => state.updatePrice);
+  const setHistoricalPrices = usePortfolioStore((state) => state.setHistoricalPrices);
+  const setHistoricalPricesLastUpdated = usePortfolioStore((state) => state.setHistoricalPricesLastUpdated);
+  const historicalPricesLastUpdated = usePortfolioStore((state) => state.historicalPricesLastUpdated);
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
   const setValuationDate = usePortfolioStore((state) => state.setValuationDate);
   const cashEvents = usePortfolioStore((state) => state.cashEvents);
@@ -119,6 +123,53 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     }, 10000);
     return () => clearInterval(interval);
   }, [lastPriceUpdate]);
+
+  const fetchHistoricalPrices = useCallback(async () => {
+    if (!liveTickerQuery) return;
+    
+    try {
+      const response = await fetch(`/api/historical-prices?tickers=${encodeURIComponent(liveTickerQuery)}`);
+      if (!response.ok) return;
+      const data = await response.json() as { prices: Record<string, Record<string, number>>; lastUpdated: string };
+      if (data.prices) {
+        setHistoricalPrices(data.prices);
+        setHistoricalPricesLastUpdated(data.lastUpdated);
+      }
+    } catch (error) {
+      console.error('Failed to fetch historical prices:', error);
+    }
+  }, [liveTickerQuery, setHistoricalPrices, setHistoricalPricesLastUpdated]);
+
+  const shouldUpdateHistoricalPrices = useCallback(() => {
+    if (!historicalPricesLastUpdated) return true;
+    const lastUpdate = new Date(historicalPricesLastUpdated);
+    const now = new Date();
+    const today15 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0);
+    
+    if (now >= today15 && lastUpdate < today15) {
+      return true;
+    }
+    if (now < today15 && lastUpdate < new Date(today15.getTime() - 24 * 60 * 60 * 1000)) {
+      return true;
+    }
+    return false;
+  }, [historicalPricesLastUpdated]);
+
+  useEffect(() => {
+    if (!isMounted || !liveTickerQuery) return;
+    
+    if (shouldUpdateHistoricalPrices()) {
+      fetchHistoricalPrices();
+    }
+    
+    const checkInterval = setInterval(() => {
+      if (shouldUpdateHistoricalPrices()) {
+        fetchHistoricalPrices();
+      }
+    }, 60 * 60 * 1000);
+    
+    return () => clearInterval(checkInterval);
+  }, [isMounted, liveTickerQuery, fetchHistoricalPrices, shouldUpdateHistoricalPrices]);
 
   const handleManualRefresh = async () => {
     if (!liveTickerQuery) return;
@@ -403,6 +454,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             </div>
             <FeeDebtCard />
             <OpeningPositionCard />
+            <AssetAllocationChart language={language} />
             <StockNews />
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (
