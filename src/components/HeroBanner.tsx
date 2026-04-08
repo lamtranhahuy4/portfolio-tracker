@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 
+const MARKET_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
 type MarketCard = {
   name: string;
   price: string;
@@ -121,7 +123,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
     };
 
     fetchData();
-    intervalRef.current = setInterval(fetchData, 10000);
+    intervalRef.current = setInterval(fetchData, MARKET_REFRESH_INTERVAL_MS);
 
     return () => {
       active = false;

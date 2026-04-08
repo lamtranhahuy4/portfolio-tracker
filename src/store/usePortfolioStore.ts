@@ -36,7 +36,8 @@ const memoizedCalculateMetrics = memoizeOne(
     initialNetContributions: number,
     initialCashBalance: number,
     openingPositions: OpeningPosition[],
-    feeDebt: number
+    feeDebt: number,
+    historicalPrices: Record<string, Record<string, number>>
   ): PortfolioMetrics => {
     return calculatePortfolioMetrics(
       transactions,
@@ -52,7 +53,8 @@ const memoizedCalculateMetrics = memoizeOne(
           feeDebt: toMoney(feeDebt),
         },
       },
-      feeDebt
+      feeDebt,
+      historicalPrices
     );
   },
   shallowEqual
@@ -103,16 +105,30 @@ const createTransactionsSlice: StateCreator<PortfolioState, [], [], Transactions
 
 interface PricesSlice {
   currentPrices: Record<string, number>;
+  historicalPrices: Record<string, Record<string, number>>;
+  historicalPricesLastUpdated: string | null;
   updatePrice: (ticker: string, newPrice: number) => void;
+  setHistoricalPrices: (prices: Record<string, Record<string, number>>) => void;
+  setHistoricalPricesLastUpdated: (date: string) => void;
 }
 
 const createPricesSlice: StateCreator<PortfolioState, [], [], PricesSlice> = (set) => ({
   currentPrices: {},
+  historicalPrices: {},
+  historicalPricesLastUpdated: null,
 
   updatePrice: (ticker, newPrice) =>
     set((state) => ({
       currentPrices: { ...state.currentPrices, [ticker]: newPrice },
     })),
+  
+  setHistoricalPrices: (prices) =>
+    set((state) => ({
+      historicalPrices: { ...state.historicalPrices, ...prices },
+    })),
+  
+  setHistoricalPricesLastUpdated: (date) =>
+    set({ historicalPricesLastUpdated: date }),
 });
 
 // ─── Slice: Cash Events ───────────────────────────────────────────────────────
@@ -217,6 +233,7 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
   const transactions = usePortfolioStore((state) => state.transactions);
   const cashEvents = usePortfolioStore((state) => state.cashEvents);
   const currentPrices = usePortfolioStore((state) => state.currentPrices);
+  const historicalPrices = usePortfolioStore((state) => state.historicalPrices);
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
   const globalCutoffDate = usePortfolioStore((state) => state.globalCutoffDate);
   const initialNetContributions = usePortfolioStore((state) => state.initialNetContributions);
@@ -235,11 +252,13 @@ export const usePortfolioMetrics = (): PortfolioMetrics => {
         initialNetContributions,
         initialCashBalance,
         openingPositions,
-        feeDebt
+        feeDebt,
+        historicalPrices
       ),
     [
       transactions,
       currentPrices,
+      historicalPrices,
       cashEvents,
       valuationDate,
       globalCutoffDate,

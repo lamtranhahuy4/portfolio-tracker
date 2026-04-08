@@ -326,7 +326,8 @@ export function buildDailyNavSeries(
   currentPrices: Record<string, number>,
   cashEvents: CashLedgerEvent[],
   valuationDate?: Date | null,
-  openingSnapshot?: OpeningPositionSnapshot | null
+  openingSnapshot?: OpeningPositionSnapshot | null,
+  historicalPrices?: Record<string, Record<string, number>>
 ): NavPoint[] {
   const cutoffTime = openingSnapshot?.settings?.globalCutoffDate
     ? new Date(openingSnapshot.settings.globalCutoffDate).setHours(0, 0, 0, 0)
@@ -387,9 +388,16 @@ export function buildDailyNavSeries(
 
     const dayKey = getDateKey(cursor);
     const dayPriceOverrides = new Map<string, Decimal>(state.lastKnownPrices);
+    
     if (dayKey === getDateKey(new Date())) {
       Object.entries(currentPrices).forEach(([ticker, price]) => {
         dayPriceOverrides.set(ticker, toDecimal(price));
+      });
+    } else if (historicalPrices) {
+      Object.entries(historicalPrices).forEach(([ticker, datePrices]) => {
+        if (datePrices[dayKey]) {
+          dayPriceOverrides.set(ticker, toDecimal(datePrices[dayKey]));
+        }
       });
     }
 
@@ -436,7 +444,8 @@ export function calculatePortfolioMetrics(
   cashEvents: CashLedgerEvent[],
   valuationDate?: Date | null,
   openingSnapshot?: OpeningPositionSnapshot | null,
-  feeDebtInput?: number
+  feeDebtInput?: number,
+  historicalPrices?: Record<string, Record<string, number>>
 ): PortfolioMetrics {
   const cutoffTime = openingSnapshot?.settings?.globalCutoffDate
     ? new Date(openingSnapshot.settings.globalCutoffDate).setHours(0, 0, 0, 0)
@@ -583,7 +592,7 @@ export function calculatePortfolioMetrics(
     netContributions: toMoney(activeNetContributionsDec),
     returnVsCostBasis: activeNetContributionsDec.eq(0) ? 0 : decimalToNumber(netPnLDec.div(activeNetContributionsDec)),
     returnOnInvestmentPercent: activeNetContributionsDec.eq(0) ? 0 : decimalToNumber(netNavDec.div(activeNetContributionsDec).minus(DECIMAL_ONE)),
-    navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate, openingSnapshot),
+    navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate, openingSnapshot, historicalPrices),
     calculationWarnings: state.calculationWarnings,
     cashBalanceSource: ledgerMode ? 'ledger' : 'derived',
     cashBalanceEOD: ledgerMode ? toMoney(finalLedgerBalance) : undefined,
