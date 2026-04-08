@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Newspaper, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { usePortfolioMetrics } from '@/store/usePortfolioStore';
 
@@ -19,12 +19,15 @@ interface StockNewsData {
   error?: string;
 }
 
+const FETCH_TIMEOUT_MS = 10000;
+
 export default function StockNews() {
   const metrics = usePortfolioMetrics();
   const [news, setNews] = useState<Record<string, NewsArticle[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const stockTickers = metrics.holdings
     .filter((h) => h.assetClass === 'STOCK' && h.totalShares > 0)
@@ -33,11 +36,31 @@ export default function StockNews() {
 
   const fetchNews = useCallback(async () => {
     if (stockTickers.length === 0) return;
-    
+    if (isLoading) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setIsLoading(true);
     setError(null);
+
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+      setError('Yêu cầu hết thời gian');
+      setHasLoaded(true);
+      setIsLoading(false);
+    }, FETCH_TIMEOUT_MS);
+
     try {
-      const response = await fetch(`/api/stock-news?tickers=${encodeURIComponent(stockTickers.join(','))}`);
+      const response = await fetch(
+        `/api/stock-news?tickers=${encodeURIComponent(stockTickers.join(','))}`,
+        { signal: abortController.signal }
+      );
+      clearTimeout(timeoutId);
+
       if (!response.ok) throw new Error('Failed to fetch');
       const data: StockNewsData = await response.json();
       if (data.error) {
@@ -46,17 +69,26 @@ export default function StockNews() {
         setNews(data.news || {});
       }
       setHasLoaded(true);
-    } catch {
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError('Không thể tải tin tức');
       setHasLoaded(true);
     } finally {
       setIsLoading(false);
     }
-  }, [stockTickers]);
+  }, [stockTickers, isLoading]);
 
   useEffect(() => {
     fetchNews();
-  }, [fetchNews]);
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   if (stockTickers.length === 0) {
     return null;
