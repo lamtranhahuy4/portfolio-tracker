@@ -52,6 +52,21 @@ async function fetchDnseSeries(
 
 async function fetchDnseLatest(symbol: string, isIndex = false) {
   const now = Math.floor(Date.now() / 1000);
+  
+  // For indices, always use daily data to get proper previous day comparison
+  if (isIndex) {
+    const dailySeries = await fetchDnseSeries(symbol, isIndex, '1D', now - (30 * 24 * 60 * 60), now);
+    if (!dailySeries || dailySeries.length === 0) return null;
+
+    const latest = dailySeries[dailySeries.length - 1];
+    const previous = dailySeries.length >= 2 ? dailySeries[dailySeries.length - 2] : latest;
+    const change = latest - previous;
+    const percent = previous === 0 ? 0 : (change / previous) * 100;
+
+    return { price: latest, change, percent };
+  }
+
+  // For stocks, use intraday data
   const intradaySeries = await fetchDnseSeries(symbol, isIndex, '1', now - (2 * 24 * 60 * 60), now);
   const closes = intradaySeries && intradaySeries.length > 0
     ? intradaySeries
