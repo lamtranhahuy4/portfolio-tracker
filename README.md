@@ -49,6 +49,15 @@ DATABASE_URL="postgresql://user:password@ep-cold-dew-123456.ap-southeast-1.aws.n
 
 # Khóa bảo mật để xác thực Vercel Cron Job
 CRON_SECRET="your_super_secret_cron_key"
+
+# API key cho tin tức từ Alpha Vantage
+ALPHA_VANTAGE_API_KEY="your_alpha_vantage_api_key"
+
+# API token cho tin tức từ Marketaux
+MARKETAUX_API_KEY="your_marketaux_api_key"
+
+# API key cho tin tức từ Polygon
+POLYGON_API_KEY="your_polygon_api_key"
 ```
 
 ### 4. Khởi tạo Database Schema

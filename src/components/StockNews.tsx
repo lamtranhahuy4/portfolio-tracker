@@ -28,6 +28,7 @@ export default function StockNews() {
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hasFetchedOnLoadRef = useRef(false);
 
   const stockTickers = metrics.holdings
     .filter((h) => h.assetClass === 'STOCK' && h.totalShares > 0)
@@ -82,7 +83,13 @@ export default function StockNews() {
   }, [stockTickers, isLoading]);
 
   useEffect(() => {
+    if (hasFetchedOnLoadRef.current) return;
+    if (stockTickers.length === 0) return;
+    hasFetchedOnLoadRef.current = true;
     fetchNews();
+  }, [fetchNews, stockTickers.length]);
+
+  useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -183,8 +190,13 @@ export default function StockNews() {
           })}
 
           {!hasNews && (
-            <div className="text-center py-4 text-sm text-slate-500">
-              Không có tin tức gần đây cho các mã này
+            <div className="text-center py-4 text-sm text-slate-500 space-y-2">
+              <p>Không có tin tức gần đây cho các mã này</p>
+              <p className="text-xs text-slate-600">
+                {stockTickers.every(t => t.length <= 3) 
+                  ? 'Các mã Việt Nam có thể chưa được hỗ trợ bởi nguồn tin quốc tế'
+                  : 'Thử tìm kiếm với các mã phổ biến hơn'}
+              </p>
             </div>
           )}
         </div>

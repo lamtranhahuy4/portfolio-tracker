@@ -16,6 +16,7 @@ import NetWorthChart from '@/components/NetWorthChart';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
 import StockNews from '@/components/StockNews';
+import WorldNews from '@/components/WorldNews';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
 import TooltipInfo from '@/components/TooltipInfo';
 import DataQualityBadge from '@/components/DataQualityBadge';
@@ -456,6 +457,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             <OpeningPositionCard />
             <AssetAllocationChart language={language} />
             <StockNews />
+            <WorldNews language={language} />
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (
               <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">
@@ -473,7 +475,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
 function StatCard({ title, value, valueColor, icon, subValue, tooltip }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; subValue?: React.ReactNode; tooltip?: string; }) {
   return (
-    <div className="relative overflow-visible rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm flex flex-col justify-between">
+    <div className="group relative z-0 overflow-visible rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm flex flex-col justify-between group-hover:z-20 group-focus-within:z-20">
       <div>
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
         <div className="flex items-center justify-between gap-4">

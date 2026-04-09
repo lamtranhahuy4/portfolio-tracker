@@ -1,11 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
-
-const MARKET_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 type MarketCard = {
   name: string;
@@ -96,7 +94,6 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const displayName = useMemo(() => deriveUserName(userEmail), [userEmail]);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -123,13 +120,9 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
     };
 
     fetchData();
-    intervalRef.current = setInterval(fetchData, MARKET_REFRESH_INTERVAL_MS);
 
     return () => {
       active = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
     };
   }, []);
 

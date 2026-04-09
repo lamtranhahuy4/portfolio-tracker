@@ -11,7 +11,7 @@ export default function TooltipInfo({ content }: { content: string }) {
       >
         <HelpCircle className="h-3.5 w-3.5" />
       </button>
-      <div className="pointer-events-none absolute left-1/2 top-0 z-50 w-max max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-[calc(100%+10px)] opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      <div className="pointer-events-none absolute left-1/2 top-0 z-0 w-max max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-[calc(100%+10px)] opacity-0 invisible transition-all duration-200 group-hover:z-50 group-hover:visible group-hover:opacity-100 group-focus-within:z-50 group-focus-within:visible group-focus-within:opacity-100">
         <div className="rounded-lg border border-slate-700/50 bg-slate-800 p-2.5 text-center text-xs leading-relaxed text-slate-200 shadow-xl shadow-black/50 break-words">
           {content}
         </div>

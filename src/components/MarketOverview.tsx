@@ -36,8 +36,6 @@ export default function MarketOverview({ language }: { language: DashboardLangua
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(refreshData, 15000);
-    return () => clearInterval(interval);
   }, []);
 
   return (
