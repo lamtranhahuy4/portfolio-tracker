@@ -1,5 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { vi as vitest } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createMockUser,
   createMockTransaction,
@@ -10,10 +9,10 @@ import {
 
 vi.mock('@/lib/logger', () => ({
   logger: {
-    info: vitest.fn(),
-    error: vitest.fn(),
-    warn: vitest.fn(),
-    debug: vitest.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 

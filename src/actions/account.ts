@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { fetchImportBatches } from '@/actions/importBatch';
 import { fetchPortfolioSettings } from '@/actions/portfolioSettings';
 import { db } from '@/db/index';
-import { users, transactions, cashLedgerEvents, openingPositions, sessions } from '@/db/schema';
+import { users, transactions, cashLedgerEvents, openingPositions } from '@/db/schema';
 import { requireUser, hashPassword, verifyPassword, getUserSessions } from '@/lib/auth';
 import { authRateLimiter } from '@/lib/rateLimiter';
 

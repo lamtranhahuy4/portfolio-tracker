@@ -8,7 +8,7 @@
  * - Manual override capability
  */
 
-import { and, eq, gt, sql, or, desc, isNull } from 'drizzle-orm';
+import { and, eq, sql, desc, or, isNull } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { marketPrices, priceHistory } from '@/db/schema';
 

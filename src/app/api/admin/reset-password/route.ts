@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/index';
-import { users, sessions } from '@/db/schema';
+import { users } from '@/db/schema';
 import { hashPassword, invalidateAllSessionsForUser } from '@/lib/auth';
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET;

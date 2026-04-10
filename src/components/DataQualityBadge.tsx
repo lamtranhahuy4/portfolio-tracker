@@ -99,7 +99,6 @@ export function FreshnessIndicator({ lastUpdated, ttlMinutes, className }: Fresh
   const updatedTime = new Date(lastUpdated);
   const now = new Date();
   const ageMs = now.getTime() - updatedTime.getTime();
-  const ageMinutes = ageMs / (1000 * 60);
   const ttlMs = ttlMinutes * 60 * 1000;
   const maxStaleMs = ttlMs * 3;
 

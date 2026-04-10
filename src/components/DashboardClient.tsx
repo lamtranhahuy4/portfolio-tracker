@@ -16,9 +16,9 @@ import NetWorthChart from '@/components/NetWorthChart';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
 import StockNews from '@/components/StockNews';
+import WorldNews from '@/components/WorldNews';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
 import TooltipInfo from '@/components/TooltipInfo';
-import DataQualityBadge from '@/components/DataQualityBadge';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
@@ -456,6 +456,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             <OpeningPositionCard />
             <AssetAllocationChart language={language} />
             <StockNews />
+            <WorldNews language={language} />
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (
               <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">
