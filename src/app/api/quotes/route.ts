@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getCachedPrices, cachePrice, getFreshnessStats } from '@/lib/priceService';
 import { getRealtimeQuotes } from '@/lib/marketData';
-import { lenientRateLimit, addRateLimitHeaders, checkRateLimit, getRateLimitKey } from '@/lib/apiRateLimiter';
+import { addRateLimitHeaders, checkRateLimit, getRateLimitKey } from '@/lib/apiRateLimiter';
 
 export const dynamic = 'force-dynamic';
-
-interface QuoteRequest {
-  tickers: string[];
-  forceRefresh?: boolean;
-}
 
 export async function GET(request: Request) {
   const rateLimitKey = getRateLimitKey(request);

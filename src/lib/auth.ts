@@ -1,4 +1,4 @@
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/db/index';

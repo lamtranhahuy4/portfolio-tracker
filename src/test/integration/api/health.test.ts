@@ -1,7 +1,6 @@
-import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
-import { vi as vitest } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 
-const mockExecute = vitest.fn().mockResolvedValue({ rows: [{ '1': 1 }] });
+const mockExecute = vi.fn().mockResolvedValue({ rows: [{ '1': 1 }] });
 
 vi.mock('@/db/index', () => ({
   db: {
@@ -11,10 +10,10 @@ vi.mock('@/db/index', () => ({
 
 vi.mock('@/lib/logger', () => ({
   logger: {
-    info: vitest.fn(),
-    error: vitest.fn(),
-    warn: vitest.fn(),
-    debug: vitest.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 

@@ -1,9 +1,8 @@
 import * as XLSX from 'xlsx';
-import Decimal from 'decimal.js';
 import { ImportParseResult, ImportWarning, NormalizedTransaction } from '@/types/portfolio';
 import { toMoney } from '@/domain/portfolio/primitives';
 import { MAX_HEADER_SCAN_ROWS } from '@/lib/constants';
-import { buildTransaction, normalizeText, parseNumber, parseNumberToDecimal, parseTransactionType, parseViDate, isValidDecimal } from './BaseParser';
+import { buildTransaction, normalizeText, parseNumber, parseNumberToDecimal, parseTransactionType, parseViDate } from './BaseParser';
 
 // ─── Header detection ────────────────────────────────────────────────────────
 

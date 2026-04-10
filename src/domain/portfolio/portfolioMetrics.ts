@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-import { DECIMAL_ONE, DECIMAL_ZERO, decimalMax, decimalMin, decimalSum, decimalToNumber, toDecimal, DecimalInput } from './decimal';
+import { DECIMAL_ONE, DECIMAL_ZERO, decimalMax, decimalMin, decimalSum, decimalToNumber, toDecimal } from './decimal';
 import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, OpeningPositionSnapshot, PortfolioMetrics, ReconciliationInsight, Transaction } from '@/types/portfolio';
 import { CASH_DRIFT_THRESHOLD_VND } from '@/lib/constants';
 import { toMoney, toQuantity, toPrice } from './primitives';
@@ -68,7 +68,7 @@ function getLots(lotsMap: Map<string, Lot[]>, ticker: string) {
   return lotsMap.get(ticker)!;
 }
 
-function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boolean) {
+function applyTransaction(state: ReplayState, tx: Transaction, _ledgerMode: boolean) {
   const cash = getCashHolding(state.holdingsMap);
   const parsedDate = new Date(tx.date);
   const dateLabel = Number.isNaN(parsedDate.getTime()) ? String(tx.date) : parsedDate.toISOString();
@@ -95,7 +95,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
       
       lots.push({
         remainingQty: txQuantity,
-        unitCostNet: txTotalValue.div(txQuantity),
+        unitCostNet: txQuantity.gt(0) ? txTotalValue.div(txQuantity) : DECIMAL_ZERO,
         unitCostFee,
         unitCostTax
       });
@@ -116,7 +116,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, ledgerMode: boole
         return; // Nothing to sell, avoid doing math on 0 shares
       }
 
-      const sellRatio = actualSellQuantity.div(txQuantity);
+      const sellRatio = txQuantity.gt(0) ? actualSellQuantity.div(txQuantity) : DECIMAL_ZERO;
       const actualFee = txFee.times(sellRatio);
       const actualTax = txTax.times(sellRatio);
 
@@ -380,7 +380,7 @@ export function buildDailyNavSeries(
     }
 
     dayCashEvents.forEach(evt => {
-       currentLedgerBalance = toDecimal(evt.balanceAfter);
+       currentLedgerBalance = toDecimal(evt.balanceAfter ?? 0);
        currentNetContributionsLedger = currentNetContributionsLedger.plus(getCashContributionDelta(evt));
     });
 

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Globe, ExternalLink, Clock, Loader2 } from 'lucide-react';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
-import { i18n } from '@/lib/i18n';
 
 interface NewsItem {
   id: number;
@@ -22,14 +21,12 @@ const copy = {
     title: 'Tin Tức Thị Trường Thế Giới',
     loading: 'Đang tải tin tức...',
     noNews: 'Không có tin tức',
-    viewMore: 'Xem thêm',
     source: 'Nguồn',
   },
   en: {
     title: 'World Market News',
     loading: 'Loading news...',
     noNews: 'No news available',
-    viewMore: 'Read more',
     source: 'Source',
   },
 };

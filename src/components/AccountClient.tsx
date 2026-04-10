@@ -170,7 +170,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
       await signOutAllDevicesAction();
       setSessions([]);
       toast.success(t.signOutAllSuccess);
-    } catch (error) {
+    } catch {
       toast.error(t.signOutAllError);
     } finally {
       setSigningOutAll(false);

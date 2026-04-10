@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { calculatePortfolioMetrics } from '../portfolioMetrics';
-import { CashLedgerEvent, Transaction } from '@/types/portfolio';
 
 describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
   const defaultCurrentPrices: Record<string, number> = {};

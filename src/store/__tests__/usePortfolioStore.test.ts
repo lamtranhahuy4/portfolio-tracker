@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { act } from 'react-dom/test-utils';
 import { usePortfolioStore } from '../usePortfolioStore';
 import { Transaction, CashLedgerEvent } from '@/types/portfolio';

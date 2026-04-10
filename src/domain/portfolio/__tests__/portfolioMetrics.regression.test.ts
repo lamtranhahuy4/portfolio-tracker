@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculatePortfolioMetrics } from '../portfolioMetrics';
-import { CashLedgerEvent, Transaction } from '@/types/portfolio';
+import { CashLedgerEvent } from '@/types/portfolio';
 
 describe('portfolioMetrics regression coverage', () => {
   it('handles multi-lot fifo and average cost separately', () => {

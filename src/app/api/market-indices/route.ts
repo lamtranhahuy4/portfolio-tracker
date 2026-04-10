@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMarketIndices } from '@/lib/marketData';
-import { lenientRateLimit, addRateLimitHeaders, checkRateLimit, getRateLimitKey } from '@/lib/apiRateLimiter';
+import { addRateLimitHeaders, checkRateLimit, getRateLimitKey } from '@/lib/apiRateLimiter';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

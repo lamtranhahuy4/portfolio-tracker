@@ -1,5 +1,3 @@
-import { vi } from 'vitest';
-
 export interface MockDbEntry {
   id: string;
   [key: string]: unknown;

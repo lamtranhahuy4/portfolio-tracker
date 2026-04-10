@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Clock, Activity, Globe, AlertCircle, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, Globe, AlertCircle, RefreshCw } from 'lucide-react';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 

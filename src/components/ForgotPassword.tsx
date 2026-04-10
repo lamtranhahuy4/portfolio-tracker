@@ -2,8 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { requestPasswordResetAction } from '@/actions/auth';
-import { Languages } from 'lucide-react';
-import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
+import { DashboardLanguage } from '@/lib/dashboardLocale';
 
 const copy = {
   vi: {
@@ -64,10 +63,9 @@ export default function ForgotPassword() {
         setMessage(result.message || t.success);
         if (result.devPreview) {
           setDevUrl(result.devPreview);
-          console.log('🔑 Password Reset URL:', result.devPreview);
         }
       }
-    } catch (error) {
+    } catch {
       setStatus('error');
       setMessage(t.error);
     }

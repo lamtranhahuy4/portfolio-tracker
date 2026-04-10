@@ -4,7 +4,7 @@
  * and temporarily locking accounts/IPs after too many failures.
  */
 
-import { and, eq, gt, sql, or, isNull } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { accountLockouts, loginAttempts } from '@/db/schema';
 

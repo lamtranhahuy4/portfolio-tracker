@@ -1,4 +1,4 @@
-import { vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { beforeAll, afterAll } from 'vitest';
 
 beforeAll(() => {
   Object.assign(process.env, {

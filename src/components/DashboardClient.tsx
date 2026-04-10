@@ -19,7 +19,6 @@ import StockNews from '@/components/StockNews';
 import WorldNews from '@/components/WorldNews';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
 import TooltipInfo from '@/components/TooltipInfo';
-import DataQualityBadge from '@/components/DataQualityBadge';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
