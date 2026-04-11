@@ -246,10 +246,17 @@ export async function getCurrentUser() {
   return user ?? null;
 }
 
+export class UnauthorizedError extends Error {
+  constructor(message = 'Unauthorized') {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error('Bạn cần đăng nhập để truy cập dữ liệu danh mục.');
+    throw new UnauthorizedError();
   }
 
   return user;

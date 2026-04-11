@@ -17,6 +17,8 @@ import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
 import StockNews from '@/components/StockNews';
 import WorldNews from '@/components/WorldNews';
+import Watchlist from '@/components/Watchlist';
+import PriceAlerts from '@/components/PriceAlerts';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
 import TooltipInfo from '@/components/TooltipInfo';
 import { AlertCircle } from 'lucide-react';
@@ -456,6 +458,8 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             <OpeningPositionCard />
             <AssetAllocationChart language={language} />
             <StockNews />
+            <Watchlist language={language} />
+            <PriceAlerts language={language} />
             <WorldNews language={language} />
             <ImportWarningsPanel language={language} />
             {metrics.calculationWarnings.length > 0 && (

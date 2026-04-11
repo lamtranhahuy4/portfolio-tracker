@@ -86,9 +86,11 @@ async function fetchDnseLatest(symbol: string, isIndex = false) {
 async function fetchDnseSeriesWithDates(
   symbol: string,
   from: number,
-  to: number
+  to: number,
+  isIndex = false
 ): Promise<{ date: string; close: number }[] | null> {
-  const url = `${DNSE_BASE_URL}/stock?resolution=1D&symbol=${symbol}&from=${from}&to=${to}`;
+  const type = isIndex ? 'index' : 'stock';
+  const url = `${DNSE_BASE_URL}/${type}?resolution=1D&symbol=${symbol}&from=${from}&to=${to}`;
 
   try {
     const res = await fetch(url, {
@@ -109,6 +111,21 @@ async function fetchDnseSeriesWithDates(
   }
 }
 
+export async function getVnindexHistory(): Promise<Record<string, number> | null> {
+  const now = Math.floor(Date.now() / 1000);
+  const thirtyDaysAgo = now - (90 * 24 * 60 * 60); // 90 days for better benchmark
+  
+  const data = await fetchDnseSeriesWithDates('VNINDEX', thirtyDaysAgo, now, true);
+  if (!data) return null;
+  
+  const result: Record<string, number> = {};
+  data.forEach(({ date, close }) => {
+    result[date] = close;
+  });
+  
+  return result;
+}
+
 export async function getHistoricalPrices(symbols: string[]): Promise<Record<string, Record<string, number>>> {
   const now = Math.floor(Date.now() / 1000);
   const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
@@ -116,19 +133,74 @@ export async function getHistoricalPrices(symbols: string[]): Promise<Record<str
   const uniqueSyms = uniqueSymbols(symbols);
   const results: Record<string, Record<string, number>> = {};
 
-  await Promise.all(
-    uniqueSyms.map(async (symbol) => {
-      const data = await fetchDnseSeriesWithDates(symbol, thirtyDaysAgo, now);
+  const indexSymbols = new Set<string>();
+  const stockSymbols: string[] = [];
+  
+  const INDEX_LIST = ['VNINDEX', 'VN30', 'HNX', 'HNX30', 'UPCOM'];
+  
+  for (const symbol of uniqueSyms) {
+    if (INDEX_LIST.includes(symbol)) {
+      indexSymbols.add(symbol);
+    } else {
+      stockSymbols.push(symbol);
+    }
+  }
+
+  await Promise.all([
+    ...stockSymbols.map(async (symbol) => {
+      const data = await fetchDnseSeriesWithDates(symbol, thirtyDaysAgo, now, false);
       if (data) {
         results[symbol] = {};
         data.forEach(({ date, close }) => {
           results[symbol][date] = close * 1000;
         });
       }
+    }),
+    ...Array.from(indexSymbols).map(async (symbol) => {
+      const data = await fetchDnseSeriesWithDates(symbol, thirtyDaysAgo, now, true);
+      if (data) {
+        results[symbol] = {};
+        data.forEach(({ date, close }) => {
+          results[symbol][date] = close;
+        });
+      }
     })
-  );
+  ]);
 
   return results;
+}
+
+async function fetchYahooFinanceVnindex(): Promise<{ price: number; change: number; percent: number } | null> {
+  try {
+    const res = await fetch(
+      'https://query2.finance.yahoo.com/v8/finance/chart/%5EVNINDEX.VN?interval=1d&range=5d',
+      {
+        cache: 'no-store',
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Accept': 'application/json',
+        },
+      }
+    );
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) return null;
+
+    const meta = result.meta || {};
+    const latest = meta.regularMarketPrice || meta.chartClosingPlotName;
+    const previous = meta.chartPreviousClose || meta.regularMarketPreviousClose || meta.previousClose;
+
+    if (!latest) return null;
+
+    const change = previous ? latest - previous : 0;
+    const percent = previous === 0 || !previous ? 0 : (change / previous) * 100;
+
+    return { price: latest, change, percent };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchCoinGecko() {
@@ -156,7 +228,10 @@ export async function getRealtimeQuotes(symbols: string[]) {
 export async function getMarketIndices(): Promise<MarketCard[]> {
   const formattedData: MarketCard[] = [];
 
-  const vnData = await fetchDnseLatest('VNINDEX', true);
+  let vnData = await fetchYahooFinanceVnindex();
+  if (!vnData) {
+    vnData = await fetchDnseLatest('VNINDEX', true);
+  }
   if (vnData) {
     formattedData.push({
       name: 'VN-INDEX',
