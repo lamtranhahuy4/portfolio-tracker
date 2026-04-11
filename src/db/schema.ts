@@ -178,3 +178,31 @@ export const passwordResets = pgTable('password_resets', {
   emailIdx: index('password_resets_email_idx').on(table.email),
   tokenHashIdx: uniqueIndex('password_resets_token_hash_idx').on(table.tokenHash),
 }));
+
+// Watchlist - stocks user wants to track
+export const watchlist = pgTable('watchlist', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  ticker: varchar('ticker', { length: 32 }).notNull(),
+  name: varchar('name', { length: 128 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  userTickerIdx: uniqueIndex('watchlist_user_ticker_idx').on(table.userId, table.ticker),
+}));
+
+// Price alerts
+export const priceAlerts = pgTable('price_alerts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  ticker: varchar('ticker', { length: 32 }).notNull(),
+  targetPrice: numeric('target_price', { precision: 18, scale: 6 }).notNull(),
+  condition: varchar('condition', { length: 16 }).notNull(), // 'above' or 'below'
+  isActive: boolean('is_active').default(true).notNull(),
+  isTriggered: boolean('is_triggered').default(false).notNull(),
+  triggeredAt: timestamp('triggered_at', { mode: 'date' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  userTickerIdx: index('price_alerts_user_ticker_idx').on(table.userId, table.ticker),
+  activeIdx: index('price_alerts_active_idx').on(table.isActive),
+}));
