@@ -78,11 +78,14 @@ export async function signUpAction(email: string, password: string) {
 }
 
 export async function signInAction(email: string, password: string) {
+  console.log('[AUTH] signInAction called with email:', email);
+  
   const normalizedEmail = normalizeEmail(email);
   validateCredentials(normalizedEmail, password);
 
   const ipAddress = await getClientIP();
   const userAgent = await getUserAgent();
+  console.log('[AUTH] IP:', ipAddress);
 
   const emailLockout = await authRateLimiter.isEmailLocked(normalizedEmail);
   if (emailLockout.isLocked) {
@@ -102,12 +105,23 @@ export async function signInAction(email: string, password: string) {
     throw new Error(`Địa chỉ IP bị khóa tạm thời. Vui lòng thử lại sau ${remainingMinutes} phút.`);
   }
 
+  console.log('[AUTH] Looking up user:', normalizedEmail);
   const [user] = await db.select({
     id: users.id,
     passwordHash: users.passwordHash,
   }).from(users).where(eq(users.email, normalizedEmail)).limit(1);
 
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  console.log('[AUTH] User found:', !!user, user?.id);
+  
+  if (!user) {
+    console.log('[AUTH] User not found');
+    throw new Error('Email hoặc mật khẩu không đúng.');
+  }
+  
+  const passwordValid = verifyPassword(password, user.passwordHash);
+  console.log('[AUTH] Password valid:', passwordValid);
+  
+  if (!passwordValid) {
     await authRateLimiter.recordAttempt(normalizedEmail, false, ipAddress);
 
     const lockResult = await authRateLimiter.checkAndLock(normalizedEmail, ipAddress);
@@ -119,8 +133,10 @@ export async function signInAction(email: string, password: string) {
     throw new Error(`Email hoặc mật khẩu không đúng. Còn ${attemptsLeft} lần thử.`);
   }
 
+  console.log('[AUTH] Creating session for user:', user.id);
   await setDbSession(user.id, userAgent, ipAddress);
   await authRateLimiter.recordAttempt(normalizedEmail, true, ipAddress);
+  console.log('[AUTH] Session created successfully');
 
   revalidatePath('/');
 }
