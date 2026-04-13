@@ -106,7 +106,36 @@ export async function createDbSession(
 }
 
 export async function validateDbSession(token: string): Promise<SessionInfo | null> {
+  console.log('[AUTH] validateDbSession: token length:', token?.length);
+  console.log('[AUTH] validateDbSession: token prefix:', token?.substring(0, 20) + '...');
+  
   const tokenHash = hashValue(token);
+  console.log('[AUTH] validateDbSession: tokenHash length:', tokenHash.length);
+  console.log('[AUTH] validateDbSession: tokenHash:', tokenHash.substring(0, 20) + '...');
+
+  // Debug: Check if tokenHash is valid hex
+  const isValidHex = /^[a-f0-9]{64}$/i.test(tokenHash);
+  console.log('[AUTH] validateDbSession: tokenHash is valid 64-char hex:', isValidHex);
+
+  // Debug: Count sessions in DB
+  try {
+    const allSessions = await db.select({ count: sql<number>`count(*)` }).from(sessions);
+    console.log('[AUTH] validateDbSession: Total sessions in DB:', allSessions[0]?.count);
+    
+    // Debug: Check if any tokenHash matches
+    const matchingSessions = await db
+      .select({ id: sessions.id, tokenHash: sessions.tokenHash })
+      .from(sessions)
+      .where(gt(sessions.expiresAt, new Date()))
+      .limit(5);
+    console.log('[AUTH] validateDbSession: Sample sessions in DB:', matchingSessions.length);
+    if (matchingSessions.length > 0) {
+      console.log('[AUTH] validateDbSession: First stored tokenHash:', matchingSessions[0].tokenHash?.substring(0, 20) + '...');
+      console.log('[AUTH] validateDbSession: Are they equal:', matchingSessions[0].tokenHash === tokenHash);
+    }
+  } catch (err) {
+    console.error('[AUTH] validateDbSession: Debug query error:', err);
+  }
 
   const [session] = await db
     .select()
@@ -119,6 +148,8 @@ export async function validateDbSession(token: string): Promise<SessionInfo | nu
     )
     .limit(1);
 
+  console.log('[AUTH] validateDbSession: Session found:', !!session);
+  
   if (!session) return null;
 
   await db
