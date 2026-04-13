@@ -1,6 +1,8 @@
 'use server';
 
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { getCurrentUser, setDbSession, hashValue, createDbSession } from '@/lib/auth';
 import { db } from '@/db/index';
 import { sessions } from '@/db/schema';
@@ -13,6 +15,17 @@ export async function GET() {
   };
 
   try {
+    // Step 0: Check cookies directly
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('portfolio_session');
+    debug.cookies = {
+      portfolio_session_found: !!sessionCookie,
+      portfolio_session_length: sessionCookie?.value?.length || 0,
+      portfolio_session_prefix: sessionCookie?.value?.substring(0, 30) + '...',
+      all_cookie_names: cookieStore.getAll().map(c => c.name),
+    };
+    debug.step = 'cookies_checked';
+
     // Step 1: Check current user
     const user = await getCurrentUser();
     debug.currentUser = user ? { id: user.id, email: user.email } : null;

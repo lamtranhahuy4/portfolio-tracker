@@ -260,9 +260,14 @@ export async function getCurrentUser() {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
 
+    console.log('[AUTH] getCurrentUser: Cookie found:', !!token);
+    console.log('[AUTH] getCurrentUser: Cookie value length:', token?.length || 0);
+    console.log('[AUTH] getCurrentUser: Cookie value prefix:', token?.substring(0, 30) + '...');
+
     if (!token) return null;
 
     if (token.includes('_')) {
+      console.log('[AUTH] getCurrentUser: Token contains underscore, using DB validation');
       const session = await validateDbSession(token);
       if (session) {
         const [user] = await db
