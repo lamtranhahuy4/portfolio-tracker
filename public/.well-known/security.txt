@@ -1,0 +1,21 @@
+# Security policy for Portfolio Tracker
+# RFC 9116: Well-Known Uniform Resource Identifiers (URIs)
+
+Contact: mailto:security@portfolio-tracker.example.com
+Expires: 2027-04-13T00:00:00Z
+Preferred-Languages: en, vi
+
+# Security advisories can be submitted here
+# This file specifies the security contact point for responsible disclosure
+
+# For security vulnerabilities, please email:
+# security@portfolio-tracker.example.com
+
+# We appreciate responsible disclosure and will acknowledge receipt
+# within 48 hours and provide updates on remediation efforts.
+
+# Policy version
+Policy: https://portfolio-tracker-rho-flame.vercel.app/docs/SECURITY_AUDIT.md
+
+# Canonical URL
+Canonical: https://portfolio-tracker-rho-flame.vercel.app/.well-known/security.txt

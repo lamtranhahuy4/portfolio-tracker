@@ -86,6 +86,7 @@ export const portfolioSettings = pgTable('portfolio_settings', {
   globalCutoffDate: timestamp('global_cutoff_date', { mode: 'date' }),
   initialNetContributions: numeric('initial_net_contributions', { precision: 18, scale: 4 }).notNull().default('0'),
   initialCashBalance: numeric('initial_cash_balance', { precision: 18, scale: 4 }).notNull().default('0'),
+  taxRate: numeric('tax_rate', { precision: 5, scale: 4 }).notNull().default('0.001'), // 0.1% default
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: uniqueIndex('portfolio_settings_user_idx').on(table.userId),

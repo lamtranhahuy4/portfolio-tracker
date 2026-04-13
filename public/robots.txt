@@ -1,0 +1,28 @@
+# robots.txt for Portfolio Tracker
+# Generated for security and SEO compliance
+
+# Allow all user agents to crawl the site
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /.well-known/
+Disallow: /.env*
+Disallow: /private/
+
+# Specific search engines
+User-agent: Bingbot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+# Crawl delay for polite bots (in seconds)
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: https://portfolio-tracker-rho-flame.vercel.app/sitemap.xml
+
+# Security notes
+# API endpoints are not indexed for privacy and security
+# Admin pages are restricted from crawling
