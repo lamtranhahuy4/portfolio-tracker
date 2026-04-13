@@ -20,6 +20,7 @@ import WorldNews from '@/components/WorldNews';
 import Watchlist from '@/components/Watchlist';
 import PriceAlerts from '@/components/PriceAlerts';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
+import { HoldingsRealtimeCharts } from '@/components/HoldingPriceChart';
 import TooltipInfo from '@/components/TooltipInfo';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -435,6 +436,21 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
               </div>
               <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} language={language} />
             </section>
+            {liveTickerSymbols.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-100">{i18n[language].holdingPriceChart.title}</h2>
+                    <p className="text-sm text-slate-400">{i18n[language].holdingPriceChart.realtime}</p>
+                  </div>
+                </div>
+                <HoldingsRealtimeCharts
+                  tickers={liveTickerSymbols}
+                  initialPrices={metrics.holdings.reduce((acc, h) => ({ ...acc, [h.ticker]: h.currentPrice }), {})}
+                  language={language}
+                />
+              </section>
+            )}
             <section className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>

@@ -77,6 +77,14 @@ export const i18n = {
       apiError: 'Đã vượt quá giới hạn API từ Yahoo Finance hoặc mất kết nối mạng.',
       trendingAssets: 'Tài sản Đặc trưng',
     },
+    holdingPriceChart: {
+      price: 'Giá',
+      time: 'Thời gian',
+      realtime: 'Realtime',
+      connecting: 'Đang kết nối...',
+      disconnected: 'Mất kết nối',
+      title: 'Biến động giá',
+    },
     reconciliation: {
       title: 'Bảng đối soát',
       subtitle: 'Tách NAV, giá vốn và PnL theo các thành phần để nhìn ra phần còn lệch với số liệu công ty Chứng Khoán.',
@@ -174,6 +182,14 @@ export const i18n = {
       realtime: 'Real-time Data',
       apiError: 'API limit exceeded from Yahoo Finance or network disconnected.',
       trendingAssets: 'Trending Assets',
+    },
+    holdingPriceChart: {
+      price: 'Price',
+      time: 'Time',
+      realtime: 'Real-time',
+      connecting: 'Connecting...',
+      disconnected: 'Disconnected',
+      title: 'Price Movement',
     },
     reconciliation: {
       title: 'Reconciliation',

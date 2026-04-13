@@ -7,6 +7,8 @@ import ChangePasswordForm from '@/components/ChangePasswordForm';
 import DeletePortfolioDataForm from '@/components/DeletePortfolioDataForm';
 import ImportHistoryCard from '@/components/ImportHistoryCard';
 import CutoffSetupForm from '@/components/CutoffSetupForm';
+import TaxRateForm from '@/components/TaxRateForm';
+import TaxSummaryCard from '@/components/TaxSummaryCard';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { ImportBatchRecord } from '@/types/importAudit';
 import { toast } from 'sonner';
@@ -44,6 +46,7 @@ interface AccountSummary {
     globalCutoffDate: Date | null;
     initialNetContributions: number;
     initialCashBalance: number;
+    taxRate: number;
   };
   sessions: SessionInfo[];
   security: SecurityStatus;
@@ -299,6 +302,9 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
             </div>
           )}
         </div>
+
+        <TaxRateForm initialTaxRate={summary.portfolioSettings.taxRate || 0.001} language={language} />
+        <TaxSummaryCard language={language} />
         <ImportHistoryCard batches={summary.importBatches} language={language} />
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 flex flex-col gap-4">
