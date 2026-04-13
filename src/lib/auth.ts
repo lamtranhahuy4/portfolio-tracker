@@ -10,10 +10,7 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 function getAuthSecret(): string {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('⚠️ SECURITY WARNING: AUTH_SECRET not set in production!');
-      console.error('⚠️ Using temporary fallback. Set AUTH_SECRET immediately on Vercel!');
-    }
+    console.warn('[AUTH] AUTH_SECRET not set, using fallback based on DATABASE_URL');
     return process.env.DATABASE_URL 
       ? createHmac('sha256', process.env.DATABASE_URL).update('portfolio-tracker').digest('hex')
       : 'dev-only-auth-secret-not-for-production';
@@ -211,39 +208,45 @@ export async function clearDbSession(sessionId?: string) {
 }
 
 export async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-  if (!token) return null;
+    if (!token) return null;
 
-  if (token.includes('_')) {
-    const session = await validateDbSession(token);
-    if (session) {
-      const [user] = await db
-        .select({
-          id: users.id,
-          email: users.email,
-        })
-        .from(users)
-        .where(eq(users.id, session.userId))
-        .limit(1);
-      return user ?? null;
+    if (token.includes('_')) {
+      const session = await validateDbSession(token);
+      if (session) {
+        const [user] = await db
+          .select({
+            id: users.id,
+            email: users.email,
+          })
+          .from(users)
+          .where(eq(users.id, session.userId))
+          .limit(1);
+        return user ?? null;
+      }
+      return null;
     }
+
+    const session = parseSessionToken(token);
+    if (!session) return null;
+
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+      })
+      .from(users)
+      .where(eq(users.id, session.userId))
+      .limit(1);
+
+    return user ?? null;
+  } catch (error) {
+    console.error('[AUTH] Error in getCurrentUser:', error);
+    return null;
   }
-
-  const session = parseSessionToken(token);
-  if (!session) return null;
-
-  const [user] = await db
-    .select({
-      id: users.id,
-      email: users.email,
-    })
-    .from(users)
-    .where(eq(users.id, session.userId))
-    .limit(1);
-
-  return user ?? null;
 }
 
 export class UnauthorizedError extends Error {
