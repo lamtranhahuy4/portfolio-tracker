@@ -228,18 +228,33 @@ export async function setSession(userId: string) {
 
 export async function setDbSession(userId: string, userAgent?: string, ipAddress?: string) {
   try {
-    console.log('[AUTH] setDbSession: Creating session for userId:', userId);
+    console.log('[AUTH] setDbSession: START - userId:', userId);
     const token = await createDbSession(userId, userAgent, ipAddress);
-    console.log('[AUTH] setDbSession: Token created successfully, length:', token.length);
+    console.log('[AUTH] setDbSession: Token created, length:', token.length);
     
-    (await cookies()).set(SESSION_COOKIE, token, {
+    console.log('[AUTH] setDbSession: Setting cookie with settings:', {
+      name: SESSION_COOKIE,
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: SESSION_TTL_SECONDS,
     });
+    
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: SESSION_TTL_SECONDS,
+    });
+    
     console.log('[AUTH] setDbSession: Cookie set successfully');
+    
+    // Verify cookie was set
+    const cookieValue = cookieStore.get(SESSION_COOKIE);
+    console.log('[AUTH] setDbSession: Cookie verification:', cookieValue ? 'FOUND' : 'NOT FOUND');
   } catch (error) {
     console.error('[AUTH] setDbSession ERROR:', error instanceof Error ? error.message : error);
     throw error;
