@@ -126,7 +126,7 @@ export default function AuthPanel() {
           <p className="text-sm text-slate-400">{t.subtitle}</p>
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" method="post" onSubmit={handleSubmit}>
           <input
             name="email"
             type="email"
