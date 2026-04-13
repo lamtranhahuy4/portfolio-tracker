@@ -71,6 +71,7 @@ type AuthFormProps = {
   mode: 'signin' | 'signup';
   language: DashboardLanguage;
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
+  onSuccess: () => void;
   onToggleMode: () => void;
 };
 
@@ -89,16 +90,18 @@ function SubmitButton({ mode, language }: { mode: 'signin' | 'signup'; language:
   );
 }
 
-function AuthForm({ mode, language, action, onToggleMode }: AuthFormProps) {
+function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormProps) {
   const t = copy[language];
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useFormState(action, { error: null, message: '' });
 
   useEffect(() => {
+    console.log('[AUTH FORM] State changed:', JSON.stringify(state));
     if (state?.message === 'success') {
-      window.location.reload();
+      console.log('[AUTH FORM] Success detected, calling onSuccess');
+      onSuccess();
     }
-  }, [state]);
+  }, [state, onSuccess]);
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
@@ -161,6 +164,11 @@ export default function AuthPanel() {
     setMode(mode === 'signin' ? 'signup' : 'signin');
   };
 
+  const handleSuccess = () => {
+    console.log('[AUTH PANEL] Login success, refreshing page');
+    router.refresh();
+  };
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-md space-y-6 rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
@@ -186,6 +194,7 @@ export default function AuthPanel() {
           mode={mode}
           language={language}
           action={mode === 'signup' ? signUpAction : signInAction}
+          onSuccess={handleSuccess}
           onToggleMode={toggleMode}
         />
 
