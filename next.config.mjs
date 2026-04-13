@@ -39,7 +39,6 @@ const nextConfig = {
   // Compression and optimization
   compress: true,
   productionBrowserSourceMaps: false, // Disable source maps in production for security
-  swcMinify: true,
 
   // Performance monitoring
   experimental: {

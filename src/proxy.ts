@@ -199,9 +199,9 @@ function handleCORS(request: NextRequest): NextResponse | null {
 }
 
 /**
- * Main middleware function
+ * Main proxy function
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for static assets and public files
