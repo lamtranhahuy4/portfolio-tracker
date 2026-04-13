@@ -87,7 +87,9 @@ export async function createDbSession(
     const { token, tokenHash } = createToken();
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
-    console.log('[AUTH] createDbSession: Inserting session to DB, tokenHash length:', tokenHash.length);
+    console.log('[AUTH] createDbSession: token:', token.substring(0, 40) + '...');
+    console.log('[AUTH] createDbSession: tokenHash:', tokenHash.substring(0, 20) + '...');
+    console.log('[AUTH] createDbSession: tokenHash length:', tokenHash.length);
     
     await db.insert(sessions).values({
       userId,
