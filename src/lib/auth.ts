@@ -18,7 +18,7 @@ function getAuthSecret(): string {
   return secret;
 }
 
-function hashValue(value: string) {
+export function hashValue(value: string) {
   return createHmac('sha256', getAuthSecret()).update(value).digest('hex');
 }
 
