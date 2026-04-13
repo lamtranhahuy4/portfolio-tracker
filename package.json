@@ -11,7 +11,7 @@
         "test": "vitest run --config vitest.config.mjs",
         "test:watch": "vitest --config vitest.config.mjs",
         "typecheck": "tsc --noEmit",
-        "check": "npm run typecheck && npm run lint && npm run test",
+        "check": "yarn typecheck && yarn lint && yarn test",
         "load:health": "k6 run k6/health.js",
         "load:quotes": "k6 run k6/quotes.js",
         "load:batch": "k6 run k6/quotes-batch.js",
