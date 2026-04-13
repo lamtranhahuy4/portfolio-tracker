@@ -78,7 +78,13 @@ export async function signUpAction(email: string, password: string) {
 }
 
 export async function signInAction(email: string, password: string) {
-  console.log('[AUTH] signInAction called with email:', email);
+  console.log('[AUTH] signInAction START - email:', email);
+  
+  try {
+    throw new Error('TEST ERROR - Server Action is working!');
+  } catch (e) {
+    console.log('[AUTH] Caught test error as expected');
+  }
   
   const normalizedEmail = normalizeEmail(email);
   validateCredentials(normalizedEmail, password);
