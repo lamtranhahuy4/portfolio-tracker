@@ -83,18 +83,26 @@ export async function createDbSession(
   userAgent?: string,
   ipAddress?: string
 ): Promise<string> {
-  const { token, tokenHash } = createToken();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+  try {
+    const { token, tokenHash } = createToken();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
-  await db.insert(sessions).values({
-    userId,
-    tokenHash,
-    expiresAt,
-    userAgent: userAgent ?? null,
-    ipAddress: ipAddress ?? null,
-  });
-
-  return token;
+    console.log('[AUTH] createDbSession: Inserting session to DB, tokenHash length:', tokenHash.length);
+    
+    await db.insert(sessions).values({
+      userId,
+      tokenHash,
+      expiresAt,
+      userAgent: userAgent ?? null,
+      ipAddress: ipAddress ?? null,
+    });
+    
+    console.log('[AUTH] createDbSession: Session inserted to DB successfully');
+    return token;
+  } catch (error) {
+    console.error('[AUTH] createDbSession ERROR:', error instanceof Error ? error.message : error);
+    throw error;
+  }
 }
 
 export async function validateDbSession(token: string): Promise<SessionInfo | null> {
@@ -186,14 +194,23 @@ export async function setSession(userId: string) {
 }
 
 export async function setDbSession(userId: string, userAgent?: string, ipAddress?: string) {
-  const token = await createDbSession(userId, userAgent, ipAddress);
-  (await cookies()).set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: SESSION_TTL_SECONDS,
-  });
+  try {
+    console.log('[AUTH] setDbSession: Creating session for userId:', userId);
+    const token = await createDbSession(userId, userAgent, ipAddress);
+    console.log('[AUTH] setDbSession: Token created successfully, length:', token.length);
+    
+    (await cookies()).set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: SESSION_TTL_SECONDS,
+    });
+    console.log('[AUTH] setDbSession: Cookie set successfully');
+  } catch (error) {
+    console.error('[AUTH] setDbSession ERROR:', error instanceof Error ? error.message : error);
+    throw error;
+  }
 }
 
 export async function clearSession() {
