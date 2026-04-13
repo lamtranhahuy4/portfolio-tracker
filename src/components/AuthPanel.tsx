@@ -1,10 +1,12 @@
 'use client';
 
-import { FormEvent, useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Languages } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useFormState, useFormStatus } from 'react-dom';
 import { signInAction, signUpAction } from '@/actions/auth';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
+import { ActionState } from '@/types/action';
 
 const LOGIN_ERROR_VI = 'Bạn đã nhập sai tài khoản/mật khẩu. Nếu không nhớ có thể dùng chức năng Quên mật khẩu.';
 const LOGIN_ERROR_EN = 'Incorrect email or password. If you forgot your password, use the "Forgot password" feature.';
@@ -51,6 +53,7 @@ const copy = {
 } satisfies Record<DashboardLanguage, any>;
 
 function translateError(message: string, language: DashboardLanguage): string {
+  if (!message) return '';
   const dictionary = copy[language].errors as Record<string, string>;
   const translated = dictionary[message];
   if (translated) return translated;
@@ -64,12 +67,82 @@ function translateError(message: string, language: DashboardLanguage): string {
   return message;
 }
 
+type AuthFormProps = {
+  mode: 'signin' | 'signup';
+  language: DashboardLanguage;
+  action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
+  onToggleMode: () => void;
+};
+
+function SubmitButton({ mode, language }: { mode: 'signin' | 'signup'; language: DashboardLanguage }) {
+  const { pending } = useFormStatus();
+  const t = copy[language];
+  
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white transition-colors hover:bg-indigo-500 disabled:opacity-60"
+    >
+      {pending ? t.processing : mode === 'signup' ? t.signUp : t.signIn}
+    </button>
+  );
+}
+
+function AuthForm({ mode, language, action, onToggleMode }: AuthFormProps) {
+  const t = copy[language];
+  const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction] = useFormState(action, { error: null, message: '' });
+
+  useEffect(() => {
+    if (state?.message === 'success') {
+      window.location.reload();
+    }
+  }, [state]);
+
+  return (
+    <form ref={formRef} action={formAction} className="space-y-4">
+      <input
+        name="email"
+        type="email"
+        autoComplete="email"
+        placeholder="you@example.com"
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+        required
+      />
+      <input
+        name="password"
+        type="password"
+        autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+        placeholder={t.passwordPlaceholder}
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+        required
+        minLength={8}
+      />
+
+      {state?.error && (
+        <p className="rounded-xl bg-rose-950/40 px-4 py-3 text-sm text-rose-300">
+          {translateError(state.error, language)}
+        </p>
+      )}
+
+      <SubmitButton mode={mode} language={language} />
+
+      <button
+        type="button"
+        onClick={onToggleMode}
+        className="w-full text-sm text-slate-300 transition-colors hover:text-indigo-400"
+      >
+        {mode === 'signup' ? t.hasAccount : t.noAccount}
+      </button>
+    </form>
+  );
+}
+
 export default function AuthPanel() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [language, setLanguage] = useState<DashboardLanguage>('vi');
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
@@ -84,26 +157,8 @@ export default function AuthPanel() {
 
   const t = copy[language];
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-
-    const formData = new FormData(event.currentTarget);
-    const email = String(formData.get('email') ?? '');
-    const password = String(formData.get('password') ?? '');
-
-    startTransition(async () => {
-      try {
-        if (mode === 'signup') {
-          await signUpAction(email, password);
-        } else {
-          await signInAction(email, password);
-        }
-        router.refresh();
-      } catch (actionError) {
-        setError(translateError((actionError as Error).message, language));
-      }
-    });
+  const toggleMode = () => {
+    setMode(mode === 'signin' ? 'signup' : 'signin');
   };
 
   return (
@@ -126,48 +181,13 @@ export default function AuthPanel() {
           <p className="text-sm text-slate-400">{t.subtitle}</p>
         </div>
 
-        <form className="space-y-4" method="post" onSubmit={handleSubmit}>
-          <input
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          />
-          <input
-            name="password"
-            type="password"
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            placeholder={t.passwordPlaceholder}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-            minLength={8}
-          />
-
-          {error && (
-            <p className="rounded-xl bg-rose-950/40 px-4 py-3 text-sm text-rose-300">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white transition-colors hover:bg-indigo-500 disabled:opacity-60"
-          >
-            {isPending ? t.processing : mode === 'signup' ? t.signUp : t.signIn}
-          </button>
-        </form>
-
-        <button
-          type="button"
-          onClick={() => {
-            setMode(mode === 'signin' ? 'signup' : 'signin');
-            setError(null);
-          }}
-          className="w-full text-sm text-slate-300 transition-colors hover:text-indigo-400"
-        >
-          {mode === 'signup' ? t.hasAccount : t.noAccount}
-        </button>
+        <AuthForm
+          key={mode}
+          mode={mode}
+          language={language}
+          action={mode === 'signup' ? signUpAction : signInAction}
+          onToggleMode={toggleMode}
+        />
 
         {mode === 'signin' && (
           <a
