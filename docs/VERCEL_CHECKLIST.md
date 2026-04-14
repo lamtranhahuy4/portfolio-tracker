@@ -19,12 +19,15 @@
 ### 2. Environment Variables (Production)
 - [ ] `DATABASE_URL` - Neon connection string
 - [ ] `AUTH_SECRET` - Random 256-bit key
+- [ ] `ADMIN_SECRET` - Random 256-bit key for protected admin/debug access
 - [ ] `CRON_SECRET` - Random secret for cron jobs
+- [ ] `ENABLE_DEBUG_ROUTES=false` - Keep debug endpoints disabled by default
 - [ ] `SENTRY_DSN` - Sentry DSN URL
 - [ ] `NEXT_PUBLIC_APP_URL` - Production URL
 
 ### 3. Environment Variables (Preview/Staging)
 - [ ] Same as production with staging database
+- [ ] `ENABLE_DEBUG_ROUTES=false` unless temporary authorized troubleshooting is required
 - [ ] Staging URL for `NEXT_PUBLIC_APP_URL`
 
 ### 4. Domains
@@ -79,6 +82,18 @@ curl https://your-domain.com/api/health | jq '.checks.database.status'
 ```bash
 for i in {1..65}; do curl -s -o /dev/null -w "%{http_code}\n" https://your-domain.com/api/quotes?tickers=HPG; done
 # Expected: First 60 return 200, rest return 429
+```
+
+### Debug Routes Safety
+```bash
+# Production should be blocked by default (404)
+curl -i https://your-domain.com/api/check-env
+
+# If temporary troubleshooting is approved:
+# 1) set ENABLE_DEBUG_ROUTES=true
+# 2) call with admin secret
+curl -i https://your-domain.com/api/check-env \
+	-H "Authorization: Bearer $ADMIN_SECRET"
 ```
 
 ---

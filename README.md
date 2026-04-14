@@ -50,6 +50,13 @@ DATABASE_URL="postgresql://user:password@ep-cold-dew-123456.ap-southeast-1.aws.n
 # Khóa bảo mật để xác thực Vercel Cron Job
 CRON_SECRET="your_super_secret_cron_key"
 
+# Khóa bảo vệ endpoint admin/debug (khuyến nghị đặt cả local)
+ADMIN_SECRET="your_admin_secret"
+
+# Bật debug routes ở production chỉ khi có phê duyệt tạm thời
+# Local/dev không cần biến này vì mặc định đã cho phép debug route
+ENABLE_DEBUG_ROUTES="false"
+
 # API key cho tin tức từ Alpha Vantage
 ALPHA_VANTAGE_API_KEY="your_alpha_vantage_api_key"
 
@@ -71,6 +78,15 @@ npx drizzle-kit push
 npm run dev
 ```
 Truy cập `http://localhost:3000` để bắt đầu trải nghiệm ứng dụng.
+
+## 🔐 Ghi chú Security cho Local/Preview/Production
+
+- Local/dev: các debug route có thể truy cập để phục vụ troubleshoot.
+- Production/Preview: debug route bị chặn mặc định (`404`).
+- Chỉ mở tạm thời khi cần điều tra sự cố và phải thỏa mãn đồng thời:
+	- `ENABLE_DEBUG_ROUTES=true`
+	- Request kèm `Authorization: Bearer <ADMIN_SECRET>`
+- Endpoint `session-check` chỉ trả `isLoggedIn`, không trả `userEmail` và `userId`.
 
 ## 📁 Cấu trúc Thư mục Chính
 
