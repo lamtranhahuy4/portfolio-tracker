@@ -88,86 +88,64 @@ export async function signUpAction(_prevState: ActionState, formData: FormData):
 }
 
 export async function signInAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  console.log('[AUTH] signInAction: START');
   try {
     const email = String(formData.get('email') ?? '');
     const password = String(formData.get('password') ?? '');
     
-    console.log('[AUTH] signInAction: email received:', email, 'password length:', password.length);
-    
     const normalizedEmail = normalizeEmail(email);
-    console.log('[AUTH] signInAction: normalized email:', normalizedEmail);
-    
     validateCredentials(normalizedEmail, password);
-    console.log('[AUTH] signInAction: credentials validated');
 
     const ipAddress = await getClientIP();
     const userAgent = await getUserAgent();
-    console.log('[AUTH] signInAction: IP:', ipAddress);
 
     const emailLockout = await authRateLimiter.isEmailLocked(normalizedEmail);
-    console.log('[AUTH] signInAction: email lockout check:', emailLockout);
     if (emailLockout.isLocked) {
       const remainingMs = emailLockout.lockedUntil
         ? emailLockout.lockedUntil.getTime() - Date.now()
         : 0;
       const remainingMinutes = Math.ceil(remainingMs / 60000);
-      console.log('[AUTH] signInAction: email locked, returning error');
       return { error: `Tài khoản bị khóa tạm thời. Vui lòng thử lại sau ${remainingMinutes} phút.` };
     }
 
     const ipLockout = await authRateLimiter.isIpLocked(ipAddress);
-    console.log('[AUTH] signInAction: ip lockout check:', ipLockout);
     if (ipLockout.isLocked) {
       const remainingMs = ipLockout.lockedUntil
         ? ipLockout.lockedUntil.getTime() - Date.now()
         : 0;
       const remainingMinutes = Math.ceil(remainingMs / 60000);
-      console.log('[AUTH] signInAction: ip locked, returning error');
       return { error: `Địa chỉ IP bị khóa tạm thời. Vui lòng thử lại sau ${remainingMinutes} phút.` };
     }
 
-    console.log('[AUTH] signInAction: Looking up user:', normalizedEmail);
     const [user] = await db.select({
       id: users.id,
       passwordHash: users.passwordHash,
     }).from(users).where(eq(users.email, normalizedEmail)).limit(1);
-
-    console.log('[AUTH] signInAction: User lookup result:', !!user, user?.id);
     
     if (!user) {
-      console.log('[AUTH] signInAction: User not found, returning error');
       return { error: 'Email hoặc mật khẩu không đúng.' };
     }
     
     const passwordValid = verifyPassword(password, user.passwordHash);
-    console.log('[AUTH] signInAction: Password valid:', passwordValid);
     
     if (!passwordValid) {
-      console.log('[AUTH] signInAction: Invalid password, recording attempt');
       await authRateLimiter.recordAttempt(normalizedEmail, false, ipAddress);
 
       const lockResult = await authRateLimiter.checkAndLock(normalizedEmail, ipAddress);
       if (lockResult.locked) {
-        console.log('[AUTH] signInAction: Account locked, returning error');
         return { error: 'Đăng nhập thất bại quá nhiều lần. Tài khoản và IP đã bị khóa tạm thời trong 15 phút.' };
       }
 
       const attemptsLeft = lockResult.maxAttempts - lockResult.attempts;
-      console.log('[AUTH] signInAction: Invalid password, returning error with attempts left:', attemptsLeft);
       return { error: `Email hoặc mật khẩu không đúng. Còn ${attemptsLeft} lần thử.` };
     }
 
-    console.log('[AUTH] signInAction: Creating session for user:', user.id);
     await setDbSession(user.id, userAgent, ipAddress);
-    console.log('[AUTH] signInAction: Session created, recording attempt');
     await authRateLimiter.recordAttempt(normalizedEmail, true, ipAddress);
-    console.log('[AUTH] signInAction: SUCCESS, revalidating path');
 
     revalidatePath('/');
     return { message: 'success' };
   } catch (error) {
-    console.error('[AUTH] signInAction: CATCH BLOCK - error:', error);
+    console.error('[AUTH] signInAction error:', error);
     return { error: error instanceof Error ? error.message : 'Đã xảy ra lỗi không mong muốn.' };
   }
 }

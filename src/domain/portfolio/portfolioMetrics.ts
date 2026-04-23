@@ -79,6 +79,14 @@ function applyTransaction(state: ReplayState, tx: Transaction, _ledgerMode: bool
   const txTax = toDecimal(tx.tax);
   const txTotalValue = toDecimal(tx.totalValue);
 
+  // Validate fee and tax are non-negative (negative values would incorrectly increase proceeds)
+  if (txFee.lt(0)) {
+    state.calculationWarnings.push(`[Validation] Negative fee ${txFee.toNumber()} detected for ${tx.ticker} on ${dateLabel}. Treating as zero.`);
+  }
+  if (txTax.lt(0)) {
+    state.calculationWarnings.push(`[Validation] Negative tax ${txTax.toNumber()} detected for ${tx.ticker} on ${dateLabel}. Treating as zero.`);
+  }
+
   if (tx.assetClass === 'STOCK') {
     const stock = getStockHolding(state.holdingsMap, tx.ticker);
     const lots = getLots(state.lotsMap, tx.ticker);

@@ -1,5 +1,5 @@
-import { cookies } from 'next/headers';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { cookies } from 'next/headers';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { sessions, users } from '@/db/schema';
@@ -10,7 +10,10 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 function getAuthSecret(): string {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    console.warn('[AUTH] AUTH_SECRET not set, using fallback based on DATABASE_URL');
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('[AUTH] CRITICAL: AUTH_SECRET environment variable is not set. This is required for production deployments.');
+    }
+    console.warn('[AUTH] AUTH_SECRET not set, using fallback for development only');
     return process.env.DATABASE_URL 
       ? createHmac('sha256', process.env.DATABASE_URL).update('portfolio-tracker').digest('hex')
       : 'dev-only-auth-secret-not-for-production';
@@ -44,30 +47,6 @@ function createToken(): { token: string; tokenHash: string } {
   return { token, tokenHash };
 }
 
-function parseSessionToken(token: string | undefined) {
-  if (!token) return null;
-  
-  if (token.includes('_')) {
-    return null;
-  }
-
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  
-  const [userId, expiresAt, signature] = parts;
-  if (!userId || !expiresAt || !signature) return null;
-
-  const payload = `${userId}.${expiresAt}`;
-  const expectedBuffer = Buffer.from(hashValue(payload), 'hex');
-  const signatureBuffer = Buffer.from(signature, 'hex');
-  
-  if (expectedBuffer.length !== signatureBuffer.length) return null;
-  if (!timingSafeEqual(expectedBuffer, signatureBuffer)) return null;
-  if (Number(expiresAt) < Date.now()) return null;
-
-  return { userId };
-}
-
 export interface SessionInfo {
   id: string;
   userId: string;
@@ -83,61 +62,22 @@ export async function createDbSession(
   userAgent?: string,
   ipAddress?: string
 ): Promise<string> {
-  try {
-    const { token, tokenHash } = createToken();
-    const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+  const { token, tokenHash } = createToken();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
-    console.log('[AUTH] createDbSession: token:', token.substring(0, 40) + '...');
-    console.log('[AUTH] createDbSession: tokenHash:', tokenHash.substring(0, 20) + '...');
-    console.log('[AUTH] createDbSession: tokenHash length:', tokenHash.length);
-    
-    await db.insert(sessions).values({
-      userId,
-      tokenHash,
-      expiresAt,
-      userAgent: userAgent ?? null,
-      ipAddress: ipAddress ?? null,
-    });
-    
-    console.log('[AUTH] createDbSession: Session inserted to DB successfully');
-    return token;
-  } catch (error) {
-    console.error('[AUTH] createDbSession ERROR:', error instanceof Error ? error.message : error);
-    throw error;
-  }
+  await db.insert(sessions).values({
+    userId,
+    tokenHash,
+    expiresAt,
+    userAgent: userAgent ?? null,
+    ipAddress: ipAddress ?? null,
+  });
+
+  return token;
 }
 
 export async function validateDbSession(token: string): Promise<SessionInfo | null> {
-  console.log('[AUTH] validateDbSession: token length:', token?.length);
-  console.log('[AUTH] validateDbSession: token prefix:', token?.substring(0, 20) + '...');
-  
   const tokenHash = hashValue(token);
-  console.log('[AUTH] validateDbSession: tokenHash length:', tokenHash.length);
-  console.log('[AUTH] validateDbSession: tokenHash:', tokenHash.substring(0, 20) + '...');
-
-  // Debug: Check if tokenHash is valid hex
-  const isValidHex = /^[a-f0-9]{64}$/i.test(tokenHash);
-  console.log('[AUTH] validateDbSession: tokenHash is valid 64-char hex:', isValidHex);
-
-  // Debug: Count sessions in DB
-  try {
-    const allSessions = await db.select({ count: sql<number>`count(*)` }).from(sessions);
-    console.log('[AUTH] validateDbSession: Total sessions in DB:', allSessions[0]?.count);
-    
-    // Debug: Check if any tokenHash matches
-    const matchingSessions = await db
-      .select({ id: sessions.id, tokenHash: sessions.tokenHash })
-      .from(sessions)
-      .where(gt(sessions.expiresAt, new Date()))
-      .limit(5);
-    console.log('[AUTH] validateDbSession: Sample sessions in DB:', matchingSessions.length);
-    if (matchingSessions.length > 0) {
-      console.log('[AUTH] validateDbSession: First stored tokenHash:', matchingSessions[0].tokenHash?.substring(0, 20) + '...');
-      console.log('[AUTH] validateDbSession: Are they equal:', matchingSessions[0].tokenHash === tokenHash);
-    }
-  } catch (err) {
-    console.error('[AUTH] validateDbSession: Debug query error:', err);
-  }
 
   const [session] = await db
     .select()
@@ -150,8 +90,6 @@ export async function validateDbSession(token: string): Promise<SessionInfo | nu
     )
     .limit(1);
 
-  console.log('[AUTH] validateDbSession: Session found:', !!session);
-  
   if (!session) return null;
 
   await db
@@ -210,12 +148,8 @@ export async function cleanupExpiredSessions(): Promise<number> {
   return result.rowCount ?? 0;
 }
 
-export async function setSession(userId: string) {
-  const randomPart = randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + (SESSION_TTL_SECONDS * 1000);
-  const payload = `${userId}.${expiresAt}`;
-  const signature = hashValue(payload);
-  const token = `${randomPart}_${payload}_${signature}`;
+export async function setDbSession(userId: string, userAgent?: string, ipAddress?: string) {
+  const token = await createDbSession(userId, userAgent, ipAddress);
   
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -224,41 +158,6 @@ export async function setSession(userId: string) {
     path: '/',
     maxAge: SESSION_TTL_SECONDS,
   });
-}
-
-export async function setDbSession(userId: string, userAgent?: string, ipAddress?: string) {
-  try {
-    console.log('[AUTH] setDbSession: START - userId:', userId);
-    const token = await createDbSession(userId, userAgent, ipAddress);
-    console.log('[AUTH] setDbSession: Token created, length:', token.length);
-    
-    console.log('[AUTH] setDbSession: Setting cookie with settings:', {
-      name: SESSION_COOKIE,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: SESSION_TTL_SECONDS,
-    });
-    
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: SESSION_TTL_SECONDS,
-    });
-    
-    console.log('[AUTH] setDbSession: Cookie set successfully');
-    
-    // Verify cookie was set
-    const cookieValue = cookieStore.get(SESSION_COOKIE);
-    console.log('[AUTH] setDbSession: Cookie verification:', cookieValue ? 'FOUND' : 'NOT FOUND');
-  } catch (error) {
-    console.error('[AUTH] setDbSession ERROR:', error instanceof Error ? error.message : error);
-    throw error;
-  }
 }
 
 export async function clearSession() {
@@ -277,42 +176,21 @@ export async function getCurrentUser() {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-    console.log('[AUTH] getCurrentUser: Cookie found:', !!token);
-    console.log('[AUTH] getCurrentUser: Cookie value length:', token?.length || 0);
-    console.log('[AUTH] getCurrentUser: Cookie value prefix:', token?.substring(0, 30) + '...');
-
     if (!token) return null;
 
-    if (token.includes('_')) {
-      console.log('[AUTH] getCurrentUser: Token contains underscore, using DB validation');
-      const session = await validateDbSession(token);
-      if (session) {
-        const [user] = await db
-          .select({
-            id: users.id,
-            email: users.email,
-          })
-          .from(users)
-          .where(eq(users.id, session.userId))
-          .limit(1);
-        return user ?? null;
-      }
-      return null;
+    const session = await validateDbSession(token);
+    if (session) {
+      const [user] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, session.userId))
+        .limit(1);
+      return user ?? null;
     }
-
-    const session = parseSessionToken(token);
-    if (!session) return null;
-
-    const [user] = await db
-      .select({
-        id: users.id,
-        email: users.email,
-      })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-
-    return user ?? null;
+    return null;
   } catch (error) {
     console.error('[AUTH] Error in getCurrentUser:', error);
     return null;
