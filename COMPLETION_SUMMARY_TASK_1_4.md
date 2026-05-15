@@ -297,3 +297,41 @@ curl -I https://portfolio-tracker-rho-flame.vercel.app
 
 Generated: April 13, 2026  
 Status: Ready for TASK 5 (Deploy & Verify)
+
+---
+
+## 🔐 ADDENDUM (April 14, 2026) - Debug Route Hardening
+
+### Scope
+
+- Hardened debug/diagnostic API routes to be safe-by-default in production.
+- Added integration tests for production access control and payload sanitization.
+
+### Behavior Changes
+
+- `/api/debug-session`
+   - `POST` test-session creation path removed.
+   - In production: blocked by default unless explicitly enabled.
+   - Sanitized response: no PII, no token-hash prefixes, no secret prefixes.
+- `/api/check-env`
+   - In production: blocked by default unless explicitly enabled.
+   - Sanitized response: boolean capability flags only.
+- `/api/session-check`
+   - Breaking behavior (intentional security hardening): now returns only `isLoggedIn`.
+   - Removed `userEmail` and `userId` from payload.
+
+### New Environment Policy
+
+- `ENABLE_DEBUG_ROUTES=false` by default for Production and Preview.
+- To temporarily enable debug routes in production for incident troubleshooting, both conditions are required:
+   1. `ENABLE_DEBUG_ROUTES=true`
+   2. `Authorization: Bearer <ADMIN_SECRET>`
+
+### Verification
+
+- Typecheck: PASS
+- Unit/integration tests: PASS
+- Added tests cover:
+   - Production default block (`404`) for debug routes.
+   - Production allow only with `ENABLE_DEBUG_ROUTES=true` + valid `ADMIN_SECRET`.
+   - Sanitized payload assertions.

@@ -19,6 +19,10 @@ DATABASE_URL=postgresql://user:password@host/database?ssl=true
 
 # Authentication
 AUTH_SECRET=your-256-bit-secret-key-here
+ADMIN_SECRET=your-admin-secret-key-here
+
+# Debug route control (keep false in production)
+ENABLE_DEBUG_ROUTES=false
 
 # External APIs (optional)
 SENTRY_DSN=https://xxx@sentry.io/xxx
@@ -111,8 +115,18 @@ npm run build
 Set in Vercel Dashboard:
 - `DATABASE_URL` (Production + Preview + Development)
 - `AUTH_SECRET` (Production + Preview)
+- `ADMIN_SECRET` (Production + Preview)
+- `ENABLE_DEBUG_ROUTES` (Production + Preview, default: `false`)
 - `SENTRY_DSN` (Production + Preview)
 - `NEXT_PUBLIC_APP_URL` (Production + Preview)
+
+### Debug Routes Policy
+
+- Keep `ENABLE_DEBUG_ROUTES=false` in production and preview by default.
+- Debug routes are only available in production when BOTH are true:
+	- `ENABLE_DEBUG_ROUTES=true`
+	- request includes `Authorization: Bearer <ADMIN_SECRET>`
+- Never expose secret prefixes or token/session details in debug responses.
 
 ---
 
