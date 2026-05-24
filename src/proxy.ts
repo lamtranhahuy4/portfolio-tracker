@@ -110,9 +110,11 @@ function getCSPHeader(): string {
     ].join('; ');
   }
 
-  // Production CSP - more restrictive
+  // Production CSP. Next.js App Router emits inline bootstrap/RSC payload
+  // scripts unless a nonce-based CSP is wired through the whole render path.
+  // Allowing inline scripts here keeps the deployed app hydratable.
   return [
-    "script-src 'self' https://cdn.vercel-insights.com",
+    "script-src 'self' 'unsafe-inline' https://cdn.vercel-insights.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https:",
