@@ -44,3 +44,6 @@ docker-compose.yml
 
 # generated files
 deployment-trigger.txt
+
+# repomix output
+repomix-output.xml

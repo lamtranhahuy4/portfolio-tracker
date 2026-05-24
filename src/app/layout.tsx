@@ -52,9 +52,9 @@ export const metadata: Metadata = {
     address: false,
   },
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: '/apple-icon.png',
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/apple-icon.svg',
   },
 };
 
