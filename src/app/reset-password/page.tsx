@@ -106,7 +106,7 @@ function ResetPasswordContent() {
           <h1 className="text-4xl">✅</h1>
           <h1 className="text-2xl font-bold text-emerald-400">{t.success}</h1>
           <a
-            href="/login"
+            href="/"
             className="block w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white transition-colors hover:bg-indigo-500"
           >
             {t.goToLogin}

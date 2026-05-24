@@ -43,11 +43,21 @@ const formatPercent = (value: number) => new Intl.NumberFormat('vi-VN', {
   signDisplay: 'exceptZero',
 }).format(value);
 
+type AssetTab = 'ALL' | 'STOCK' | 'FUND' | 'CASH';
+
 export default function MarkToMarketGrid({ holdings, onPriceChange, language }: MarkToMarketGridProps) {
   const t = i18n[language].markToMarketGrid;
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
-  const sortedHoldings = useMemo(() => [...holdings].sort((a, b) => b.marketValue - a.marketValue), [holdings]);
+  const [activeTab, setActiveTab] = useState<AssetTab>('ALL');
+  const filteredHoldings = useMemo(() => {
+    if (activeTab === 'ALL') return holdings;
+    return holdings.filter((h) => {
+      if (activeTab === 'CASH') return h.assetClass === 'CASH' || h.ticker === 'CASH_VND';
+      return h.assetClass === activeTab;
+    });
+  }, [holdings, activeTab]);
+  const sortedHoldings = useMemo(() => [...filteredHoldings].sort((a, b) => b.marketValue - a.marketValue), [filteredHoldings]);
   const holdingSummary = useMemo(() => {
     const nonCash = sortedHoldings.filter((holding) => holding.ticker !== 'CASH_VND');
     return {
@@ -78,7 +88,26 @@ export default function MarkToMarketGrid({ holdings, onPriceChange, language }: 
 
   return (
     <div className="w-full overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/60 shadow-xl shadow-black/20 backdrop-blur-sm">
-      <div className="border-b border-slate-800 bg-slate-950/40 px-5 py-4">
+      <div className="border-b border-slate-800 bg-slate-950/40 px-5 py-4 space-y-3">
+        <div className="flex items-center gap-1 rounded-xl bg-slate-950/80 p-1">
+          {(['ALL', 'STOCK', 'FUND', 'CASH'] as AssetTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                'flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors',
+                activeTab === tab
+                  ? 'bg-slate-700 text-slate-100 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-300'
+              )}
+            >
+              {tab === 'ALL' ? (language === 'vi' ? 'Tất cả' : 'All') :
+               tab === 'STOCK' ? (language === 'vi' ? 'Cổ phiếu' : 'Stocks') :
+               tab === 'FUND' ? (language === 'vi' ? 'Chứng chỉ quỹ' : 'Funds') :
+               language === 'vi' ? 'Tiền mặt' : 'Cash'}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <SummaryBadge label={t.badgeSymbols} value={holdingSummary.activeTickers.toString()} />
           <SummaryBadge label={t.badgeProfit} value={holdingSummary.profitableTickers.toString()} positive />

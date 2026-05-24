@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 import { NavPoint } from '@/types/portfolio';
-import { TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 type NetWorthChartProps = {
   series: NavPoint[];
@@ -33,7 +33,6 @@ const copy = {
     portfolioReturn: 'Lợi nhuận Portfolio',
     benchmarkReturn: 'Lợi nhuận VN-INDEX',
     alpha: 'Alpha (Chênh lệch)',
-    loading: 'Đang tải benchmark...',
     vs: 'vs',
   },
   en: {
@@ -47,7 +46,6 @@ const copy = {
     portfolioReturn: 'Portfolio Return',
     benchmarkReturn: 'VN-INDEX Return',
     alpha: 'Alpha (Difference)',
-    loading: 'Loading benchmark...',
     vs: 'vs',
   },
 };
@@ -64,28 +62,26 @@ interface BenchmarkData {
 export default function NetWorthChart({ series, language }: NetWorthChartProps) {
   const t = copy[language];
   const [vnindexHistory, setVnindexHistory] = useState<Record<string, number> | null>(null);
-  const [loadingVnindex, setLoadingVnindex] = useState(true);
 
   useEffect(() => {
+    let active = true;
     const fetchVnindex = async () => {
       try {
         const response = await fetch('/api/vnindex-history');
+        if (!active) return;
         if (response.ok) {
           const data = await response.json();
           setVnindexHistory(data.prices?.VNINDEX || null);
         }
       } catch {
-        setVnindexHistory(null);
-      } finally {
-        setLoadingVnindex(false);
+        if (active) setVnindexHistory(null);
       }
     };
 
     if (series.length > 0) {
       fetchVnindex();
-    } else {
-      setLoadingVnindex(false);
     }
+    return () => { active = false; };
   }, [series]);
 
   const chartData = useMemo<BenchmarkData[]>(() => {
@@ -182,67 +178,62 @@ export default function NetWorthChart({ series, language }: NetWorthChartProps) 
         </div>
       )}
 
-      {loadingVnindex && (
-        <div className="flex items-center justify-center h-[280px] text-slate-400">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />
-          <span className="text-sm">{t.loading}</span>
-        </div>
-      )}
-
-      {!loadingVnindex && (
-        <div className="h-[280px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="portfolioFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="vnindexFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 12, fill: '#94a3b8' }}
-                tickLine={false}
-                axisLine={{ stroke: '#334155' }}
-                minTickGap={24}
-              />
+      <div className="h-[280px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="portfolioFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="vnindexFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.15} />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12, fill: '#94a3b8' }}
+              tickLine={false}
+              axisLine={{ stroke: '#334155' }}
+              minTickGap={24}
+            />
               <YAxis
-                tickFormatter={(value) => `${Math.round(value / 1000000)}M`}
+                tickFormatter={(value) => {
+                  if (Math.abs(value) >= 1_000_000) return `${Math.round(value / 1_000_000)}M`;
+                  if (Math.abs(value) >= 1_000) return `${Math.round(value / 1_000)}K`;
+                  return String(value);
+                }}
                 tick={{ fontSize: 12, fill: '#94a3b8' }}
                 tickLine={false}
                 axisLine={{ stroke: '#334155' }}
               />
-              <Tooltip
-                formatter={(value: number, name: string) => {
-                  if (name === t.nav) {
-                    return [new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value), name];
-                  }
-                  return [`${value.toFixed(2)}%`, name];
-                }}
-                labelFormatter={(label) => `${t.day} ${label}`}
-                contentStyle={{
-                  borderRadius: '12px',
-                  border: '1px solid #334155',
-                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                  color: '#e2e8f0',
-                }}
-                labelStyle={{ color: '#cbd5e1' }}
-              />
-              <Legend wrapperStyle={{ color: '#94a3b8' }} />
-              <Area type="monotone" dataKey="portfolioValue" stroke="none" fill="url(#portfolioFill)" />
-              <Line type="monotone" dataKey="portfolioValue" name={t.nav} stroke="#3b82f6" strokeWidth={3} dot={false} />
-              <Area type="monotone" dataKey="vnindexValue" stroke="none" fill="url(#vnindexFill)" />
-              <Line type="monotone" dataKey="vnindexValue" name={t.vnindex} stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 4" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+            <Tooltip
+              formatter={(value: number, name: string) => {
+                if (name === t.nav) {
+                  return [new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value), name];
+                }
+                return [`${value.toFixed(2)}%`, name];
+              }}
+              labelFormatter={(label) => `${t.day} ${label}`}
+              contentStyle={{
+                borderRadius: '12px',
+                border: '1px solid #334155',
+                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3)',
+                backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                color: '#e2e8f0',
+              }}
+              labelStyle={{ color: '#cbd5e1' }}
+            />
+            <Legend wrapperStyle={{ color: '#94a3b8' }} />
+            <Area type="monotone" dataKey="portfolioValue" stroke="none" fill="url(#portfolioFill)" />
+            <Line type="monotone" dataKey="portfolioValue" name={t.nav} stroke="#3b82f6" strokeWidth={3} dot={false} />
+            <Area type="monotone" dataKey="vnindexValue" stroke="none" fill="url(#vnindexFill)" />
+            <Line type="monotone" dataKey="vnindexValue" name={t.vnindex} stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

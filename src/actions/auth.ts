@@ -330,7 +330,5 @@ export async function resetPasswordAction(token: string, email: string, newPassw
 
   await invalidateAllSessionsForUser(user.id);
 
-  console.info(`Password reset successful for user: ${normalizedEmail}`);
-
   return { success: true, message: 'Mật khẩu đã được đặt lại thành công.' };
 }

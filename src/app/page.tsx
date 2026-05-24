@@ -6,6 +6,7 @@ import AuthPanel from '@/components/AuthPanel';
 import DashboardClient from '@/components/DashboardClient';
 import StoreInitializer from '@/components/StoreInitializer';
 import { getCurrentUser } from '@/lib/auth';
+import type { CashLedgerEvent, OpeningPositionSnapshot, Transaction } from '@/types/portfolio';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,15 +17,22 @@ export default async function DashboardPage() {
     return <AuthPanel />;
   }
 
-  let initialTransactions = [];
-  let initialCashEvents = [];
-  let openingPositionSnapshot = { positions: [] };
-  let portfolioSettings = { feeDebt: 0, globalCutoffDate: null as Date | null, initialNetContributions: 0, initialCashBalance: 0 };
+  let initialTransactions: Transaction[] = [];
+  let initialCashEvents: CashLedgerEvent[] = [];
+  let openingPositionSnapshot: OpeningPositionSnapshot = { positions: [] };
+  let portfolioSettings: {
+    feeDebt: number;
+    globalCutoffDate: Date | null;
+    initialNetContributions: number;
+    initialCashBalance: number;
+  } = { feeDebt: 0, globalCutoffDate: null, initialNetContributions: 0, initialCashBalance: 0 };
   try {
-    initialTransactions = await fetchTransactions();
-    initialCashEvents = await fetchCashEvents();
-    openingPositionSnapshot = await fetchOpeningPositionSnapshot();
-    portfolioSettings = await fetchPortfolioSettings();
+    [initialTransactions, initialCashEvents, openingPositionSnapshot, portfolioSettings] = await Promise.all([
+      fetchTransactions(user.id),
+      fetchCashEvents(user.id),
+      fetchOpeningPositionSnapshot(user.id),
+      fetchPortfolioSettings(user.id),
+    ]);
   } catch (error) {
     console.error('Failed to load portfolio data for current user.', error);
   }

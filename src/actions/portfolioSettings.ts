@@ -26,8 +26,8 @@ export interface PortfolioTaxSummary {
   byTicker: TaxCalculationResult[];
 }
 
-export async function fetchPortfolioSettings() {
-  const user = await requireUser();
+export async function fetchPortfolioSettings(userId?: string) {
+  const user = userId ? { id: userId } : await requireUser();
   const [settings] = await db.select()
     .from(portfolioSettings)
     .where(eq(portfolioSettings.userId, user.id))

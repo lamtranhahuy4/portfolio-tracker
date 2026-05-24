@@ -3,7 +3,7 @@ import { Money, Quantity, Price } from '../domain/portfolio/primitives';
 /**
  * Lớp tài sản cơ bản trong hệ thống
  */
-export type AssetClass = 'STOCK' | 'CASH' | 'SAVING';
+export type AssetClass = 'STOCK' | 'CASH' | 'SAVING' | 'FUND';
 
 /**
  * Loại giao dịch xác định hành động đối với tài sản

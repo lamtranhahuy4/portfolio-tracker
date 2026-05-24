@@ -44,7 +44,7 @@ const copy = {
 } satisfies Record<DashboardLanguage, any>;
 
 function tr(message: string, language: DashboardLanguage, kind: 'successMap' | 'errorMap') {
-  return copy[language][kind][message] ?? message;
+  return (copy[language][kind] as Record<string, string>)[message] ?? message;
 }
 
 export default function DeletePortfolioDataForm({ language }: { language: DashboardLanguage }) {

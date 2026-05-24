@@ -50,8 +50,9 @@ export async function parseCsv(file: File): Promise<ImportParseResult> {
 
           if (!type) { pushWarning('Không nhận diện được loại giao dịch.'); return; }
 
-          const assetClass = getAssetClass(type);
-          const ticker = assetClass === 'CASH' ? 'CASH_VND' : String(rawTicker ?? '').trim();
+          const rawTickerStr = String(rawTicker ?? '').trim();
+          const assetClass = getAssetClass(type, rawTickerStr);
+          const ticker = assetClass === 'CASH' ? 'CASH_VND' : rawTickerStr;
           const quantity = parseNumber(rawQuantity);
           const price = assetClass === 'CASH' ? 1 : parseNumber(rawPrice);
           const fee = Number.isNaN(parseNumber(rawFee)) ? 0 : parseNumber(rawFee);

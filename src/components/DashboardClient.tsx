@@ -2,7 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages, RefreshCw, CheckCircle, AlertTriangle, Globe } from 'lucide-react';
+import AddDepositForm from '@/components/AddDepositForm';
+import AddTradeForm from '@/components/AddTradeForm';
 import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
 import FeeDebtCard from '@/components/FeeDebtCard';
 import GroupedTransactionHistoryTable from '@/components/GroupedTransactionHistoryTable';
@@ -24,6 +26,9 @@ import { HoldingsRealtimeCharts } from '@/components/HoldingPriceChart';
 import TooltipInfo from '@/components/TooltipInfo';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { withRetry } from '@/lib/retry';
+import { downloadCsv } from '@/lib/exportCsv';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
@@ -89,7 +94,10 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     const refresh = async () => {
       try {
         setIsRefreshingPrices(true);
-        const response = await fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
+        const response = await withRetry(
+          () => fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' }),
+          { maxRetries: 2, baseDelayMs: 1000 }
+        );
         if (!response.ok) return;
         const data = await response.json() as { quotes?: Array<{ ticker: string; price: number }> };
         if (!active || !data.quotes) return;
@@ -178,7 +186,10 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     if (!liveTickerQuery) return;
     setIsRefreshingPrices(true);
     try {
-      const response = await fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' });
+      const response = await withRetry(
+        () => fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' }),
+        { maxRetries: 2, baseDelayMs: 1000 }
+      );
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json() as { quotes?: Array<{ ticker: string; price: number }> };
       if (!data.quotes) throw new Error('Invalid response');
@@ -195,7 +206,27 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   };
 
   if (!isMounted) {
-    return null;
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 rounded-2xl bg-slate-800/50" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="h-8 w-48 rounded-lg bg-slate-800/50" />
+              <div className="h-96 rounded-[28px] bg-slate-800/30" />
+            </div>
+            <div className="space-y-4">
+              <div className="h-48 rounded-[28px] bg-slate-800/30" />
+              <div className="h-48 rounded-[28px] bg-slate-800/30" />
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (transactions.length === 0 && !globalCutoffDate) {
@@ -358,6 +389,13 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                     <p className="truncate text-sm font-medium text-slate-200">{userEmail}</p>
                   </div>
                   <Link
+                    href="/forex"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                  >
+                    <Globe className="h-4 w-4 text-emerald-400" />
+                    Tỷ giá
+                  </Link>
+                  <Link
                     href="/account"
                     className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800"
                   >
@@ -381,6 +419,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
           <EmptyStateHero language={language} />
         ) : (
           <>
+            <ErrorBoundary componentName="StatCards">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard 
             title={t.totalNav} 
@@ -419,24 +458,50 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             icon={<CheckCircle2 className="h-5 w-5 text-cyan-300" />}
           />
         </div>
+        </ErrorBoundary>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
             <NetWorthChart series={metrics.navSeries} language={language} />
-            <ReconciliationPanel language={language} />
+            <ErrorBoundary componentName="ReconciliationPanel"><ReconciliationPanel language={language} /></ErrorBoundary>
+            <ErrorBoundary componentName="MarkToMarketGrid">
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-100">{t.markToMarket}</h2>
                   <p className="text-sm text-slate-400">{t.markToMarketDesc}</p>
                 </div>
-                <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
-                  {holdings.length} {t.positions}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      const headers = ['Ticker', 'Loại TS', 'Số lượng', 'Giá TB', 'Giá hiện tại', 'Giá trị', 'Lãi/lỗ'];
+                      const rows = holdings
+                        .filter((h) => h.ticker !== 'CASH_VND')
+                        .map((h) => [
+                          h.ticker,
+                          h.assetClass,
+                          h.totalShares,
+                          h.netAverageCost,
+                          h.currentPrice,
+                          h.marketValue,
+                          h.unrealizedPnL,
+                        ]);
+                      downloadCsv('danh-muc.csv', headers, rows);
+                    }}
+                    className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+                  >
+                    {language === 'vi' ? 'Xuất CSV' : 'Export CSV'}
+                  </button>
+                  <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
+                    {holdings.length} {t.positions}
+                  </div>
                 </div>
               </div>
               <MarkToMarketGrid holdings={holdings} onPriceChange={updatePrice} language={language} />
             </section>
+            </ErrorBoundary>
             {liveTickerSymbols.length > 0 && (
+              <ErrorBoundary componentName="HoldingPriceChart">
               <section className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -450,34 +515,62 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                   language={language}
                 />
               </section>
+              </ErrorBoundary>
             )}
+            <ErrorBoundary componentName="TransactionHistory">
             <section className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-100">{t.groupedHistory}</h2>
                   <p className="text-sm text-slate-400">{t.groupedHistoryDesc}</p>
                 </div>
-                <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
-                  {t.returnLabel} {formatPercent(metrics.returnVsCostBasis)}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      const headers = ['Ngày', 'Mã', 'Loại', 'Số lượng', 'Giá', 'Phí', 'Tổng giá trị', 'Ghi chú'];
+                      const rows = transactions.map((tx) => [
+                        new Date(tx.date).toISOString().split('T')[0],
+                        tx.ticker,
+                        tx.type,
+                        tx.quantity,
+                        tx.price,
+                        tx.fee,
+                        tx.totalValue,
+                        tx.notes ?? '',
+                      ]);
+                      downloadCsv('giao-dich.csv', headers, rows);
+                    }}
+                    className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+                  >
+                    {language === 'vi' ? 'Xuất CSV' : 'Export CSV'}
+                  </button>
+                  <div className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-slate-400">
+                    {t.returnLabel} {formatPercent(metrics.returnVsCostBasis)}
+                  </div>
                 </div>
               </div>
               <GroupedTransactionHistoryTable language={language} />
             </section>
+            </ErrorBoundary>
           </div>
 
 
           <aside className="flex flex-col gap-6 lg:col-span-1">
+            <ErrorBoundary componentName="CsvUpload">
             <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
               <CsvUploaderServerImport language={language} />
             </div>
-            <FeeDebtCard />
-            <OpeningPositionCard />
-            <AssetAllocationChart language={language} />
-            <StockNews />
-            <Watchlist language={language} />
-            <PriceAlerts language={language} />
-            <WorldNews language={language} />
-            <ImportWarningsPanel language={language} />
+            </ErrorBoundary>
+            <ErrorBoundary componentName="DepositForm"><AddDepositForm /></ErrorBoundary>
+            <ErrorBoundary componentName="TradeForm"><AddTradeForm /></ErrorBoundary>
+            <ErrorBoundary componentName="FeeDebt"><FeeDebtCard /></ErrorBoundary>
+            <ErrorBoundary componentName="OpeningPosition"><OpeningPositionCard /></ErrorBoundary>
+            <ErrorBoundary componentName="AssetAllocation"><AssetAllocationChart language={language} /></ErrorBoundary>
+            <ErrorBoundary componentName="StockNews"><StockNews language={language} /></ErrorBoundary>
+            <ErrorBoundary componentName="Watchlist"><Watchlist language={language} /></ErrorBoundary>
+            <ErrorBoundary componentName="PriceAlerts"><PriceAlerts language={language} /></ErrorBoundary>
+            <ErrorBoundary componentName="WorldNews"><WorldNews language={language} /></ErrorBoundary>
+            <ErrorBoundary componentName="ImportWarnings"><ImportWarningsPanel language={language} /></ErrorBoundary>
             {metrics.calculationWarnings.length > 0 && (
               <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">
                 {metrics.calculationWarnings.length} {t.calcWarnings}

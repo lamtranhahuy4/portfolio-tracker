@@ -21,7 +21,39 @@ interface StockNewsData {
 
 const FETCH_TIMEOUT_MS = 10000;
 
-export default function StockNews() {
+const copy = {
+  vi: {
+    title: 'Tin tức cổ phiếu',
+    watching: 'mã đang theo dõi',
+    refresh: 'Làm mới',
+    timeout: 'Yêu cầu hết thời gian',
+    unavailable: 'Tin tức tạm thời không khả dụng',
+    failed: 'Không thể tải tin tức',
+    noNews: 'Không có tin tức gần đây cho các mã này',
+    hintVN: 'Các mã Việt Nam có thể chưa được hỗ trợ bởi nguồn tin quốc tế',
+    hintOther: 'Thử tìm kiếm với các mã phổ biến hơn',
+    minAgo: 'phút trước',
+    hoursAgo: 'giờ trước',
+    yesterday: 'Hôm qua',
+  },
+  en: {
+    title: 'Stock News',
+    watching: 'tickers tracked',
+    refresh: 'Refresh',
+    timeout: 'Request timed out',
+    unavailable: 'News temporarily unavailable',
+    failed: 'Failed to load news',
+    noNews: 'No recent news for these tickers',
+    hintVN: 'Vietnamese tickers may not be supported by international news sources',
+    hintOther: 'Try more popular tickers',
+    minAgo: 'min ago',
+    hoursAgo: 'hours ago',
+    yesterday: 'Yesterday',
+  },
+};
+
+export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' }) {
+  const t = copy[language];
   const metrics = usePortfolioMetrics();
   const [news, setNews] = useState<Record<string, NewsArticle[]>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +82,7 @@ export default function StockNews() {
 
     const timeoutId = setTimeout(() => {
       abortController.abort();
-      setError('Yêu cầu hết thời gian');
+      setError(t.timeout);
       setHasLoaded(true);
       setIsLoading(false);
     }, FETCH_TIMEOUT_MS);
@@ -65,7 +97,7 @@ export default function StockNews() {
       if (!response.ok) throw new Error('Failed to fetch');
       const data: StockNewsData = await response.json();
       if (data.error) {
-        setError('Tin tức tạm thời không khả dụng');
+        setError(t.unavailable);
       } else {
         setNews(data.news || {});
       }
@@ -75,7 +107,7 @@ export default function StockNews() {
       if (err instanceof Error && err.name === 'AbortError') {
         return;
       }
-      setError('Không thể tải tin tức');
+      setError(t.failed);
       setHasLoaded(true);
     } finally {
       setIsLoading(false);
@@ -106,10 +138,10 @@ export default function StockNews() {
     const now = new Date();
     const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
-    if (diffHours < 1) return `${Math.floor(diffHours * 60)} phút trước`;
-    if (diffHours < 24) return `${Math.floor(diffHours)} giờ trước`;
-    if (diffHours < 48) return 'Hôm qua';
-    return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
+    if (diffHours < 1) return `${Math.floor(diffHours * 60)} ${t.minAgo}`;
+    if (diffHours < 24) return `${Math.floor(diffHours)} ${t.hoursAgo}`;
+    if (diffHours < 48) return t.yesterday;
+    return date.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: 'numeric', month: 'short' });
   };
 
   const hasNews = stockTickers.some((t) => news[t] && news[t].length > 0);
@@ -122,18 +154,18 @@ export default function StockNews() {
             <Newspaper className="h-4 w-4 text-blue-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Tin tức cổ phiếu</h3>
-            <p className="text-xs text-slate-500">{stockTickers.length} mã đang theo dõi</p>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">{t.title}</h3>
+            <p className="text-xs text-slate-500">{stockTickers.length} {t.watching}</p>
           </div>
         </div>
         <button
           onClick={fetchNews}
           disabled={isLoading}
           className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
-          title="Làm mới tin tức"
+          title={t.refresh}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          Làm mới
+          {t.refresh}
         </button>
       </div>
 
@@ -191,11 +223,11 @@ export default function StockNews() {
 
           {!hasNews && (
             <div className="text-center py-4 text-sm text-slate-500 space-y-2">
-              <p>Không có tin tức gần đây cho các mã này</p>
+              <p>{t.noNews}</p>
               <p className="text-xs text-slate-600">
                 {stockTickers.every(t => t.length <= 3) 
-                  ? 'Các mã Việt Nam có thể chưa được hỗ trợ bởi nguồn tin quốc tế'
-                  : 'Thử tìm kiếm với các mã phổ biến hơn'}
+                  ? t.hintVN
+                  : t.hintOther}
               </p>
             </div>
           )}

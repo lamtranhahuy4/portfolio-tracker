@@ -5,6 +5,7 @@ import { ReceiptText } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveFeeDebtSetting } from '@/actions/portfolioSettings';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
+import NumberInput from '@/components/NumberInput';
 
 export default function FeeDebtCard() {
   const metrics = usePortfolioMetrics();
@@ -16,6 +17,8 @@ export default function FeeDebtCard() {
   useEffect(() => {
     setDraftValue(String(feeDebt || ''));
   }, [feeDebt]);
+
+  if (Number(feeDebt) === 0) return null;
 
   const saveValue = () => {
     startTransition(async () => {
@@ -36,7 +39,7 @@ export default function FeeDebtCard() {
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Fee Debt</h3>
           <p className="mt-2 text-sm text-slate-400">
-            Trừ khoản nợ phí broker khỏi NAV hiện tại. Dùng khi app DNSE hiển thị &quot;nợ phí&quot; nhưng cash report chưa phản ánh trực tiếp.
+            Nhập khoản phí môi giới còn nợ để trừ khỏi tổng tài sản. Dùng khi app DNSE hiển thị nợ phí nhưng sao kê chưa trừ.
           </p>
         </div>
         <ReceiptText className="mt-1 h-5 w-5 text-rose-400" />
@@ -44,12 +47,9 @@ export default function FeeDebtCard() {
 
       <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
         <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Current Fee Debt</label>
-        <input
-          type="number"
-          min="0"
-          step="1"
+        <NumberInput
           value={draftValue}
-          onChange={(e) => setDraftValue(e.target.value)}
+          onChange={setDraftValue}
           className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
         />
         <div className="mt-3 text-xs text-slate-500">

@@ -57,7 +57,23 @@ function translateError(message: string, language: DashboardLanguage): string {
   const dictionary = copy[language].errors as Record<string, string>;
   const translated = dictionary[message];
   if (translated) return translated;
-  
+
+  if (message.includes('bị khóa') || message.includes('bị khoá')) {
+    if (language === 'en') {
+      const minutes = message.match(/\d+/)?.[0] || '';
+      return `Account temporarily locked. Please try again in ${minutes} minutes.`;
+    }
+    return message;
+  }
+
+  if (message.includes('IP bị khóa') || message.includes('IP bị khoá')) {
+    if (language === 'en') {
+      const minutes = message.match(/\d+/)?.[0] || '';
+      return `IP address temporarily blocked. Please try again in ${minutes} minutes.`;
+    }
+    return message;
+  }
+
   if (message.includes('sai') || message.includes('không') || 
       message.includes('wrong') || message.includes('incorrect') ||
       message.includes('khong')) {

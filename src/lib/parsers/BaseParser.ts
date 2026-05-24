@@ -111,8 +111,27 @@ export function parseTransactionType(value: unknown): TransactionType | null {
   return null;
 }
 
-export function getAssetClass(type: TransactionType): AssetClass {
-  return ['DEPOSIT', 'WITHDRAW', 'INTEREST'].includes(type) ? 'CASH' : 'STOCK';
+const FUND_TICKER_PATTERNS = [
+  /^VCBF-/i, /^MAGE-?/i, /^VFM-?/i, /^VEOF-?/i, /^BVF/i,
+  /^DCDS/i, /^VESAF/i, /^DC-/i, /^VBTC/i,
+  /FIF$/, /BCF$/, /BFED$/, /BVF$/, /EF$/,
+];
+
+const FUND_SPECIFIC = new Set([
+  'MAGEF', 'VESAF', 'BVFED', 'VFMVF1', 'VFMVFA', 'VFMVFB',
+  'VBTC', 'VEOF', 'DCDS',
+]);
+
+export function isFundTicker(ticker: string): boolean {
+  const upper = ticker.trim().toUpperCase();
+  if (FUND_SPECIFIC.has(upper)) return true;
+  return FUND_TICKER_PATTERNS.some((pattern) => pattern.test(upper));
+}
+
+export function getAssetClass(type: TransactionType, ticker?: string): AssetClass {
+  if (['DEPOSIT', 'WITHDRAW', 'INTEREST'].includes(type)) return 'CASH';
+  if (ticker && isFundTicker(ticker)) return 'FUND';
+  return 'STOCK';
 }
 
 export function resolveColumn(row: Record<string, unknown>, aliases: string[]): unknown {
@@ -134,7 +153,7 @@ export function buildTransaction(input: {
   notes?: string;
   source: string;
 }): NormalizedTransaction {
-  const assetClass = getAssetClass(input.type);
+  const assetClass = getAssetClass(input.type, input.ticker);
   const qty = parseNumberToDecimal(input.quantity);
   const px = parseNumberToDecimal(input.price);
   const feeVal = parseNumberToDecimal(input.fee ?? 0);

@@ -9,9 +9,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useRealtimePrices } from '@/lib/useRealtimePrices';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
-import { TrendingUp, TrendingDown, Wifi, WifiOff } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface PricePoint {
   time: string;
@@ -29,16 +28,10 @@ const copy = {
   vi: {
     price: 'Giá',
     time: 'Thời gian',
-    realtime: 'Realtime',
-    connecting: 'Đang kết nối...',
-    disconnected: 'Mất kết nối',
   },
   en: {
     price: 'Price',
     time: 'Time',
-    realtime: 'Real-time',
-    connecting: 'Connecting...',
-    disconnected: 'Disconnected',
   },
 };
 
@@ -54,11 +47,6 @@ export default function HoldingPriceChart({
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([
     { time: new Date().toLocaleTimeString(), price: initialPrice }
   ]);
-
-  const { isConnected } = useRealtimePrices({
-    tickers: [ticker],
-    enabled: true,
-  });
 
   useEffect(() => {
     setPriceHistory(prev => {
@@ -94,19 +82,6 @@ export default function HoldingPriceChart({
             {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             <span>{isUp ? '+' : ''}{changePercent.toFixed(2)}%</span>
           </div>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs">
-          {isConnected ? (
-            <span className="flex items-center gap-1 text-emerald-400">
-              <Wifi className="h-3 w-3" />
-              {t.realtime}
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-slate-500">
-              <WifiOff className="h-3 w-3" />
-              {t.disconnected}
-            </span>
-          )}
         </div>
       </div>
 

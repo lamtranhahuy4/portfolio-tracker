@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Save, ArrowRight, ArrowLeft, Upload, FileSpreadsheet, Calendar, Landmark } from 'lucide-react';
+import { useState, useTransition, useEffect } from 'react';
+import { Save, ArrowRight, ArrowLeft, Upload, FileSpreadsheet, Calendar, Landmark, X, Check } from 'lucide-react';
 import { saveCutoffSettings } from '@/actions/portfolioSettings';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { MOCK_TRANSACTIONS, MOCK_CASH_EVENTS } from '@/lib/mockData';
+import NumberInput from '@/components/NumberInput';
+import AddTradeForm from '@/components/AddTradeForm';
 
 export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }) {
   const [step, setStep] = useState(1);
@@ -13,6 +15,11 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
   const [netContributions, setNetContributions] = useState<string>('0');
   const [cashBalance, setCashBalance] = useState<string>('0');
   const [error, setError] = useState<string | null>(null);
+  const [showManualTrade, setShowManualTrade] = useState(false);
+
+  useEffect(() => {
+    setShowManualTrade(false);
+  }, [step]);
 
   const setPortfolioSettings = usePortfolioStore((state) => state.setPortfolioSettings);
 
@@ -166,10 +173,9 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">{t.netContributions}</label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <NumberInput
                       value={netContributions}
-                      onChange={(e) => setNetContributions(e.target.value)}
+                      onChange={setNetContributions}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 outline-none focus:border-emerald-500 transition-colors"
                     />
                     <span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium pointer-events-none">VND</span>
@@ -178,10 +184,9 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">{t.cashBalance}</label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <NumberInput
                       value={cashBalance}
-                      onChange={(e) => setCashBalance(e.target.value)}
+                      onChange={setCashBalance}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 outline-none focus:border-emerald-500 transition-colors"
                     />
                     <span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium pointer-events-none">VND</span>
@@ -191,7 +196,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
             </div>
           )}
 
-          {step === 3 && (
+          {step === 3 && !showManualTrade && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-indigo-400" />
@@ -200,18 +205,53 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
               <p className="text-sm text-slate-400 mt-2 mb-6">{t.step3Desc}</p>
               
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-950/50 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 text-center opacity-80">
+                <button
+                  onClick={handleFinish}
+                  className="bg-slate-950/50 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 text-center hover:bg-slate-800/50 transition-colors"
+                >
                   <div className="p-3 bg-blue-500/10 rounded-full text-blue-400">
                     <Upload className="w-6 h-6" />
                   </div>
                   <span className="text-sm font-medium text-slate-300">{t.uploadHint}</span>
-                </div>
-                <div className="bg-slate-950/50 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 text-center opacity-80">
+                  <span className="text-xs text-slate-500">{language === 'vi' ? 'Kết thúc thiết lập, dùng CSV upload ở sidebar' : 'Finish setup, use CSV upload in sidebar'}</span>
+                </button>
+                <button
+                  onClick={() => setShowManualTrade(true)}
+                  className="bg-slate-950/50 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 text-center hover:bg-slate-800/50 transition-colors"
+                >
                   <div className="p-3 bg-indigo-500/10 rounded-full text-indigo-400">
                     <Landmark className="w-6 h-6" />
                   </div>
                   <span className="text-sm font-medium text-slate-300">{t.manualHint}</span>
-                </div>
+                  <span className="text-xs text-slate-500">{language === 'vi' ? 'Nhập giao dịch mua/bán thủ công' : 'Enter buy/sell transactions manually'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && showManualTrade && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
+                  <Landmark className="w-5 h-5 text-indigo-400" />
+                  {language === 'vi' ? 'Nhập giao dịch thủ công' : 'Manual Trade Entry'}
+                </h2>
+                <button
+                  onClick={() => setShowManualTrade(false)}
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <AddTradeForm />
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => setShowManualTrade(false)}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-colors"
+                >
+                  <Check className="w-4 h-4" />
+                  {language === 'vi' ? 'Hoàn tất nhập' : 'Done'}
+                </button>
               </div>
             </div>
           )}

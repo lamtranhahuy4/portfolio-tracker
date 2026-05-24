@@ -41,3 +41,6 @@ next-env.d.ts
 *.xls
 *.csv
 docker-compose.yml
+
+# generated files
+deployment-trigger.txt

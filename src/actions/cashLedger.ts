@@ -71,9 +71,9 @@ async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: Import
   }
 });
 
-export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
+export async function fetchCashEvents(userId?: string): Promise<CashLedgerEvent[]> {
   try {
-    const user = await requireUser();
+    const user = userId ? { id: userId } : await requireUser();
     const records = await db.select()
       .from(cashLedgerEvents)
       .where(eq(cashLedgerEvents.userId, user.id))
@@ -99,6 +99,26 @@ export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
     }
     throw error;
   }
+}
+
+export async function saveManualDeposit(event: CashLedgerEvent) {
+  const user = await requireUser();
+
+  await db.insert(cashLedgerEvents).values({
+    id: event.id,
+    userId: user.id,
+    date: new Date(event.date),
+    direction: event.direction,
+    amount: event.amount.toString(),
+    balanceAfter: event.balanceAfter.toString(),
+    eventType: event.eventType,
+    description: event.description,
+    source: 'manual',
+    referenceTicker: null,
+    referenceQuantity: null,
+    referenceTradeDate: null,
+  });
+  revalidatePath('/');
 }
 
 export async function deleteMyCashEventsAction(confirmCommand: string) {

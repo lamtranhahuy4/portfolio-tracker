@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { Settings, Save, Calendar, Landmark, Coins, Loader2 } from 'lucide-react';
 import { saveCutoffSettings } from '@/actions/portfolioSettings';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import NumberInput from '@/components/NumberInput';
 
 interface CutoffSettings {
   globalCutoffDate: Date | null;
@@ -124,11 +125,9 @@ export default function CutoffSetupForm({ initialSettings, language }: { initial
                <Landmark className="h-4 w-4 text-amber-400" />
                {t.netContributions}
              </label>
-             <input
-                type="number"
-                step="any"
+             <NumberInput
                 value={netContributions}
-                onChange={(e) => setNetContributions(e.target.value)}
+                onChange={setNetContributions}
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm font-medium text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
              />
           </div>
@@ -138,11 +137,9 @@ export default function CutoffSetupForm({ initialSettings, language }: { initial
                <Coins className="h-4 w-4 text-emerald-400" />
                {t.cashBalance}
              </label>
-             <input
-                type="number"
-                step="any"
+             <NumberInput
                 value={cashBalance}
-                onChange={(e) => setCashBalance(e.target.value)}
+                onChange={setCashBalance}
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm font-medium text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
              />
           </div>

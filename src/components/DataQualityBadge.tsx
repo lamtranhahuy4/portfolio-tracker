@@ -9,6 +9,7 @@ interface DataQualityBadgeProps {
   showLabel?: boolean;
   size?: 'sm' | 'md';
   className?: string;
+  language?: 'vi' | 'en';
 }
 
 const labels = {
@@ -22,10 +23,11 @@ export default function DataQualityBadge({
   type, 
   showLabel = true, 
   size = 'sm',
-  className 
+  className,
+  language = 'vi',
 }: DataQualityBadgeProps) {
   const config = useMemo(() => {
-    const labelText = labels[type]?.vi || labels.unknown.vi;
+    const labelText = labels[type]?.[language] || labels.unknown.vi;
     switch (type) {
       case 'fresh':
         return {

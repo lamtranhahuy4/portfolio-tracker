@@ -50,7 +50,7 @@ const copy = {
 } satisfies Record<DashboardLanguage, any>;
 
 function tr(message: string, language: DashboardLanguage) {
-  return copy[language].errors[message] ?? message;
+  return (copy[language].errors as Record<string, string>)[message] ?? message;
 }
 
 export default function ChangePasswordForm({ language }: { language: DashboardLanguage }) {

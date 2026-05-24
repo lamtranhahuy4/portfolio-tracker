@@ -98,7 +98,7 @@ export default function ForgotPassword() {
           )}
 
           <a
-            href="/login"
+            href="/"
             className="block w-full rounded-xl border border-slate-700 py-3 text-center text-sm font-semibold text-slate-300 transition-colors hover:bg-slate-800"
           >
             {t.backToLogin}

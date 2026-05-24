@@ -19,15 +19,21 @@ export async function GET(request: Request) {
   };
 
   try {
-    // Step 0: Check cookies directly
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('portfolio_session');
-    debug.cookies = {
-      portfolio_session_found: !!sessionCookie,
-      portfolio_session_length: sessionCookie?.value?.length || 0,
-      portfolio_session_prefix: sessionCookie?.value?.substring(0, 30) + '...',
-      all_cookie_names: cookieStore.getAll().map(c => c.name),
-    };
+    // Step 0: Check cookies directly, without leaking cookie values.
+    try {
+      const cookieStore = await cookies();
+      const sessionCookie = cookieStore.get('portfolio_session');
+      debug.cookies = {
+        portfolio_session_found: !!sessionCookie,
+        portfolio_session_length: sessionCookie?.value?.length || 0,
+        all_cookie_names: cookieStore.getAll().map(c => c.name),
+      };
+    } catch (error) {
+      debug.cookies = {
+        unavailable: true,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
     debug.step = 'cookies_checked';
 
     // Step 1: Check current user

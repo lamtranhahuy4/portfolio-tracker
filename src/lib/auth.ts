@@ -62,18 +62,23 @@ export async function createDbSession(
   userAgent?: string,
   ipAddress?: string
 ): Promise<string> {
-  const { token, tokenHash } = createToken();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+  try {
+    const { token, tokenHash } = createToken();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
-  await db.insert(sessions).values({
-    userId,
-    tokenHash,
-    expiresAt,
-    userAgent: userAgent ?? null,
-    ipAddress: ipAddress ?? null,
-  });
+    await db.insert(sessions).values({
+      userId,
+      tokenHash,
+      expiresAt,
+      userAgent: userAgent ?? null,
+      ipAddress: ipAddress ?? null,
+    });
 
-  return token;
+    return token;
+  } catch (error) {
+    console.error('[AUTH] createDbSession ERROR:', error instanceof Error ? error.message : error);
+    throw error;
+  }
 }
 
 export async function validateDbSession(token: string): Promise<SessionInfo | null> {
@@ -149,15 +154,20 @@ export async function cleanupExpiredSessions(): Promise<number> {
 }
 
 export async function setDbSession(userId: string, userAgent?: string, ipAddress?: string) {
-  const token = await createDbSession(userId, userAgent, ipAddress);
-  
-  (await cookies()).set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: SESSION_TTL_SECONDS,
-  });
+  try {
+    const token = await createDbSession(userId, userAgent, ipAddress);
+
+    (await cookies()).set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: SESSION_TTL_SECONDS,
+    });
+  } catch (error) {
+    console.error('[AUTH] setDbSession ERROR:', error instanceof Error ? error.message : error);
+    throw error;
+  }
 }
 
 export async function clearSession() {

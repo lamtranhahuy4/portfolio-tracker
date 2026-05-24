@@ -27,6 +27,7 @@ const copy = {
     subtitle: 'Tỷ lệ các loại tài sản trong danh mục',
     noData: 'Chưa có dữ liệu phân bổ',
     stocks: 'Cổ phiếu',
+    funds: 'Chứng chỉ quỹ',
     cash: 'Tiền mặt',
     total: 'Tổng tài sản',
   },
@@ -35,6 +36,7 @@ const copy = {
     subtitle: 'Distribution of asset types in your portfolio',
     noData: 'No allocation data available',
     stocks: 'Stocks',
+    funds: 'Fund Certificates',
     cash: 'Cash',
     total: 'Total Assets',
   },
@@ -42,6 +44,7 @@ const copy = {
 
 const ASSET_COLORS: Record<string, string> = {
   stocks: '#3B82F6',
+  funds: '#8B5CF6',
   cash: '#22C55E',
   savings: '#F59E0B',
   insurance: '#8B5CF6',
@@ -85,8 +88,13 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
   const cashBalance = Number(metrics.cashBalanceEOD) 
     || holdings.find(h => h.ticker === 'CASH_VND')?.marketValue 
     || 0;
-  const stocksValue = totalMarketValue - cashBalance;
   const totalValue = totalMarketValue;
+  const stocksValue = holdings
+    .filter(h => h.assetClass === 'STOCK' && h.ticker !== 'CASH_VND')
+    .reduce((sum, h) => sum + Number(h.marketValue), 0);
+  const fundsValue = holdings
+    .filter(h => h.assetClass === 'FUND')
+    .reduce((sum, h) => sum + Number(h.marketValue), 0);
 
   const allocationData: AllocationItem[] = [];
 
@@ -97,6 +105,16 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
       value: stocksValue,
       percent: totalValue > 0 ? stocksValue / totalValue : 0,
       color: ASSET_COLORS.stocks,
+    });
+  }
+
+  if (fundsValue > 0) {
+    allocationData.push({
+      id: 'funds',
+      label: t.funds,
+      value: fundsValue,
+      percent: totalValue > 0 ? fundsValue / totalValue : 0,
+      color: ASSET_COLORS.funds,
     });
   }
 
@@ -151,9 +169,9 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number, name: string, props: { payload: AllocationItem }) => [
+                formatter={(value: number, name: string, props: { payload?: AllocationItem }) => [
                   formatCurrency(value),
-                  props.payload.label,
+                  props.payload?.label ?? name,
                 ]}
                 contentStyle={{
                   borderRadius: '12px',
@@ -198,12 +216,20 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
           <div className="text-xs text-slate-500">{t.stocks}</div>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-lg font-semibold text-blue-400">
               {stocksValue > 0 ? formatCurrency(stocksValue) : '0'}
+            </span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <div className="text-xs text-slate-500">{t.funds}</div>
+          <div className="mt-1 flex items-baseline gap-1">
+            <span className="text-lg font-semibold text-purple-400">
+              {fundsValue > 0 ? formatCurrency(fundsValue) : '0'}
             </span>
           </div>
         </div>

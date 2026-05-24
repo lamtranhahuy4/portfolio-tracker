@@ -10,6 +10,7 @@ import { requireUser } from '@/lib/auth';
 import { withErrorHandler } from '@/lib/errorHandler';
 import { NormalizedTransaction } from '@/types/portfolio';
 import { ImportBatchInput } from '@/types/importAudit';
+import { toMoney, toPrice, toQuantity } from '@/domain/portfolio/primitives';
 
 function toLegacyImportInput(data: NormalizedTransaction[]): ImportBatchInput {
   return {
@@ -64,43 +65,60 @@ export const saveTransactionsBatch = withErrorHandler(async function saveTransac
   }
 });
 
-export const fetchTransactions = withErrorHandler(async function fetchTransactions() {
+export async function saveManualTransaction(tx: NormalizedTransaction) {
   const user = await requireUser();
 
-  try {
-    const dbTxs = await db.query.transactions.findMany({
-      where: eq(transactions.userId, user.id),
-      orderBy: [asc(transactions.date)],
-    });
+  await db.insert(transactions).values({
+    id: tx.id,
+    userId: user.id,
+    assetClass: tx.assetClass,
+    asset: tx.ticker,
+    type: tx.type,
+    amount: tx.quantity.toString(),
+    price: tx.price.toString(),
+    fee: tx.fee.toString(),
+    tax: tx.tax.toString(),
+    notes: tx.notes ?? null,
+    source: 'manual',
+    date: new Date(tx.date),
+  });
+  revalidatePath('/');
+}
 
-    return dbTxs.map((tx) => {
-      const quantity = new Decimal(tx.amount).toNumber();
-      const price = new Decimal(tx.price).toNumber();
-      const fee = new Decimal(tx.fee).toNumber();
-      const tax = new Decimal(tx.tax).toNumber();
-      const grossValue = new Decimal(tx.amount).times(tx.price);
-      const totalValue = tx.type === 'SELL'
-        ? grossValue.minus(tx.fee).minus(tx.tax)
-        : grossValue.plus(tx.fee).plus(tx.tax);
+export const fetchTransactions = withErrorHandler(async function fetchTransactions(userId?: string): Promise<NormalizedTransaction[]> {
+  const user = userId ? { id: userId } : await requireUser();
 
-      return {
-        id: tx.id,
-        batchId: tx.batchId ?? undefined,
-        date: tx.date,
-        assetClass: tx.assetClass as 'STOCK' | 'CASH' | 'SAVING',
-        ticker: tx.asset,
-        type: tx.type as NormalizedTransaction['type'],
-        quantity,
-        price,
-        fee,
-        tax,
-        totalValue: totalValue.toNumber(),
-        notes: tx.notes ?? undefined,
-        source: tx.source ?? undefined,
-      };
-    });
-  } catch (error) {
-    console.error('Failed to fetch transactions:', error);
-    throw new Error('Không thể tải danh sách giao dịch.');
-  }
+  const dbTxs = await db.query.transactions.findMany({
+    where: eq(transactions.userId, user.id),
+    orderBy: [asc(transactions.date)],
+  });
+
+  return dbTxs.map((tx) => {
+    const quantity = toQuantity(new Decimal(tx.amount).toNumber());
+    const price = toPrice(new Decimal(tx.price).toNumber());
+    const fee = toMoney(new Decimal(tx.fee).toNumber());
+    const tax = toMoney(new Decimal(tx.tax).toNumber());
+    const grossValue = new Decimal(tx.amount).times(tx.price);
+    const totalValue = toMoney(
+      tx.type === 'SELL'
+        ? grossValue.minus(tx.fee).minus(tx.tax).toNumber()
+        : grossValue.plus(tx.fee).plus(tx.tax).toNumber()
+    );
+
+    return {
+      id: tx.id,
+      batchId: tx.batchId ?? undefined,
+      date: tx.date,
+      assetClass: tx.assetClass as 'STOCK' | 'CASH' | 'SAVING',
+      ticker: tx.asset,
+      type: tx.type as NormalizedTransaction['type'],
+      quantity,
+      price,
+      fee,
+      tax,
+      totalValue,
+      notes: tx.notes ?? undefined,
+      source: tx.source ?? undefined,
+    };
+  });
 });
