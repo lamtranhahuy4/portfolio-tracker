@@ -1,5 +1,14 @@
+import { and, asc, between, eq, lte } from 'drizzle-orm';
+import { db } from '@/db/index';
+import { forexRatesHistory } from '@/db/schema';
+import { getGoldPrices, GoldPriceItem } from '@/lib/goldPriceService';
+
 const VIETCOMBANK_URL = 'https://portal.vietcombank.com.vn/UserControls/TVPortal.TyGia/pXML.aspx';
 const FRANKFURTER_LATEST_URL = 'https://api.frankfurter.app/latest?from=USD';
+
+// In-memory cache with 5-minute TTL
+let ratesCache: { data: ForexResponse | null; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export interface VcbRate {
   code: string;
@@ -22,6 +31,10 @@ export interface ForexResponse {
   international: {
     base: string;
     rates: InternationalRate[];
+    updatedAt: string;
+  };
+  gold: {
+    prices: GoldPriceItem[];
     updatedAt: string;
   };
 }
@@ -111,63 +124,145 @@ function computeInternationalRates(usdRates: Record<string, number>): Internatio
 }
 
 export async function getForexRates(): Promise<ForexResponse> {
-  const [vcbRates, frankfurter] = await Promise.all([
+  const now = Date.now();
+  if (ratesCache && now < ratesCache.expiresAt && ratesCache.data) {
+    return ratesCache.data;
+  }
+
+  const [vcbRates, frankfurter, gold] = await Promise.all([
     fetchVietcombankRates(),
     fetchFrankfurterRates(),
+    getGoldPrices(),
   ]);
 
-  const now = new Date().toISOString();
+  const nowStr = new Date().toISOString();
 
   const international = frankfurter
     ? {
         base: 'USD',
         rates: computeInternationalRates(frankfurter.rates),
-        updatedAt: frankfurter.date || now,
+        updatedAt: frankfurter.date || nowStr,
       }
-    : { base: 'USD', rates: [], updatedAt: now };
+    : { base: 'USD', rates: [], updatedAt: nowStr };
 
-  return {
+  const data: ForexResponse = {
     vndPairs: {
       rates: vcbRates,
-      updatedAt: now,
+      updatedAt: nowStr,
     },
     international,
+    gold,
   };
+
+  ratesCache = { data, expiresAt: now + CACHE_TTL_MS };
+  return data;
 }
 
+/**
+ * Save today's VCB rates as a snapshot to the DB.
+ * Skips if already recorded for today.
+ */
+export async function snapshotDailyRates(): Promise<void> {
+  const vcbRates = await fetchVietcombankRates();
+  if (vcbRates.length === 0) return;
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  for (const rate of vcbRates) {
+    if (rate.sell === null && rate.buyTransfer === null) continue;
+
+    const existing = await db
+      .select()
+      .from(forexRatesHistory)
+      .where(
+        and(
+          eq(forexRatesHistory.targetCurrency, rate.code),
+          eq(forexRatesHistory.baseCurrency, 'VND'),
+          lte(forexRatesHistory.recordedAt, todayStart),
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) continue;
+
+    await db.insert(forexRatesHistory).values({
+      baseCurrency: 'VND',
+      targetCurrency: rate.code,
+      rate: rate.sell !== null ? rate.sell.toString() : (rate.buyTransfer ?? rate.buyCash)?.toString() ?? '0',
+      buyCash: rate.buyCash?.toString() ?? null,
+      buyTransfer: rate.buyTransfer?.toString() ?? null,
+      sell: rate.sell?.toString() ?? null,
+      source: 'VIETCOMBANK',
+    });
+  }
+}
+
+/**
+ * Get historical rates from the DB (for any pair).
+ * Falls back to Frankfurter API for international pairs not in DB.
+ */
 export async function getForexHistory(
   from: string,
   to: string,
   days: number = 30
 ): Promise<ForexHistoryPoint[]> {
-  try {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
 
+  // Try DB first (works for VND pairs from snapshots)
+  if (from === 'VND' || to === 'VND') {
+    const baseCurrency = from === 'VND' ? from : to;
+    const targetCurrency = from === 'VND' ? to : from;
+
+    const rows = await db
+      .select()
+      .from(forexRatesHistory)
+      .where(
+        and(
+          eq(forexRatesHistory.baseCurrency, baseCurrency),
+          eq(forexRatesHistory.targetCurrency, targetCurrency),
+          between(forexRatesHistory.recordedAt, startDate, endDate),
+        )
+      )
+      .orderBy(asc(forexRatesHistory.recordedAt));
+
+    if (rows.length > 0) {
+      return rows.map((r) => ({
+        date: r.recordedAt instanceof Date
+          ? r.recordedAt.toISOString().split('T')[0]
+          : new Date(r.recordedAt).toISOString().split('T')[0],
+        rate: parseFloat(r.rate.toString()),
+      }));
+    }
+
+    return [];
+  }
+
+  // For international pairs, try Frankfurter API (free, no key needed)
+  try {
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
 
-    const url = `https://api.frankfurter.app/${startStr}..${endStr}?from=${from}&to=${to}`;
-
-    const res = await fetch(url, {
+    const frankUrl = `https://api.frankfurter.app/${startStr}..${endStr}?from=${from}&to=${to}`;
+    const frankRes = await fetch(frankUrl, {
       cache: 'no-store',
       redirect: 'follow',
       headers: { 'User-Agent': 'Mozilla/5.0' },
     });
-    if (!res.ok) return [];
 
-    const json = await res.json();
-    const data = json.rates as Record<string, Record<string, number>>;
-
-    return Object.entries(data)
-      .map(([date, rates]) => ({
-        date,
-        rate: rates[to] || 0,
-      }))
-      .filter((p) => p.rate > 0)
-      .sort((a, b) => a.date.localeCompare(b.date));
+    if (frankRes.ok) {
+      const frankJson = await frankRes.json();
+      const frankData = frankJson.rates as Record<string, Record<string, number>>;
+      return Object.entries(frankData)
+        .map(([date, rates]) => ({ date, rate: rates[to] || 0 }))
+        .filter((p) => p.rate > 0)
+        .sort((a, b) => a.date.localeCompare(b.date));
+    }
   } catch {
-    return [];
+    // Fall through to empty
   }
+
+  return [];
 }

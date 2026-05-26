@@ -197,6 +197,22 @@ export const watchlist = pgTable('watchlist', {
   userTickerIdx: uniqueIndex('watchlist_user_ticker_idx').on(table.userId, table.ticker),
 }));
 
+// Forex rates daily snapshots for historical chart
+export const forexRatesHistory = pgTable('forex_rates_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  baseCurrency: varchar('base_currency', { length: 10 }).notNull().default('VND'),
+  targetCurrency: varchar('target_currency', { length: 10 }).notNull(),
+  rate: numeric('rate', { precision: 18, scale: 6 }).notNull(),
+  buyCash: numeric('buy_cash', { precision: 18, scale: 4 }),
+  buyTransfer: numeric('buy_transfer', { precision: 18, scale: 4 }),
+  sell: numeric('sell', { precision: 18, scale: 4 }),
+  source: varchar('source', { length: 50 }).notNull().default('VIETCOMBANK'),
+  recordedAt: timestamp('recorded_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  pairDateIdx: uniqueIndex('forex_pair_date_idx').on(table.targetCurrency, table.recordedAt),
+  recordedAtIdx: index('forex_recorded_at_idx').on(table.recordedAt),
+}));
+
 // Price alerts
 export const priceAlerts = pgTable('price_alerts', {
   id: uuid('id').defaultRandom().primaryKey(),

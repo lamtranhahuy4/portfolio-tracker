@@ -3,32 +3,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft,
-  RefreshCw,
-  TrendingUp,
-  Wallet,
-  BarChart3,
-  Globe,
+  ArrowLeft, RefreshCw, TrendingUp, Wallet, BarChart3, Globe, Download, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { ForexResponse, ForexHistoryPoint } from '@/lib/foreignExchangeService';
 import { DashboardLanguage, DASHBOARD_LANGUAGE_STORAGE_KEY } from '@/lib/dashboardLocale';
+import { downloadCsv } from '@/lib/exportCsv';
+import { cn } from '@/components/MarkToMarketGrid';
+import ForexConverter from '@/components/ForexConverter';
+import GoldPriceCard from '@/components/GoldPriceCard';
 
 const copy = {
   vi: {
     title: 'Tỷ giá ngoại tệ',
-    subtitle: 'Cập nhật từ Vietcombank và Frankfurter API',
+    subtitle: 'Cập nhật từ Vietcombank, Frankfurter & Vang.Today',
     back: 'Trở lại Bảng điều khiển',
     vndTab: 'Tỷ giá VND',
     intlTab: 'Quốc tế',
+    goldTab: 'Giá vàng',
+    converterTab: 'Converter',
     refresh: 'Làm mới',
     loading: 'Đang tải...',
     error: 'Không thể tải dữ liệu tỷ giá.',
@@ -43,14 +38,19 @@ const copy = {
     chart7d: '7 ngày',
     chart30d: '30 ngày',
     noChart: 'Chọn một cặp tỷ giá để xem biểu đồ.',
+    noChartNoData: 'Không có đủ dữ liệu lịch sử để vẽ biểu đồ.',
+    noChartVnd: 'Dữ liệu lịch sử sẽ được tích luỹ dần từ các snapshot hàng ngày.',
+    exportCsv: 'Export CSV',
     selecting: 'Đang chọn',
   },
   en: {
     title: 'Foreign Exchange Rates',
-    subtitle: 'Powered by Vietcombank & Frankfurter API',
+    subtitle: 'Powered by Vietcombank, Frankfurter & Vang.Today',
     back: 'Back to Dashboard',
     vndTab: 'VND Rates',
     intlTab: 'International',
+    goldTab: 'Gold',
+    converterTab: 'Converter',
     refresh: 'Refresh',
     loading: 'Loading...',
     error: 'Failed to load exchange rates.',
@@ -65,9 +65,14 @@ const copy = {
     chart7d: '7 days',
     chart30d: '30 days',
     noChart: 'Select a currency pair to view chart.',
+    noChartNoData: 'Not enough historical data to render chart.',
+    noChartVnd: 'Historical data will accumulate from daily snapshots.',
+    exportCsv: 'Export CSV',
     selecting: 'Selecting',
   },
 };
+
+type Tab = 'vnd' | 'intl' | 'gold' | 'converter';
 
 function formatRate(value: number, decimals: number = 2): string {
   return new Intl.NumberFormat('vi-VN', {
@@ -93,11 +98,13 @@ export default function ForexClient({
   const t = copy[language];
   const [data, setData] = useState<ForexResponse | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
-  const [activeTab, setActiveTab] = useState<'vnd' | 'intl'>('vnd');
+  const [activeTab, setActiveTab] = useState<Tab>('vnd');
   const [selectedPair, setSelectedPair] = useState<string | null>(null);
   const [history, setHistory] = useState<ForexHistoryPoint[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDays, setHistoryDays] = useState(30);
+  const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale'>('fresh');
+
   const lastUpdated = data
     ? new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
         dateStyle: 'medium',
@@ -116,6 +123,14 @@ export default function ForexClient({
     } catch {
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const triggerSnapshot = useCallback(async () => {
+    try {
+      await fetch('/api/foreign-exchange/snapshot', { method: 'POST' });
+    } catch {
+      // silent — snapshot is best-effort
     }
   }, []);
 
@@ -147,6 +162,21 @@ export default function ForexClient({
   }, [fetchData, initialData]);
 
   useEffect(() => {
+    if (initialData) triggerSnapshot();
+  }, [initialData, triggerSnapshot]);
+
+  useEffect(() => {
+    if (!data?.vndPairs.updatedAt) return;
+    const check = () => {
+      const age = Date.now() - new Date(data.vndPairs.updatedAt).getTime();
+      setDataFreshness(age < 10 * 60 * 1000 ? 'fresh' : 'stale');
+    };
+    check();
+    const interval = setInterval(check, 30000);
+    return () => clearInterval(interval);
+  }, [data]);
+
+  useEffect(() => {
     if (selectedPair) {
       fetchHistory(selectedPair, historyDays);
     }
@@ -158,6 +188,22 @@ export default function ForexClient({
   const handleSelectPair = (pair: string) => {
     setSelectedPair(pair);
     setHistoryDays(30);
+  };
+
+  const handleExportCsv = () => {
+    if (chartData.length > 0 && selectedPair) {
+      const headers = ['Date', 'Rate'];
+      const rows = chartData.map((d) => [d.date, d.rate]);
+      downloadCsv(`forex-history-${selectedPair.replace('/', '-')}-${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+    } else if (activeTab === 'vnd') {
+      const headers = [t.code, t.buyCash, t.buyTransfer, t.sell];
+      const rows = vndRates.map((r) => [r.code, r.buyCash ?? '-', r.buyTransfer ?? '-', r.sell ?? '-']);
+      downloadCsv(`forex-vnd-rates-${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+    } else if (activeTab === 'intl') {
+      const headers = [t.code, t.rate];
+      const rows = intlRates.map((r) => [`USD/${r.currency}`, r.rate]);
+      downloadCsv(`forex-intl-rates-${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+    }
   };
 
   const chartData = useMemo(() => {
@@ -201,10 +247,26 @@ export default function ForexClient({
 
           <div className="flex items-center gap-3">
             {lastUpdated && (
-              <span className="text-xs text-slate-500">
+              <span className="flex items-center gap-2 text-xs text-slate-500">
+                <span className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
+                  dataFreshness === 'fresh'
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'bg-amber-500/10 text-amber-400'
+                )}>
+                  {dataFreshness === 'fresh' ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                  {dataFreshness === 'fresh' ? 'Live' : 'Cũ'}
+                </span>
                 {t.lastUpdate}: {lastUpdated}
               </span>
             )}
+            <button
+              onClick={handleExportCsv}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800"
+            >
+              <Download className="h-4 w-4" />
+              {t.exportCsv}
+            </button>
             <button
               onClick={fetchData}
               disabled={loading}
@@ -241,10 +303,10 @@ export default function ForexClient({
 
         {data && (
           <div className="mt-6">
-            <div className="flex gap-2 border-b border-slate-800 pb-3">
+            <div className="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('vnd')}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === 'vnd'
                     ? 'bg-emerald-600/20 text-emerald-300'
                     : 'text-slate-400 hover:text-slate-200'
@@ -255,7 +317,7 @@ export default function ForexClient({
               </button>
               <button
                 onClick={() => setActiveTab('intl')}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === 'intl'
                     ? 'bg-emerald-600/20 text-emerald-300'
                     : 'text-slate-400 hover:text-slate-200'
@@ -264,7 +326,41 @@ export default function ForexClient({
                 <BarChart3 className="mr-1.5 inline-block h-4 w-4" />
                 {t.intlTab}
               </button>
+              <button
+                onClick={() => setActiveTab('gold')}
+                className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeTab === 'gold'
+                    ? 'bg-emerald-600/20 text-emerald-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <TrendingUp className="mr-1.5 inline-block h-4 w-4" />
+                {t.goldTab}
+              </button>
+              <button
+                onClick={() => setActiveTab('converter')}
+                className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeTab === 'converter'
+                    ? 'bg-emerald-600/20 text-emerald-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <RefreshCw className="mr-1.5 inline-block h-4 w-4" />
+                {t.converterTab}
+              </button>
             </div>
+
+            {activeTab === 'converter' && data && (
+              <div className="mt-4">
+                <ForexConverter data={data} />
+              </div>
+            )}
+
+            {activeTab === 'gold' && data && (
+              <div className="mt-4">
+                <GoldPriceCard initialPrices={data.gold.prices} />
+              </div>
+            )}
 
             {activeTab === 'vnd' && (
               <div className="mt-4 overflow-x-auto">
@@ -275,11 +371,15 @@ export default function ForexClient({
                       <th className="px-4 py-3 text-right font-medium">{t.buyCash}</th>
                       <th className="px-4 py-3 text-right font-medium">{t.buyTransfer}</th>
                       <th className="px-4 py-3 text-right font-medium">{t.sell}</th>
+                      <th className="px-4 py-3 text-right font-medium">Spread</th>
                       <th className="px-4 py-3 text-center font-medium">Chart</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {vndRates.map((rate) => (
+                    {vndRates.map((rate) => {
+                      const spread = rate.sell !== null && rate.buyTransfer !== null && rate.sell > 0
+                        ? ((rate.sell - rate.buyTransfer) / rate.sell) * 100 : null;
+                      return (
                       <tr
                         key={rate.code}
                         onClick={() => handleSelectPair(`${rate.code}/VND`)}
@@ -300,6 +400,15 @@ export default function ForexClient({
                         <td className="px-4 py-3 text-right font-mono text-slate-200">
                           {rate.sell !== null ? formatRate(rate.sell, 0) : '-'}
                         </td>
+                        <td className="px-4 py-3 text-right font-mono text-xs">
+                          {spread !== null ? (
+                            <span className={cn(
+                              spread < 0.5 ? 'text-emerald-400' : spread < 1 ? 'text-amber-400' : 'text-rose-400'
+                            )}>
+                              {spread.toFixed(2)}%
+                            </span>
+                          ) : '-'}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <button
                             onClick={(e) => {
@@ -312,7 +421,8 @@ export default function ForexClient({
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
                 {vndRates.length === 0 && (
@@ -371,7 +481,7 @@ export default function ForexClient({
         )}
       </header>
 
-      {selectedPair && (
+      {selectedPair && activeTab !== 'gold' && activeTab !== 'converter' && (
         <section className="rounded-[28px] border border-slate-800/80 bg-slate-900/60 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
@@ -447,7 +557,13 @@ export default function ForexClient({
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="py-16 text-center text-sm text-slate-500">{t.noChart}</p>
+            (() => {
+              const toCurrency = selectedPair ? selectedPair.split('/')[1] : null;
+              const msg = toCurrency === 'VND' ? t.noChartVnd : t.noChartNoData || t.noChart;
+              return (
+                <p className="py-16 text-center text-sm text-slate-500">{msg}</p>
+              );
+            })()
           )}
         </section>
       )}
