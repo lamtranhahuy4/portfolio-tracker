@@ -113,8 +113,8 @@ export default function GoldPriceCard({ initialPrices }: Props) {
   const chartData = useMemo(() => {
     return history.map((p) => ({
       date: p.date.slice(5),
-      buy: p.buy,
-      sell: p.sell,
+      buy: p.buy / 1000,
+      sell: p.sell / 1000,
     }));
   }, [history]);
 
@@ -219,18 +219,26 @@ export default function GoldPriceCard({ initialPrices }: Props) {
       ) : chartData.length > 1 ? (
         <div className="mt-2 h-[250px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
+            <LineChart data={chartData} margin={{ top: 5, right: 8, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#334155' }} />
-              <YAxis domain={['auto', 'auto']} tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#334155' }} tickFormatter={(v: number) => formatPrice(v, selected?.currency ?? 'VND')} />
+              <YAxis
+                domain={['auto', 'auto']}
+                tick={{ fill: '#94a3b8', fontSize: 11 }}
+                tickLine={false}
+                axisLine={{ stroke: '#334155' }}
+                tickFormatter={(v: number) => formatPrice(v, selected?.currency ?? 'VND')}
+              />
               <Tooltip
                 contentStyle={{ borderRadius: '12px', border: '1px solid #334155', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor: 'rgba(15, 23, 42, 0.92)', color: '#e2e8f0' }}
                 labelStyle={{ color: '#94a3b8' }}
+                formatter={(value: any) => formatPrice(Number(value), selected?.currency ?? 'VND')}
               />
               <Line type="monotone" dataKey="buy" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#10b981' }} name={t.buy} />
               <Line type="monotone" dataKey="sell" stroke="#f43f5e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#f43f5e' }} name={t.sell} />
             </LineChart>
           </ResponsiveContainer>
+          <p className="mt-2 text-xs text-slate-400">Ghi chú: Giá đã chia 1.000 (hiển thị theo nghìn).</p>
         </div>
       ) : (
         <p className="py-12 text-center text-sm text-slate-500">{t.noChartData}</p>
