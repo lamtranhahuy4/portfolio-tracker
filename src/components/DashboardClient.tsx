@@ -19,6 +19,7 @@ import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
 import StockNews from '@/components/StockNews';
 import WorldNews from '@/components/WorldNews';
+import ForexMiniWidget from '@/components/ForexMiniWidget';
 import Watchlist from '@/components/Watchlist';
 import PriceAlerts from '@/components/PriceAlerts';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
@@ -52,6 +53,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [priceFreshness, setPriceFreshness] = useState<'fresh' | 'stale' | 'unknown'>('unknown');
   const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
+  const [forexSummary, setForexSummary] = useState<{ usdSell: number | null; usdBuyTransfer: number | null } | null>(null);
   const metrics = usePortfolioMetrics();
   const transactions = usePortfolioStore((state) => state.transactions);
   const globalCutoffDate = usePortfolioStore((state) => state.globalCutoffDate);
@@ -181,6 +183,19 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     
     return () => clearInterval(checkInterval);
   }, [isMounted, liveTickerQuery, fetchHistoricalPrices, shouldUpdateHistoricalPrices]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    const fetchForex = async () => {
+      try {
+        const res = await fetch('/api/forex-summary', { cache: 'no-store' });
+        if (res.ok) setForexSummary(await res.json());
+      } catch {}
+    };
+    fetchForex();
+    const interval = setInterval(fetchForex, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isMounted]);
 
   const handleManualRefresh = async () => {
     if (!liveTickerQuery) return;
@@ -420,7 +435,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         ) : (
           <>
             <ErrorBoundary componentName="StatCards">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
           <StatCard 
             title={t.totalNav} 
             tooltip={t.glossary?.totalNav}
@@ -456,6 +471,17 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             value={`${fifoPnL > 0 ? '+' : ''}${formatCurrency(fifoPnL)}`}
             valueColor={fifoPnL > 0 ? 'text-emerald-400' : fifoPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
             icon={<CheckCircle2 className="h-5 w-5 text-cyan-300" />}
+          />
+          <StatCard
+            title="USD/VND"
+            value={forexSummary?.usdSell ? forexSummary.usdSell.toLocaleString('vi-VN') : '---'}
+            valueColor="text-slate-100"
+            icon={<Globe className="h-5 w-5 text-emerald-300" />}
+            subValue={forexSummary?.usdBuyTransfer ? (
+              <span className="text-xs text-slate-400">
+                Mua: {forexSummary.usdBuyTransfer.toLocaleString('vi-VN')}
+              </span>
+            ) : undefined}
           />
         </div>
         </ErrorBoundary>
@@ -571,6 +597,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
             <ErrorBoundary componentName="PriceAlerts"><PriceAlerts language={language} /></ErrorBoundary>
             <ErrorBoundary componentName="WorldNews"><WorldNews language={language} /></ErrorBoundary>
             <ErrorBoundary componentName="ImportWarnings"><ImportWarningsPanel language={language} /></ErrorBoundary>
+            <ErrorBoundary componentName="ForexMiniWidget"><ForexMiniWidget /></ErrorBoundary>
             {metrics.calculationWarnings.length > 0 && (
               <div className="rounded-[28px] border border-amber-900/50 bg-amber-950/20 p-5 text-sm text-amber-200 backdrop-blur-sm">
                 {metrics.calculationWarnings.length} {t.calcWarnings}

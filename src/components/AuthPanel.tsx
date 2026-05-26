@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useActionState } from 'react';
 import { Languages } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { signInAction, signUpAction } from '@/actions/auth';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { ActionState } from '@/types/action';
@@ -109,7 +109,7 @@ function SubmitButton({ mode, language }: { mode: 'signin' | 'signup'; language:
 function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormProps) {
   const t = copy[language];
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction] = useFormState(action, { error: null, message: '' });
+  const [state, formAction] = useActionState(action, { error: null, message: '' });
 
   useEffect(() => {
     console.log('[AUTH FORM] State changed:', JSON.stringify(state));
