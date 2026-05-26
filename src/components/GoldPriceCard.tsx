@@ -16,9 +16,11 @@ const copy = {
     change: 'T/h',
     refresh: 'Làm mới',
     loading: 'Đang tải...',
+    noData: 'Chưa có dữ liệu giá vàng.',
     chartTitle: 'Biểu đồ giá',
     chart7d: '7 ngày',
     chart30d: '30 ngày',
+    noChartData: 'Chưa có dữ liệu biểu đồ.',
   },
   en: {
     title: 'Gold Price',
@@ -27,9 +29,11 @@ const copy = {
     change: 'Chg',
     refresh: 'Refresh',
     loading: 'Loading...',
+    noData: 'No gold price data available.',
     chartTitle: 'Price Chart',
     chart7d: '7 days',
     chart30d: '30 days',
+    noChartData: 'No chart data available.',
   },
 };
 
@@ -71,23 +75,11 @@ export default function GoldPriceCard({ initialPrices }: Props) {
   const fetchPrices = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('https://www.vang.today/api/prices');
+      const res = await fetch('/api/gold');
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.prices) {
-          const relevantTypes = GOLD_TYPES.map((g) => g.type);
-          const list: GoldPriceItem[] = relevantTypes
-            .filter((type) => json.prices[type])
-            .map((type) => ({
-              type,
-              name: json.prices[type].name,
-              buy: json.prices[type].buy,
-              sell: json.prices[type].sell,
-              changeBuy: json.prices[type].change_buy ?? 0,
-              changeSell: json.prices[type].change_sell ?? 0,
-              currency: json.prices[type].currency,
-            }));
-          setPrices(list);
+          setPrices(json.prices);
         }
       }
     } catch {} finally {
@@ -98,13 +90,11 @@ export default function GoldPriceCard({ initialPrices }: Props) {
   const fetchHistory = useCallback(async (type: string, days: number) => {
     setHistoryLoading(true);
     try {
-      const res = await fetch(`https://www.vang.today/api/prices?type=${type}&days=${days}`);
+      const res = await fetch(`/api/gold?type=${type}&days=${days}`);
       if (res.ok) {
         const json = await res.json();
-        if (json.history) {
+        if (json.success && json.history) {
           const points: GoldHistoryPoint[] = json.history
-            .filter((d: any) => d.prices[type])
-            .map((d: any) => ({ date: d.date, buy: d.prices[type].buy, sell: d.prices[type].sell }))
             .sort((a: any, b: any) => a.date.localeCompare(b.date));
           setHistory(points);
         }
@@ -161,7 +151,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
         ))}
       </div>
 
-      {selected && (
+      {selected ? (
         <div className="mt-4 grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-slate-800 bg-slate-800/40 px-4 py-3">
             <p className="text-[11px] uppercase tracking-wider text-slate-500">{t.buy}</p>
@@ -189,7 +179,9 @@ export default function GoldPriceCard({ initialPrices }: Props) {
             </p>
           </div>
         </div>
-      )}
+      ) : !loading && prices.length === 0 ? (
+        <p className="mt-4 text-center text-sm text-slate-500">{t.noData}</p>
+      ) : null}
 
       <div className="mt-4 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-medium text-slate-300">
@@ -241,7 +233,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <p className="py-12 text-center text-sm text-slate-500">{t.loading}</p>
+        <p className="py-12 text-center text-sm text-slate-500">{t.noChartData}</p>
       )}
     </section>
   );

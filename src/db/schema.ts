@@ -213,6 +213,28 @@ export const forexRatesHistory = pgTable('forex_rates_history', {
   recordedAtIdx: index('forex_recorded_at_idx').on(table.recordedAt),
 }));
 
+// Gold prices cache (fallback when Vang.Today is unreachable, e.g. from US IPs)
+export const goldPricesCache = pgTable('gold_prices_cache', {
+  type: varchar('type', { length: 32 }).primaryKey(),
+  name: varchar('name', { length: 128 }).notNull(),
+  buy: numeric('buy', { precision: 18, scale: 2 }).notNull(),
+  sell: numeric('sell', { precision: 18, scale: 2 }).notNull(),
+  changeBuy: numeric('change_buy', { precision: 18, scale: 2 }).notNull(),
+  changeSell: numeric('change_sell', { precision: 18, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+export const goldHistoryCache = pgTable('gold_history_cache', {
+  type: varchar('type', { length: 32 }).notNull(),
+  date: varchar('date', { length: 16 }).notNull(),
+  buy: numeric('buy', { precision: 18, scale: 2 }).notNull(),
+  sell: numeric('sell', { precision: 18, scale: 2 }).notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  typeDateIdx: uniqueIndex('gold_history_type_date_idx').on(table.type, table.date),
+}));
+
 // Price alerts
 export const priceAlerts = pgTable('price_alerts', {
   id: uuid('id').defaultRandom().primaryKey(),
