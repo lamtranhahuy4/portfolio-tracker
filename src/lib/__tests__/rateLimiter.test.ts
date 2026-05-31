@@ -1,80 +1,74 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { checkRateLimit, getRateLimitKey, addRateLimitHeaders } from '../apiRateLimiter';
 
-describe('RateLimiter Types', () => {
-  describe('RateLimitConfig', () => {
-    it('should have correct type structure', () => {
-      const config = {
-        maxAttempts: 5,
-        lockoutDurationMs: 900000,
-        windowMs: 900000,
-      };
-      
-      expect(config.maxAttempts).toBe(5);
-      expect(config.lockoutDurationMs).toBe(900000);
-      expect(config.windowMs).toBe(900000);
+describe('getRateLimitKey', () => {
+  it('should use x-forwarded-for header', () => {
+    const request = new Request('https://example.com/api/test', {
+      headers: { 'x-forwarded-for': '192.168.1.1' },
     });
-
-    it('should accept valid numeric values', () => {
-      const config = {
-        maxAttempts: 3,
-        lockoutDurationMs: 600000,
-        windowMs: 300000,
-      };
-      
-      expect(typeof config.maxAttempts).toBe('number');
-      expect(typeof config.lockoutDurationMs).toBe('number');
-      expect(typeof config.windowMs).toBe('number');
-    });
+    const key = getRateLimitKey(request);
+    expect(key).toBe('192.168.1.1:/api/test');
   });
 
-  describe('LockoutInfo', () => {
-    it('should represent unlocked state', () => {
-      const lockoutInfo = {
-        isLocked: false,
-      };
-      
-      expect(lockoutInfo.isLocked).toBe(false);
-    });
-
-    it('should represent locked state', () => {
-      const lockedUntil = new Date();
-      const lockoutInfo = {
-        isLocked: true,
-        lockedUntil,
-        reason: 'Too many attempts',
-      };
-      
-      expect(lockoutInfo.isLocked).toBe(true);
-      expect(lockoutInfo.lockedUntil).toBeInstanceOf(Date);
-      expect(lockoutInfo.reason).toBe('Too many attempts');
-    });
+  it('should fallback to unknown when no IP header', () => {
+    const request = new Request('https://example.com/api/test');
+    const key = getRateLimitKey(request);
+    expect(key).toContain('/api/test');
   });
 });
 
-describe('Rate Limiter Configuration', () => {
-  const DEFAULT_MAX_ATTEMPTS = 5;
-  const DEFAULT_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
-  const DEFAULT_WINDOW_MS = 15 * 60 * 1000;
-
-  it('should have sensible default max attempts', () => {
-    expect(DEFAULT_MAX_ATTEMPTS).toBe(5);
+describe('checkRateLimit', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it('should have sensible default lockout duration', () => {
-    expect(DEFAULT_LOCKOUT_DURATION_MS).toBe(900000); // 15 minutes
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('should have sensible default window', () => {
-    expect(DEFAULT_WINDOW_MS).toBe(900000); // 15 minutes
+  it('should allow first request', () => {
+    const result = checkRateLimit('test-key', { maxRequests: 5, windowMs: 60000 });
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(4);
   });
 
-  it('should support custom max attempts', () => {
-    const customMaxAttempts = 10;
-    expect(customMaxAttempts).toBeGreaterThan(DEFAULT_MAX_ATTEMPTS);
+  it('should block when exceeding limit', () => {
+    const result1 = checkRateLimit('test-key-2', { maxRequests: 3, windowMs: 60000 });
+    expect(result1.allowed).toBe(true);
+
+    const result2 = checkRateLimit('test-key-2', { maxRequests: 3, windowMs: 60000 });
+    expect(result2.allowed).toBe(true);
+
+    const result3 = checkRateLimit('test-key-2', { maxRequests: 3, windowMs: 60000 });
+    expect(result3.allowed).toBe(true);
+
+    const result4 = checkRateLimit('test-key-2', { maxRequests: 3, windowMs: 60000 });
+    expect(result4.allowed).toBe(false);
+    expect(result4.remaining).toBe(0);
   });
 
-  it('should support custom lockout duration', () => {
-    const customDuration = 30 * 60 * 1000; // 30 minutes
-    expect(customDuration).toBe(1800000);
+  it('should reset after window expires', () => {
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
+    const result1 = checkRateLimit('test-key-3', { maxRequests: 1, windowMs: 60000 });
+    expect(result1.allowed).toBe(true);
+
+    const result2 = checkRateLimit('test-key-3', { maxRequests: 1, windowMs: 60000 });
+    expect(result2.allowed).toBe(false);
+
+    vi.advanceTimersByTime(60001);
+
+    const result3 = checkRateLimit('test-key-3', { maxRequests: 1, windowMs: 60000 });
+    expect(result3.allowed).toBe(true);
+  });
+});
+
+describe('addRateLimitHeaders', () => {
+  it('should set rate limit headers on response', () => {
+    const response = new Response();
+    const nextResponse = addRateLimitHeaders(response as any, 5, 9999999999);
+
+    expect(nextResponse.headers.get('X-RateLimit-Remaining')).toBe('5');
+    expect(nextResponse.headers.get('X-RateLimit-Limit')).toBe('100');
   });
 });
