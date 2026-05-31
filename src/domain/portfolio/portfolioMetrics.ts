@@ -113,22 +113,29 @@ function applyTransaction(state: ReplayState, tx: Transaction, _ledgerMode: bool
     }
 
     if (tx.type === 'SELL') {
-      let actualSellQuantity = txQuantity;
+      const originalTotalShares = stock.totalShares;
 
-      if (stock.totalShares.lt(txQuantity)) {
-        state.calculationWarnings.push(`[Oversell] Sell quantity ${txQuantity.toNumber()} exceeds holdings ${stock.totalShares.toNumber()} for ${tx.ticker} on ${dateLabel}.`);
-        actualSellQuantity = decimalMax(DECIMAL_ZERO, stock.totalShares);
+      if (originalTotalShares.lte(DECIMAL_ZERO)) {
+        // Completely oversold: PnL = full proceeds, 0 cost basis
+        const oversoldProceeds = txPrice.times(txQuantity).minus(txFee).minus(txTax);
+        stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(oversoldProceeds);
+        stock.averageCostRealizedPnL = stock.averageCostRealizedPnL.plus(oversoldProceeds);
+        cash.totalShares = cash.totalShares.plus(oversoldProceeds);
+        state.lastKnownPrices.set(tx.ticker, txPrice);
+        return;
       }
 
-      if (actualSellQuantity.lte(DECIMAL_ZERO)) {
-        return; // Nothing to sell, avoid doing math on 0 shares
+      const overselling = originalTotalShares.lt(txQuantity);
+      if (overselling) {
+        state.calculationWarnings.push(`[Oversell] Sell quantity ${txQuantity.toNumber()} exceeds holdings ${originalTotalShares.toNumber()} for ${tx.ticker} on ${dateLabel}. Excess ${txQuantity.minus(originalTotalShares).toNumber()} shares recorded with 0 cost basis.`);
       }
 
-      const sellRatio = txQuantity.gt(0) ? actualSellQuantity.div(txQuantity) : DECIMAL_ZERO;
+      const actualSellQuantity = overselling ? originalTotalShares : txQuantity;
+      const sellRatio = overselling ? originalTotalShares.div(txQuantity) : DECIMAL_ONE;
       const actualFee = txFee.times(sellRatio);
       const actualTax = txTax.times(sellRatio);
 
-      const ratioRemaining = stock.totalShares.gt(0) ? actualSellQuantity.div(stock.totalShares) : DECIMAL_ZERO;
+      const ratioRemaining = actualSellQuantity.div(originalTotalShares);
       
       const grossCostBasisOfSold = stock.grossBuyValueRemaining.times(ratioRemaining);
       const feeBasisOfSold = stock.allocatedBuyFeesRemaining.times(ratioRemaining);
@@ -140,7 +147,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, _ledgerMode: bool
       stock.grossBuyValueRemaining = stock.grossBuyValueRemaining.minus(grossCostBasisOfSold);
       stock.allocatedBuyFeesRemaining = stock.allocatedBuyFeesRemaining.minus(feeBasisOfSold);
       stock.allocatedBuyTaxRemaining = stock.allocatedBuyTaxRemaining.minus(taxBasisOfSold);
-      stock.totalShares = decimalMax(DECIMAL_ZERO, stock.totalShares.minus(actualSellQuantity));
+      stock.totalShares = decimalMax(DECIMAL_ZERO, originalTotalShares.minus(actualSellQuantity));
       
       if (stock.totalShares.lte(DECIMAL_ZERO)) {
         stock.grossBuyValueRemaining = DECIMAL_ZERO;
@@ -174,6 +181,18 @@ function applyTransaction(state: ReplayState, tx: Transaction, _ledgerMode: bool
       stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(fifoNetProceeds.minus(fifoCostBasis));
       
       cash.totalShares = cash.totalShares.plus(fifoNetProceeds);
+
+      // Record PnL for oversold portion (no cost basis)
+      if (overselling) {
+        const oversoldQty = txQuantity.minus(actualSellQuantity);
+        const oversoldFee = txFee.minus(actualFee);
+        const oversoldTax = txTax.minus(actualTax);
+        const oversoldProceeds = txPrice.times(oversoldQty).minus(oversoldFee).minus(oversoldTax);
+        stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(oversoldProceeds);
+        stock.averageCostRealizedPnL = stock.averageCostRealizedPnL.plus(oversoldProceeds);
+        cash.totalShares = cash.totalShares.plus(oversoldProceeds);
+      }
+
       state.lastKnownPrices.set(tx.ticker, txPrice);
       return;
     }

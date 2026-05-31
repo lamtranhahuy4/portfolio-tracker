@@ -42,6 +42,10 @@ export async function GET(request: Request) {
       async start(controller) {
         const sendUpdate = async () => {
           try {
+            if (controller.desiredSize !== null && controller.desiredSize <= 0) {
+              return; // Backpressure: skip this update until consumer catches up
+            }
+
             const freshPrices = await getRealtimeQuotes(tickers);
             
             const updates = tickers.map(ticker => ({
@@ -76,14 +80,17 @@ export async function GET(request: Request) {
       },
     });
 
-    return new NextResponse(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
-    });
+    const headers: Record<string, string> = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    };
+    headers['X-RateLimit-Remaining'] = String(rateLimit.remaining);
+    headers['X-RateLimit-Reset'] = String(Math.floor(rateLimit.resetTime / 1000));
+    headers['X-RateLimit-Limit'] = '30';
+
+    return new NextResponse(stream, { headers });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

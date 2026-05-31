@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -62,29 +62,32 @@ interface BenchmarkData {
 export default function NetWorthChart({ series, language }: NetWorthChartProps) {
   const t = copy[language];
   const [vnindexHistory, setVnindexHistory] = useState<Record<string, number> | null>(null);
-  const vnindexFetched = useRef(false);
+  const vnindexState = useRef<'idle' | 'fetching' | 'done'>('idle');
+
+  const fetchVnindex = useCallback(async () => {
+    if (vnindexState.current !== 'idle') return;
+    vnindexState.current = 'fetching';
+    try {
+      const response = await fetch('/api/vnindex-history');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.prices?.VNINDEX) {
+          setVnindexHistory(data.prices.VNINDEX);
+          vnindexState.current = 'done';
+          return;
+        }
+      }
+    } catch {
+      // keep state idle → will retry
+    }
+    vnindexState.current = 'idle';
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    if (vnindexFetched.current || series.length === 0) return;
-    vnindexFetched.current = true;
-
-    const fetchVnindex = async () => {
-      try {
-        const response = await fetch('/api/vnindex-history');
-        if (!active) return;
-        if (response.ok) {
-          const data = await response.json();
-          setVnindexHistory(data.prices?.VNINDEX || null);
-        }
-      } catch {
-        if (active) setVnindexHistory(null);
-      }
-    };
-
-    fetchVnindex();
-    return () => { active = false; };
-  }, [series]);
+    if (series.length > 0) {
+      fetchVnindex();
+    }
+  }, [series, fetchVnindex]);
 
   const chartData = useMemo<BenchmarkData[]>(() => {
     if (series.length === 0) return [];

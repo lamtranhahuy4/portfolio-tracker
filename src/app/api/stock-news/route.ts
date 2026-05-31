@@ -181,6 +181,7 @@ const extractErrorMessage = (raw: string, json: unknown) => {
 
 const warnProviderOnce = (key: string, message: string) => {
   if (providerWarnedKeys.has(key)) return;
+  if (providerWarnedKeys.size > 1000) providerWarnedKeys.clear();
   providerWarnedKeys.add(key);
   console.warn(message);
 };

@@ -220,7 +220,7 @@ export async function getForexHistory(
   const now = Date.now();
   const cacheKey = `${from}/${to}/${days}`;
   if (historyCache && historyCache.key === cacheKey && now < historyCache.expiresAt) {
-    return historyCache.data;
+    return [...historyCache.data];
   }
 
   const endDate = new Date();
@@ -284,6 +284,6 @@ export async function getForexHistory(
     }
   }
 
-  historyCache = { key: cacheKey, data: result, expiresAt: now + HISTORY_CACHE_TTL_MS };
+  historyCache = { key: cacheKey, data: [...result], expiresAt: now + HISTORY_CACHE_TTL_MS };
   return result;
 }
