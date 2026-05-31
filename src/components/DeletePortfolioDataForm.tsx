@@ -6,7 +6,19 @@ import { deleteMyTransactionsAction } from '@/actions/account';
 import { AlertOctagon, Trash2, Loader2 } from 'lucide-react';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 
-const copy = {
+const copy: Record<DashboardLanguage, {
+  invalidConfirm: string;
+  loading: string;
+  genericError: string;
+  title: string;
+  desc: string;
+  label: string;
+  intoField: string;
+  placeholder: string;
+  submit: string;
+  successMap: Record<string, string>;
+  errorMap: Record<string, string>;
+}> = {
   vi: {
     invalidConfirm: 'Vui lòng nhập chính xác chữ DELETE',
     loading: 'Đang xóa dữ liệu...',
@@ -41,10 +53,10 @@ const copy = {
       'Chữ xác nhận không hợp lệ. Vui lòng nhập đúng chữ DELETE.': 'Invalid confirmation text. Please type DELETE exactly.',
     },
   },
-} satisfies Record<DashboardLanguage, any>;
+};
 
 function tr(message: string, language: DashboardLanguage, kind: 'successMap' | 'errorMap') {
-  return (copy[language][kind] as Record<string, string>)[message] ?? message;
+  return copy[language][kind][message] ?? message;
 }
 
 export default function DeletePortfolioDataForm({ language }: { language: DashboardLanguage }) {

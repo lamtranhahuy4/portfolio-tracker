@@ -13,11 +13,13 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
+  remountKey: number;
 }
 
 /**
  * React Error Boundary component that catches JavaScript errors in child components.
  * Provides graceful fallback UI instead of crashing the entire app.
+ * On retry, children are fully remounted via key increment.
  * 
  * @example
  * <ErrorBoundary componentName="MarkToMarketGrid">
@@ -27,11 +29,11 @@ interface ErrorBoundaryState {
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, remountKey: 0 };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    return { hasError: true, error, remountKey: 0 };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
@@ -46,7 +48,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   handleRetry = (): void => {
-    this.setState({ hasError: false, error: null });
+    this.setState((prev) => ({ hasError: false, error: null, remountKey: prev.remountKey + 1 }));
   };
 
   componentDidUpdate(_prevProps: ErrorBoundaryProps) {
@@ -81,7 +83,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       );
     }
 
-    return this.props.children;
+    return <React.Fragment key={this.state.remountKey}>{this.props.children}</React.Fragment>;
   }
 }
 

@@ -31,6 +31,7 @@ export function useRealtimePrices(
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const updatePrice = usePortfolioStore((state) => state.updatePrice);
 
+  const connectRef = useRef<() => void>(() => {});
   const connect = useCallback(() => {
     if (tickers.length === 0 || !enabled) {
       return;
@@ -69,14 +70,16 @@ export function useRealtimePrices(
     eventSource.onerror = () => {
       setIsConnected(false);
       eventSource.close();
-      
+
       setTimeout(() => {
         if (enabled && tickers.length > 0) {
-          connect();
+          connectRef.current();
         }
       }, 5000);
     };
   }, [tickers, enabled, updatePrice, onPriceUpdate]);
+
+  connectRef.current = connect;
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -99,7 +102,7 @@ export function useRealtimePrices(
     return () => {
       disconnect();
     };
-  }, [tickers.join(','), enabled]);
+  }, [tickers.join(','), enabled, connect, disconnect]);
 
   return {
     isConnected,

@@ -213,4 +213,4 @@ export const i18n = {
       noInsights: 'No issues detected with current data.',
     }
   }
-} satisfies Record<DashboardLanguage, any>;
+} satisfies Record<DashboardLanguage, Record<string, unknown>>;

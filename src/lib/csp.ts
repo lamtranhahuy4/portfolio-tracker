@@ -1,5 +1,3 @@
-import { headers } from 'next/headers';
-
 export function generateNonce(): string {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
@@ -20,15 +18,8 @@ export function buildCsp(nonce: string): string {
   ].join('; ');
 }
 
-export async function getCspHeaders(): Promise<Record<string, string>> {
-  const nonce = generateNonce();
-  return {
-    'x-nonce': nonce,
-    'Content-Security-Policy': buildCsp(nonce),
-  };
-}
-
-export async function getNonce(): Promise<string> {
+export async function getNonceFromHeaders(): Promise<string> {
+  const { headers } = await import('next/headers');
   const hdrs = await headers();
   return hdrs.get('x-nonce') ?? generateNonce();
 }

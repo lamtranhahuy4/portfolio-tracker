@@ -11,13 +11,32 @@ import { ActionState } from '@/types/action';
 const LOGIN_ERROR_VI = 'Bạn đã nhập sai tài khoản/mật khẩu. Nếu không nhớ có thể dùng chức năng Quên mật khẩu.';
 const LOGIN_ERROR_EN = 'Incorrect email or password. If you forgot your password, use the "Forgot password" feature.';
 
-const copy = {
+interface CopyEntry {
+  product: string;
+  signUp: string;
+  signIn: string;
+  subtitle: string;
+  passwordPlaceholder: string;
+  confirmPlaceholder: string;
+  processing: string;
+  hasAccount: string;
+  noAccount: string;
+  language: string;
+  vi: string;
+  en: string;
+  loginError: string;
+  mismatch: string;
+  errors: Record<string, string>;
+}
+
+const copy: Record<DashboardLanguage, CopyEntry> = {
   vi: {
     product: 'Portfolio Tracker',
     signUp: 'Tạo tài khoản',
     signIn: 'Đăng nhập',
     subtitle: 'Mỗi tài khoản chỉ nhìn thấy dữ liệu danh mục của riêng mình.',
     passwordPlaceholder: 'Tối thiểu 8 ký tự',
+    confirmPlaceholder: 'Nhập lại mật khẩu',
     processing: 'Đang xử lý...',
     hasAccount: 'Đã có tài khoản? Đăng nhập',
     noAccount: 'Chưa có tài khoản? Tạo mới',
@@ -25,6 +44,7 @@ const copy = {
     vi: 'VI',
     en: 'EN',
     loginError: LOGIN_ERROR_VI,
+    mismatch: 'Mật khẩu xác nhận không khớp.',
     errors: {
       'Email và mật khẩu là bắt buộc.': 'Email và mật khẩu là bắt buộc.',
       'Mật khẩu phải có ít nhất 8 ký tự.': 'Mật khẩu phải có ít nhất 8 ký tự.',
@@ -37,6 +57,7 @@ const copy = {
     signIn: 'Sign in',
     subtitle: 'Each account can only access its own portfolio data.',
     passwordPlaceholder: 'At least 8 characters',
+    confirmPlaceholder: 'Re-enter password',
     processing: 'Processing...',
     hasAccount: 'Already have an account? Sign in',
     noAccount: 'No account yet? Create one',
@@ -44,13 +65,14 @@ const copy = {
     vi: 'VI',
     en: 'EN',
     loginError: LOGIN_ERROR_EN,
+    mismatch: 'Passwords do not match.',
     errors: {
       'Email and password are required.': 'Email and password are required.',
       'Password must be at least 8 characters.': 'Password must be at least 8 characters.',
       'This email address is already in use.': 'This email address is already in use.',
     },
   },
-} satisfies Record<DashboardLanguage, any>;
+};
 
 function translateError(message: string, language: DashboardLanguage): string {
   if (!message) return '';
@@ -110,11 +132,13 @@ function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormP
   const t = copy[language];
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState(action, { error: null, message: '' });
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const mismatch = mode === 'signup' && confirmPassword.length > 0 && password !== confirmPassword;
 
   useEffect(() => {
-    console.log('[AUTH FORM] State changed:', JSON.stringify(state));
     if (state?.message === 'success') {
-      console.log('[AUTH FORM] Success detected, calling onSuccess');
       onSuccess();
     }
   }, [state, onSuccess]);
@@ -132,12 +156,36 @@ function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormP
       <input
         name="password"
         type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
         placeholder={t.passwordPlaceholder}
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
         required
         minLength={8}
       />
+      {mode === 'signup' && (
+        <div>
+          <input
+            name="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            placeholder={t.confirmPlaceholder}
+            className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 ${
+              mismatch
+                ? 'border-rose-600 focus:ring-rose-500'
+                : 'border-slate-700 focus:ring-indigo-500'
+            }`}
+            required
+            minLength={8}
+          />
+          {mismatch && (
+            <p className="mt-1 text-xs text-rose-400">{t.mismatch}</p>
+          )}
+        </div>
+      )}
 
       {state?.error && (
         <p className="rounded-xl bg-rose-950/40 px-4 py-3 text-sm text-rose-300">
