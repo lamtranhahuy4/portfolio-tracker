@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { eq, and } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { watchlist } from '@/db/schema';
-import { requireUser, UnauthorizedError } from '@/lib/auth';
+import { requireUser, UnauthorizedError, CsrfError, verifyCsrf } from '@/lib/auth';
 import { addRateLimitHeaders, checkRateLimit, getRateLimitKey } from '@/lib/apiRateLimiter';
 
 export async function GET(request: Request) {
@@ -37,6 +37,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    verifyCsrf(request);
     const user = await requireUser();
     const body = await request.json();
     const { ticker, name, notes } = body;
@@ -75,6 +76,9 @@ export async function POST(request: Request) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (error instanceof CsrfError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Watchlist POST error:', error);
     return NextResponse.json({ error: 'Failed to add to watchlist' }, { status: 500 });
   }
@@ -82,6 +86,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    verifyCsrf(request);
     const user = await requireUser();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -101,6 +106,9 @@ export async function DELETE(request: Request) {
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof CsrfError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     console.error('Watchlist DELETE error:', error);
     return NextResponse.json({ error: 'Failed to remove from watchlist' }, { status: 500 });

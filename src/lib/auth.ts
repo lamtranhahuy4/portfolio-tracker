@@ -229,3 +229,30 @@ export function getClientInfo() {
     ipAddress: 'Unknown',
   };
 }
+
+export class CsrfError extends Error {
+  constructor(message = 'CSRF validation failed') {
+    super(message);
+    this.name = 'CsrfError';
+  }
+}
+
+export function verifyCsrf(request: Request): void {
+  if (process.env.NODE_ENV === 'development') return;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) return;
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  const allowed = new URL(appUrl).origin;
+  if (origin && origin !== allowed) {
+    throw new CsrfError(`Origin mismatch: ${origin}`);
+  }
+  if (!origin && referer) {
+    try {
+      const refererOrigin = new URL(referer).origin;
+      if (refererOrigin !== allowed) {
+        throw new CsrfError(`Referer mismatch: ${refererOrigin}`);
+      }
+    } catch { throw new CsrfError('Invalid Referer header'); }
+  }
+}

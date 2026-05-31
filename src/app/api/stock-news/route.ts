@@ -503,7 +503,8 @@ const fetchVietnameseNews = async (
   lookbackDate.setDate(lookbackDate.getDate() - LOOKBACK_DAYS);
   const lookbackTime = lookbackDate.getTime();
 
-  const tickerRegexes = tickers.map((t) => new RegExp(`\\b${t}\\b`, 'i'));
+  const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tickerRegexes = tickers.map((t) => new RegExp(`\\b${escapeRegex(t)}\\b`, 'i'));
 
   const matchesTicker = (text: string): string | null => {
     for (let i = 0; i < tickers.length; i++) {

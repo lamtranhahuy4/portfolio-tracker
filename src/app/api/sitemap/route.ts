@@ -31,12 +31,6 @@ export async function GET() {
       changefreq: 'weekly',
       priority: 0.8,
     },
-    {
-      loc: `${appUrl}/forgot-password`,
-      lastmod,
-      changefreq: 'yearly',
-      priority: 0.5,
-    },
   ];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
