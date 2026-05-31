@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -62,9 +62,13 @@ interface BenchmarkData {
 export default function NetWorthChart({ series, language }: NetWorthChartProps) {
   const t = copy[language];
   const [vnindexHistory, setVnindexHistory] = useState<Record<string, number> | null>(null);
+  const vnindexFetched = useRef(false);
 
   useEffect(() => {
     let active = true;
+    if (vnindexFetched.current || series.length === 0) return;
+    vnindexFetched.current = true;
+
     const fetchVnindex = async () => {
       try {
         const response = await fetch('/api/vnindex-history');
@@ -78,9 +82,7 @@ export default function NetWorthChart({ series, language }: NetWorthChartProps) 
       }
     };
 
-    if (series.length > 0) {
-      fetchVnindex();
-    }
+    fetchVnindex();
     return () => { active = false; };
   }, [series]);
 

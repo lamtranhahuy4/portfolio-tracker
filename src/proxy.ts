@@ -14,68 +14,7 @@ const getAllowedOrigins = (): string[] => {
   ].filter(Boolean);
 };
 
-// In-memory rate limit store for middleware
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-/**
- * Get the client IP address from the request
- */
-function getClientIp(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
-  return ip;
-}
-
-/**
- * Check rate limit for a given key
- */
-function checkRateLimit(
-  key: string,
-  maxRequests: number = 100,
-  windowMs: number = 60000
-): { allowed: boolean; remaining: number; retryAfter: number } {
-  const now = Date.now();
-  let entry = rateLimitStore.get(key);
-
-  if (!entry || now > entry.resetTime) {
-    // Create new window
-    entry = { count: 1, resetTime: now + windowMs };
-    rateLimitStore.set(key, entry);
-    return { allowed: true, remaining: maxRequests - 1, retryAfter: 0 };
-  }
-
-  entry.count++;
-
-  if (entry.count > maxRequests) {
-    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
-    return { allowed: false, remaining: 0, retryAfter };
-  }
-
-  return { allowed: true, remaining: maxRequests - entry.count, retryAfter: 0 };
-}
-
-/**
- * Extract rate limit config from URL path
- */
-function getRateLimitConfig(pathname: string): { maxRequests: number; windowMs: number } {
-  // Stricter limits for sensitive endpoints
-  if (pathname.startsWith('/api/auth') || pathname.startsWith('/api/admin')) {
-    return { maxRequests: 10, windowMs: 60000 }; // 10 req/min
-  }
-
-  // Moderate limits for market data endpoints
-  if (pathname.startsWith('/api/quotes') || pathname.startsWith('/api/price')) {
-    return { maxRequests: 60, windowMs: 60000 }; // 60 req/min
-  }
-
-  // Default limits for other API endpoints
-  if (pathname.startsWith('/api/')) {
-    return { maxRequests: 100, windowMs: 60000 }; // 100 req/min
-  }
-
-  // No rate limiting for static content
-  return { maxRequests: Infinity, windowMs: 60000 };
-}
 
 /**
  * Generate Content-Security-Policy header
@@ -215,26 +154,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For API routes, check rate limiting and CORS
+  // For API routes, handle CORS
   if (pathname.startsWith('/api/')) {
-    // Skip rate limiting for health checks
-    if (!pathname.includes('/health')) {
-      const clientIp = getClientIp(request);
-      const { maxRequests, windowMs } = getRateLimitConfig(pathname);
-      const rateLimitKey = `${clientIp}:${pathname}`;
-      const limit = checkRateLimit(rateLimitKey, maxRequests, windowMs);
-
-      if (!limit.allowed) {
-        const response = NextResponse.json(
-          { error: 'Too many requests', retryAfter: limit.retryAfter },
-          { status: 429 }
-        );
-        response.headers.set('Retry-After', limit.retryAfter.toString());
-        return response;
-      }
-    }
-
-    // Handle CORS
     const corsResponse = handleCORS(request);
     if (corsResponse) {
       return corsResponse;

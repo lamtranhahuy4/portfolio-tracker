@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { users, sessions } from '@/db/schema';
 
@@ -19,32 +19,21 @@ export async function GET(request: Request) {
   }
 
   try {
-    const allUsers = await db
+    const rows = await db
       .select({
         id: users.id,
         email: users.email,
         createdAt: users.createdAt,
+        activeSessions: sql<number>`COALESCE(COUNT(${sessions.id}), 0)::int`,
       })
       .from(users)
+      .leftJoin(sessions, eq(sessions.userId, users.id))
+      .groupBy(users.id)
       .orderBy(users.createdAt);
 
-    const usersWithSessionCount = await Promise.all(
-      allUsers.map(async (user) => {
-        const activeSessions = await db
-          .select({ count: users.id })
-          .from(sessions)
-          .where(eq(sessions.userId, user.id));
-        
-        return {
-          ...user,
-          activeSessions: activeSessions.length,
-        };
-      })
-    );
-
     return NextResponse.json({
-      users: usersWithSessionCount,
-      total: usersWithSessionCount.length,
+      users: rows,
+      total: rows.length,
     });
   } catch (error) {
     console.error('Error fetching users:', error);

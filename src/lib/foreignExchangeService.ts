@@ -10,6 +10,10 @@ const FRANKFURTER_LATEST_URL = 'https://api.frankfurter.app/latest?from=USD';
 let ratesCache: { data: ForexResponse | null; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+// Cache for history queries (30-minute TTL)
+let historyCache: { key: string; data: ForexHistoryPoint[]; expiresAt: number } | null = null;
+const HISTORY_CACHE_TTL_MS = 30 * 60 * 1000;
+
 export interface VcbRate {
   code: string;
   name: string;
@@ -207,9 +211,17 @@ export async function getForexHistory(
   to: string,
   days: number = 30
 ): Promise<ForexHistoryPoint[]> {
+  const now = Date.now();
+  const cacheKey = `${from}/${to}/${days}`;
+  if (historyCache && historyCache.key === cacheKey && now < historyCache.expiresAt) {
+    return historyCache.data;
+  }
+
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
+
+  let result: ForexHistoryPoint[];
 
   // Try DB first (works for VND pairs from snapshots)
   if (from === 'VND' || to === 'VND') {
@@ -229,40 +241,43 @@ export async function getForexHistory(
       .orderBy(asc(forexRatesHistory.recordedAt));
 
     if (rows.length > 0) {
-      return rows.map((r) => ({
+      result = rows.map((r) => ({
         date: r.recordedAt instanceof Date
           ? r.recordedAt.toISOString().split('T')[0]
           : new Date(r.recordedAt).toISOString().split('T')[0],
         rate: parseFloat(r.rate.toString()),
       }));
+    } else {
+      result = [];
     }
+  } else {
+    // For international pairs, try Frankfurter API (free, no key needed)
+    try {
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = endDate.toISOString().split('T')[0];
 
-    return [];
+      const frankUrl = `https://api.frankfurter.app/${startStr}..${endStr}?from=${from}&to=${to}`;
+      const frankRes = await fetch(frankUrl, {
+        cache: 'no-store',
+        redirect: 'follow',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+
+      if (frankRes.ok) {
+        const frankJson = await frankRes.json();
+        const frankData = frankJson.rates as Record<string, Record<string, number>>;
+        result = Object.entries(frankData)
+          .map(([date, rates]) => ({ date, rate: rates[to] || 0 }))
+          .filter((p) => p.rate > 0)
+          .sort((a, b) => a.date.localeCompare(b.date));
+      } else {
+        result = [];
+      }
+    } catch {
+      result = [];
+    }
   }
 
-  // For international pairs, try Frankfurter API (free, no key needed)
-  try {
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
-
-    const frankUrl = `https://api.frankfurter.app/${startStr}..${endStr}?from=${from}&to=${to}`;
-    const frankRes = await fetch(frankUrl, {
-      cache: 'no-store',
-      redirect: 'follow',
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
-
-    if (frankRes.ok) {
-      const frankJson = await frankRes.json();
-      const frankData = frankJson.rates as Record<string, Record<string, number>>;
-      return Object.entries(frankData)
-        .map(([date, rates]) => ({ date, rate: rates[to] || 0 }))
-        .filter((p) => p.rate > 0)
-        .sort((a, b) => a.date.localeCompare(b.date));
-    }
-  } catch {
-    // Fall through to empty
-  }
-
-  return [];
+  historyCache = { key: cacheKey, data: result, expiresAt: now + HISTORY_CACHE_TTL_MS };
+  return result;
 }

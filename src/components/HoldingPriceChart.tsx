@@ -90,7 +90,7 @@ export default function HoldingPriceChart({
           <LineChart data={chartData}>
             <XAxis dataKey="time" hide />
             <YAxis 
-              domain={['dataMin - 1000', 'dataMax + 1000']}
+              domain={['dataMin - dataMin * 0.1', 'dataMax + dataMax * 0.1']}
               hide 
             />
             <Tooltip
