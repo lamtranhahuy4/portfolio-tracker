@@ -28,14 +28,53 @@ export function toTicker(value: string, assetClass: AssetClass): string {
 
 // ─── Number / Date helpers ───────────────────────────────────────────────────
 
+/**
+ * Normalize numbers that may use Vietnamese format (. as thousand sep, , as decimal).
+ * - "1.234,56" → "1234.56" (VN format)
+ * - "1,234.56" → "1234.56" (international format)
+ * - "1234,56" → "1234.56" (comma as decimal)
+ * - "1,234" → "1234" (comma as thousand separator)
+ */
+function normalizeDecimalSeparator(raw: string): string {
+  let s = raw.replace(/\s+/g, '');
+
+  const lastDot = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+
+  if (lastDot === -1 && lastComma === -1) return s;
+
+  if (lastComma > lastDot) {
+    // Vietnamese format: comma is decimal separator
+    // "1.234,56" → remove dots → "1234,56" → replace comma → "1234.56"
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > lastComma) {
+    // International format: dot is decimal separator
+    // "1,234.56" → remove commas → "1234.56"
+    s = s.replace(/,/g, '');
+  } else if (lastComma !== -1 && lastDot === -1) {
+    // Only comma(s) present
+    const commaCount = s.split(',').length - 1;
+    const afterLastComma = s.split(',').pop() || '';
+    if (commaCount === 1 && afterLastComma.length <= 2 && /^\d+$/.test(afterLastComma)) {
+      // Likely decimal comma like "1234,56" or "1234,5"
+      s = s.replace(',', '.');
+    } else {
+      // Thousand separator commas like "1,234,567"
+      s = s.replace(/,/g, '');
+    }
+  }
+
+  // Strip any remaining non-numeric chars except dot and minus
+  s = s.replace(/[^\d.-]/g, '');
+
+  return s;
+}
+
 export function parseNumber(value: unknown): number {
   if (value === null || value === undefined) return NaN;
   const raw = String(value).trim();
   if (!raw) return NaN;
-  const normalized = raw
-    .replace(/\s+/g, '')
-    .replace(/,/g, '')
-    .replace(/[^\d.-]/g, '');
+  const normalized = normalizeDecimalSeparator(raw);
   return Number(normalized);
 }
 
@@ -56,10 +95,7 @@ export function parseNumberToDecimal(value: unknown): DecimalType {
   if (!raw) {
     return new Decimal(NaN);
   }
-  const normalized = raw
-    .replace(/\s+/g, '')
-    .replace(/,/g, '')
-    .replace(/[^\d.-]/g, '');
+  const normalized = normalizeDecimalSeparator(raw);
   
   try {
     return new Decimal(normalized);
