@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { CashLedgerEvent, OpeningPosition, Transaction } from '@/types/portfolio';
 
-export default function StoreInitializer({ 
+export default function StoreInitializer({
   initialTransactions,
   initialCashEvents = [],
   initialOpeningPositions = [],
   initialPortfolioSettings,
-}: { 
+}: {
   initialTransactions: Transaction[],
   initialCashEvents?: CashLedgerEvent[],
   initialOpeningPositions?: OpeningPosition[],
@@ -20,6 +20,7 @@ export default function StoreInitializer({
     initialCashBalance: number
   }
 }) {
+  const initialized = useRef(false);
   const setTransactions = usePortfolioStore((state) => state.setTransactions);
   const setCashEvents = usePortfolioStore((state) => state.setCashEvents);
   const setOpeningSnapshot = usePortfolioStore((state) => state.setOpeningSnapshot);
@@ -27,6 +28,9 @@ export default function StoreInitializer({
   const setPortfolioSettings = usePortfolioStore((state) => state.setPortfolioSettings);
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     setTransactions(initialTransactions);
     setCashEvents(initialCashEvents);
     setOpeningSnapshot(initialOpeningPositions);
@@ -36,7 +40,7 @@ export default function StoreInitializer({
       initialNetContributions: initialPortfolioSettings.initialNetContributions,
       initialCashBalance: initialPortfolioSettings.initialCashBalance
     });
-  }, [initialTransactions, initialCashEvents, initialOpeningPositions, initialPortfolioSettings, setTransactions, setCashEvents, setOpeningSnapshot, setFeeDebt, setPortfolioSettings]);
+  }, []);
 
   return null;
 }

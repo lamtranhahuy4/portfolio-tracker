@@ -1,6 +1,6 @@
 export type ImportBatchKind = 'TRANSACTION' | 'CASH_LEDGER';
 
-export type ImportBatchStatus = 'SUCCESS' | 'PARTIAL' | 'ROLLED_BACK';
+export type ImportBatchStatus = 'SUCCESS' | 'PARTIAL' | 'FAILURE' | 'ROLLED_BACK';
 
 export interface ImportBatchInput {
   fileName: string;

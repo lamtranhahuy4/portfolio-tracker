@@ -114,6 +114,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
       } catch (err) {
         if (active) {
           setError((err as Error).message);
+          setLoading(false);
           console.error('Failed to load market data:', err);
         }
       }

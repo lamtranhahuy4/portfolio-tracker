@@ -10,7 +10,11 @@ describe('import batch status', () => {
     expect(deriveImportBatchStatus({ acceptedRows: 7, rejectedRows: 3 })).toBe('PARTIAL');
   });
 
-  it('marks fully rejected imports as partial', () => {
-    expect(deriveImportBatchStatus({ acceptedRows: 0, rejectedRows: 5 })).toBe('PARTIAL');
+  it('marks fully rejected imports as failure', () => {
+    expect(deriveImportBatchStatus({ acceptedRows: 0, rejectedRows: 5 })).toBe('FAILURE');
+  });
+
+  it('marks empty imports as failure', () => {
+    expect(deriveImportBatchStatus({ acceptedRows: 0, rejectedRows: 0 })).toBe('FAILURE');
   });
 });

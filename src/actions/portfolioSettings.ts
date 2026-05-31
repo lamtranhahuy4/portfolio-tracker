@@ -75,7 +75,7 @@ export async function calculateRealizedPnLWithTax(): Promise<PortfolioTaxSummary
   const settings = await fetchPortfolioSettings();
   const taxRate = settings.taxRate || 0.001;
 
-  const allTransactions = await db.select()
+  const allSells = await db.select()
     .from(transactions)
     .where(
       and(
@@ -85,24 +85,60 @@ export async function calculateRealizedPnLWithTax(): Promise<PortfolioTaxSummary
     )
     .orderBy(transactions.date);
 
+  const allBuys = await db.select()
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, user.id),
+        eq(transactions.type, 'BUY')
+      )
+    )
+    .orderBy(transactions.date);
+
+  // Build a per-ticker FIFO queue of buy lots
+  const buyLots = new Map<string, Array<{ remainingQty: number; unitCost: number }>>();
+  for (const b of allBuys) {
+    const qty = Number(b.amount);
+    const unitCost = Number(b.price);
+    if (qty <= 0) continue;
+    if (!buyLots.has(b.asset)) buyLots.set(b.asset, []);
+    buyLots.get(b.asset)!.push({ remainingQty: qty, unitCost });
+  }
+
   const tickerMap = new Map<string, {
     quantitySold: number;
     costBasis: number;
     proceeds: number;
   }>();
 
-  for (const tx of allTransactions) {
+  for (const tx of allSells) {
     const quantity = Number(tx.amount);
     const price = Number(tx.price);
     const fee = Number(tx.fee);
     const tax = Number(tx.tax);
-    
+
     const proceeds = (quantity * price) - fee - tax;
-    const costBasis = quantity * price;
+    const assetLots = buyLots.get(tx.asset) ?? [];
+    let remaining = quantity;
+    let totalCost = 0;
+
+    // FIFO matching against buy lots
+    for (let i = 0; i < assetLots.length && remaining > 0; i++) {
+      const lot = assetLots[i];
+      const consumed = Math.min(remaining, lot.remainingQty);
+      totalCost += consumed * lot.unitCost;
+      lot.remainingQty -= consumed;
+      remaining -= consumed;
+    }
+
+    // If any quantity could not be matched, use SELL price as fallback (no buy data)
+    if (remaining > 0) {
+      totalCost += remaining * price;
+    }
 
     const existing = tickerMap.get(tx.asset) || { quantitySold: 0, costBasis: 0, proceeds: 0 };
     existing.quantitySold += quantity;
-    existing.costBasis += costBasis;
+    existing.costBasis += totalCost;
     existing.proceeds += proceeds;
     tickerMap.set(tx.asset, existing);
   }
