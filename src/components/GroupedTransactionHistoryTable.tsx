@@ -125,7 +125,7 @@ export default function GroupedTransactionHistoryTable({ language }: { language:
                   {group.items.map((tx) => {
                     const badge = getTxBadge(tx.type, language);
                     return (
-                      <tr key={tx.id} className="transition-colors hover:bg-slate-800/30">
+                      <tr key={tx.id} tabIndex={0} className="transition-colors hover:bg-slate-800/30 focus:outline-none focus:bg-slate-800/40">
                         <td className="px-6 py-4 text-slate-400">{group.displayDate}</td>
                         <td className="px-6 py-4 font-semibold text-slate-100">{tx.ticker}</td>
                         <td className="px-6 py-4">

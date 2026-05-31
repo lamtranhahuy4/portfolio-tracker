@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { Save, ArrowRight, ArrowLeft, Upload, FileSpreadsheet, Calendar, Landmark, X, Check } from 'lucide-react';
 import { saveCutoffSettings } from '@/actions/portfolioSettings';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -16,10 +16,35 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
   const [cashBalance, setCashBalance] = useState<string>('0');
   const [error, setError] = useState<string | null>(null);
   const [showManualTrade, setShowManualTrade] = useState(false);
+  const wizardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setShowManualTrade(false);
   }, [step]);
+
+  useEffect(() => {
+    const el = wizardRef.current;
+    if (!el) return;
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length > 0) focusable[0].focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    };
+    el.addEventListener('keydown', handleKeyDown);
+    return () => el.removeEventListener('keydown', handleKeyDown);
+  }, [step, showManualTrade]);
 
   const setPortfolioSettings = usePortfolioStore((state) => state.setPortfolioSettings);
 
@@ -93,7 +118,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80">
+    <div ref={wizardRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80">
       <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-8 pb-6 border-b border-slate-800 bg-gradient-to-b from-slate-800/50">

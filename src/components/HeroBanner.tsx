@@ -197,7 +197,10 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
           {cards.map((card) => (
             <article 
               key={card.label} 
-              className="min-w-0 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 shadow-inner backdrop-blur-sm"
+              tabIndex={0}
+              role="button"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault(); }}
+              className="min-w-0 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 shadow-inner backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" 
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">

@@ -1,0 +1,34 @@
+import { headers } from 'next/headers';
+
+export function generateNonce(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function buildCsp(nonce: string): string {
+  return [
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://cdn.vercel-insights.com`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+    `font-src 'self' https://fonts.gstatic.com data:`,
+    `img-src 'self' data: https:`,
+    `connect-src 'self' https://*.neon.tech https://*.vercel.app ${process.env.NEXT_PUBLIC_APP_URL || ''}`,
+    `frame-ancestors 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `default-src 'self'`,
+  ].join('; ');
+}
+
+export async function getCspHeaders(): Promise<Record<string, string>> {
+  const nonce = generateNonce();
+  return {
+    'x-nonce': nonce,
+    'Content-Security-Policy': buildCsp(nonce),
+  };
+}
+
+export async function getNonce(): Promise<string> {
+  const hdrs = await headers();
+  return hdrs.get('x-nonce') ?? generateNonce();
+}
