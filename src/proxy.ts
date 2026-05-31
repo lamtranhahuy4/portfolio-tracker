@@ -72,7 +72,7 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   // Strict-Transport-Security
   response.headers.set(
     'Strict-Transport-Security',
-    'max-age=63072000; includeSubDomains; preload'
+    'max-age=31536000; includeSubDomains'
   );
 
   // Content-Security-Policy
