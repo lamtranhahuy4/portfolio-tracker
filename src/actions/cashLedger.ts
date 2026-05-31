@@ -71,9 +71,9 @@ async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: Import
   }
 });
 
-export async function fetchCashEvents(userId?: string): Promise<CashLedgerEvent[]> {
+export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
   try {
-    const user = userId ? { id: userId } : await requireUser();
+    const user = await requireUser();
     const records = await db.select()
       .from(cashLedgerEvents)
       .where(eq(cashLedgerEvents.userId, user.id))

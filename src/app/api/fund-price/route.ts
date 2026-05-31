@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
+    await requireUser();
     const body = await request.json();
     const { productId } = body;
 

@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 
     // Step 3: Get sample sessions
     const sampleSessions = await db
-      .select({ id: sessions.id, userId: sessions.userId, tokenHash: sessions.tokenHash, expiresAt: sessions.expiresAt })
+      .select({ id: sessions.id, userId: sessions.userId, expiresAt: sessions.expiresAt })
       .from(sessions)
       .where(gt(sessions.expiresAt, new Date()))
       .limit(3);

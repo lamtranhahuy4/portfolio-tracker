@@ -89,7 +89,7 @@ function ResetPasswordContent() {
     try {
       const result = await resetPasswordAction(token, email, password);
       
-      if ((result as { success?: boolean }).success) {
+      if (result.success) {
         setStatus('success');
         setMessage(t.success);
       }

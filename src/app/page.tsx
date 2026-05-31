@@ -28,10 +28,13 @@ export default async function DashboardPage() {
   } = { feeDebt: 0, globalCutoffDate: null, initialNetContributions: 0, initialCashBalance: 0 };
   try {
     [initialTransactions, initialCashEvents, openingPositionSnapshot, portfolioSettings] = await Promise.all([
-      fetchTransactions(user.id),
-      fetchCashEvents(user.id),
-      fetchOpeningPositionSnapshot(user.id),
-      fetchPortfolioSettings(user.id),
+      fetchTransactions(),
+
+      fetchCashEvents(),
+
+      fetchOpeningPositionSnapshot(),
+
+      fetchPortfolioSettings(),
     ]);
   } catch (error) {
     console.error('Failed to load portfolio data for current user.', error);

@@ -15,8 +15,8 @@ type OpeningPositionInput = {
   averageCost: number;
 };
 
-export async function fetchOpeningPositionSnapshot(userId?: string): Promise<OpeningPositionSnapshot> {
-  const user = userId ? { id: userId } : await requireUser();
+export async function fetchOpeningPositionSnapshot(): Promise<OpeningPositionSnapshot> {
+  const user = await requireUser();
   const rows = await db.select()
     .from(openingPositions)
     .where(eq(openingPositions.userId, user.id));

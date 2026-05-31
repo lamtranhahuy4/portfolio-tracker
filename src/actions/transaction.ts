@@ -85,8 +85,8 @@ export async function saveManualTransaction(tx: NormalizedTransaction) {
   revalidatePath('/');
 }
 
-export const fetchTransactions = withErrorHandler(async function fetchTransactions(userId?: string): Promise<NormalizedTransaction[]> {
-  const user = userId ? { id: userId } : await requireUser();
+export const fetchTransactions = withErrorHandler(async function fetchTransactions(): Promise<NormalizedTransaction[]> {
+  const user = await requireUser();
 
   const dbTxs = await db.query.transactions.findMany({
     where: eq(transactions.userId, user.id),
