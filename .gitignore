@@ -47,3 +47,7 @@ deployment-trigger.txt
 
 # repomix output
 repomix-output.xml
+
+# local reports & plans (not committed)
+REPORT.md
+ActionPlan_20260531.md
