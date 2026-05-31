@@ -84,17 +84,16 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
   const metrics = usePortfolioMetrics();
   const holdings = metrics.holdings;
 
-  const totalMarketValue = Number(metrics.totalMarketValue) || 0;
   const cashBalance = Number(metrics.cashBalanceEOD) 
     || holdings.find(h => h.ticker === 'CASH_VND')?.marketValue 
     || 0;
-  const totalValue = totalMarketValue;
   const stocksValue = holdings
     .filter(h => h.assetClass === 'STOCK' && h.ticker !== 'CASH_VND')
     .reduce((sum, h) => sum + Number(h.marketValue), 0);
   const fundsValue = holdings
     .filter(h => h.assetClass === 'FUND')
     .reduce((sum, h) => sum + Number(h.marketValue), 0);
+  const totalValue = stocksValue + fundsValue + cashBalance;
 
   const allocationData: AllocationItem[] = [];
 

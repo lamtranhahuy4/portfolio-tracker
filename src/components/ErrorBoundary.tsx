@@ -49,6 +49,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     this.setState({ hasError: false, error: null });
   };
 
+  componentDidUpdate(_prevProps: ErrorBoundaryProps) {
+    if (this.state.hasError && this.props.children !== _prevProps.children) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
   render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {

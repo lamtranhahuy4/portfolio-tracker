@@ -18,8 +18,6 @@ export default function FeeDebtCard() {
     setDraftValue(String(feeDebt || ''));
   }, [feeDebt]);
 
-  if (Number(feeDebt) === 0) return null;
-
   const saveValue = () => {
     startTransition(async () => {
       try {

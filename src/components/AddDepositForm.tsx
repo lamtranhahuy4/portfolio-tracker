@@ -90,6 +90,7 @@ export default function AddDepositForm() {
           <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Ngày</label>
           <input
             type="date"
+            max={new Date().toISOString().split('T')[0]}
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none [color-scheme:dark]"

@@ -53,9 +53,13 @@ export default function ImportWarningsPanel({ language }: { language: DashboardL
   const displayWarnings = showAll ? warnings : warnings.slice(0, Math.min(warnings.length, 10));
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-rose-900/50 bg-rose-950/20 shadow-xl shadow-black/20 backdrop-blur-sm">
+    <div className={`flex h-full flex-col overflow-hidden rounded-[28px] border shadow-xl shadow-black/20 backdrop-blur-sm ${
+      isPerfect ? 'border-emerald-900/50 bg-emerald-950/20' : 'border-rose-900/50 bg-rose-950/20'
+    }`}>
       <div
-        className="flex cursor-pointer items-center justify-between border-b border-rose-900/40 bg-rose-950/10 p-4"
+        className={`flex cursor-pointer items-center justify-between border-b p-4 ${
+          isPerfect ? 'border-emerald-900/40 bg-emerald-950/10' : 'border-rose-900/40 bg-rose-950/10'
+        }`}
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3">

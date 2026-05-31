@@ -150,7 +150,7 @@ export default function ForgotPassword() {
         </form>
 
         <a
-          href="/login"
+          href="/"
           className="block w-full text-center text-sm text-slate-300 transition-colors hover:text-indigo-400"
         >
           {t.backToLogin}

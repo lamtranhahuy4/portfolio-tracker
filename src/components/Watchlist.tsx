@@ -221,7 +221,7 @@ export default function Watchlist({ language }: { language: DashboardLanguage })
                       </div>
                       <button
                         onClick={() => handleRemove(item.id, item.ticker)}
-                        className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                         title={t.remove}
                       >
                         <X className="h-4 w-4" />

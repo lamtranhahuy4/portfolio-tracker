@@ -190,7 +190,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange, language }: 
                         <span className="font-semibold text-slate-100">{formatCurrency(h.currentPrice)}</span>
                         <button
                           onClick={() => handleEditClick(h.ticker, h.currentPrice)}
-                          className="rounded-md p-1.5 text-slate-500 opacity-0 transition-all hover:bg-blue-500/10 hover:text-blue-300 group-hover:opacity-100"
+                          className="rounded-md p-1.5 text-slate-500 opacity-0 transition-all hover:bg-blue-500/10 hover:text-blue-300 group-hover:opacity-100 focus:opacity-100"
                           title={t.editPrice}
                         >
                           <Pencil size={14} />

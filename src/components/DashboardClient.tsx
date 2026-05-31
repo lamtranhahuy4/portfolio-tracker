@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages, RefreshCw, CheckCircle, AlertTriangle, Globe } from 'lucide-react';
+import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages, RefreshCw, CheckCircle, AlertCircle, AlertTriangle, Globe } from 'lucide-react';
 import AddDepositForm from '@/components/AddDepositForm';
 import AddTradeForm from '@/components/AddTradeForm';
 import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
@@ -25,7 +25,6 @@ import PriceAlerts from '@/components/PriceAlerts';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
 import { HoldingsRealtimeCharts } from '@/components/HoldingPriceChart';
 import TooltipInfo from '@/components/TooltipInfo';
-import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { withRetry } from '@/lib/retry';
@@ -250,8 +249,8 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
   const holdings = metrics.holdings;
   const unrealizedPnL = metrics.totalUnrealizedPnL;
-  const avgPnL = metrics.totalUnrealizedPnL + metrics.averageCostRealizedPnL;
-  const fifoPnL = metrics.totalUnrealizedPnL + metrics.fifoRealizedPnL;
+  const totalCombinedPnL = metrics.totalUnrealizedPnL + metrics.averageCostRealizedPnL;
+  const totalFifoPnL = metrics.totalUnrealizedPnL + metrics.fifoRealizedPnL;
   const isLedgerMode = metrics.cashBalanceSource === 'ledger';
 
   const isDemoMode = transactions.some(t => String(t.id).startsWith('mock-'));
@@ -320,6 +319,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                     <span className="text-slate-400">{t.snapshot}</span>
                     <input
                       type="date"
+                      max={new Date().toISOString().split('T')[0]}
                       className="bg-transparent text-slate-100 outline-none [color-scheme:dark]"
                       value={valuationDate ? valuationDate.toISOString().split('T')[0] : ''}
                       onChange={(e) => setValuationDate(e.target.value ? new Date(e.target.value) : null)}
@@ -461,15 +461,15 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
           <StatCard
             title={t.avgPnL}
             tooltip={t.glossary?.avgPnL}
-            value={`${avgPnL > 0 ? '+' : ''}${formatCurrency(avgPnL)}`}
-            valueColor={avgPnL > 0 ? 'text-emerald-400' : avgPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
-            icon={<TrendingUp className="h-5 w-5 text-emerald-300" />}
+            value={`${totalCombinedPnL > 0 ? '+' : ''}${formatCurrency(totalCombinedPnL)}`}
+            valueColor={totalCombinedPnL > 0 ? 'text-emerald-400' : totalCombinedPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
+            icon={<CheckCircle2 className="h-5 w-5 text-cyan-300" />}
           />
           <StatCard
             title={t.fifoPnL}
             tooltip={t.glossary?.fifoPnL}
-            value={`${fifoPnL > 0 ? '+' : ''}${formatCurrency(fifoPnL)}`}
-            valueColor={fifoPnL > 0 ? 'text-emerald-400' : fifoPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
+            value={`${totalFifoPnL > 0 ? '+' : ''}${formatCurrency(totalFifoPnL)}`}
+            valueColor={totalFifoPnL > 0 ? 'text-emerald-400' : totalFifoPnL < 0 ? 'text-rose-400' : 'text-slate-100'}
             icon={<CheckCircle2 className="h-5 w-5 text-cyan-300" />}
           />
           <StatCard
