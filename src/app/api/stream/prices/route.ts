@@ -1,74 +1,94 @@
 import { NextResponse } from 'next/server';
 import { getRealtimeQuotes } from '@/lib/marketData';
+import { requireUser, UnauthorizedError } from '@/lib/auth';
+import { checkRateLimit, getRateLimitKey, addRateLimitHeaders } from '@/lib/apiRateLimiter';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const tickersParam = searchParams.get('tickers');
-  
-  if (!tickersParam) {
-    return NextResponse.json(
-      { error: 'Missing tickers parameter' },
-      { status: 400 }
-    );
-  }
+  try {
+    await requireUser();
 
-  const tickers = tickersParam.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
-  
-  if (tickers.length === 0) {
-    return NextResponse.json(
-      { error: 'No valid tickers provided' },
-      { status: 400 }
-    );
-  }
+    const rateLimitKey = getRateLimitKey(request);
+    const rateLimit = checkRateLimit(rateLimitKey, { maxRequests: 30, windowMs: 60000 });
+    if (!rateLimit.allowed) {
+      const response = NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+      addRateLimitHeaders(response, rateLimit.remaining, rateLimit.resetTime);
+      return response;
+    }
 
-  const encoder = new TextEncoder();
-  
-  const stream = new ReadableStream({
-    async start(controller) {
-      const sendUpdate = async () => {
-        try {
-          const freshPrices = await getRealtimeQuotes(tickers);
-          
-          const updates = tickers.map(ticker => ({
-            ticker,
-            price: freshPrices[ticker] ?? null,
-            timestamp: new Date().toISOString(),
-          })).filter(update => update.price !== null);
-          
-          if (updates.length > 0) {
-            const data = `data: ${JSON.stringify(updates)}\n\n`;
-            controller.enqueue(encoder.encode(data));
+    const { searchParams } = new URL(request.url);
+    const tickersParam = searchParams.get('tickers');
+    
+    if (!tickersParam) {
+      return NextResponse.json(
+        { error: 'Missing tickers parameter' },
+        { status: 400 }
+      );
+    }
+
+    const tickers = tickersParam.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+    
+    if (tickers.length === 0) {
+      return NextResponse.json(
+        { error: 'No valid tickers provided' },
+        { status: 400 }
+      );
+    }
+
+    const encoder = new TextEncoder();
+    
+    const stream = new ReadableStream({
+      async start(controller) {
+        const sendUpdate = async () => {
+          try {
+            const freshPrices = await getRealtimeQuotes(tickers);
+            
+            const updates = tickers.map(ticker => ({
+              ticker,
+              price: freshPrices[ticker] ?? null,
+              timestamp: new Date().toISOString(),
+            })).filter(update => update.price !== null);
+            
+            if (updates.length > 0) {
+              const data = `data: ${JSON.stringify(updates)}\n\n`;
+              controller.enqueue(encoder.encode(data));
+            }
+          } catch (error) {
+            console.error('SSE price update error:', error);
           }
-        } catch (error) {
-          console.error('SSE price update error:', error);
-        }
-      };
+        };
 
-      await sendUpdate();
+        await sendUpdate();
 
-      const interval = setInterval(async () => {
-        try {
-          await sendUpdate();
-        } catch (error) {
-          console.error('SSE interval error:', error);
-        }
-      }, 5000);
+        const interval = setInterval(async () => {
+          try {
+            await sendUpdate();
+          } catch (error) {
+            console.error('SSE interval error:', error);
+          }
+        }, 5000);
 
-      request.signal.addEventListener('abort', () => {
-        clearInterval(interval);
-        controller.close();
-      });
-    },
-  });
+        request.signal.addEventListener('abort', () => {
+          clearInterval(interval);
+          controller.close();
+        });
+      },
+    });
 
-  return new NextResponse(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
-  });
+    return new NextResponse(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    });
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('SSE stream error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

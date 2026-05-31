@@ -14,6 +14,9 @@ export type TrendingAssetCard = {
   up: boolean;
 };
 
+import { marketDataCircuitBreaker } from '@/lib/circuitBreaker';
+import { withRetry } from '@/lib/retry';
+
 type DnseSeriesResponse = {
   c?: number[];
   t?: number[];
@@ -36,10 +39,12 @@ async function fetchDnseSeries(
   const url = `${DNSE_BASE_URL}/${type}?resolution=${resolution}&symbol=${symbol}&from=${from}&to=${to}`;
 
   try {
-    const res = await fetch(url, {
-      cache: 'no-store',
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
+    const res = await marketDataCircuitBreaker.execute(() =>
+      withRetry(() => fetch(url, {
+        cache: 'no-store',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      }), { maxRetries: 1, baseDelayMs: 2000 })
+    );
     if (!res.ok) return null;
 
     const json = await res.json() as DnseSeriesResponse;
@@ -93,10 +98,12 @@ async function fetchDnseSeriesWithDates(
   const url = `${DNSE_BASE_URL}/${type}?resolution=1D&symbol=${symbol}&from=${from}&to=${to}`;
 
   try {
-    const res = await fetch(url, {
-      cache: 'no-store',
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
+    const res = await marketDataCircuitBreaker.execute(() =>
+      withRetry(() => fetch(url, {
+        cache: 'no-store',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      }), { maxRetries: 1, baseDelayMs: 2000 })
+    );
     if (!res.ok) return null;
 
     const json = await res.json() as DnseSeriesResponse;
@@ -172,15 +179,17 @@ export async function getHistoricalPrices(symbols: string[]): Promise<Record<str
 
 async function fetchYahooFinanceVnindex(): Promise<{ price: number; change: number; percent: number } | null> {
   try {
-    const res = await fetch(
-      'https://query2.finance.yahoo.com/v8/finance/chart/%5EVNINDEX.VN?interval=1d&range=5d',
-      {
-        cache: 'no-store',
-        headers: {
-          'User-Agent': 'Mozilla/5.0',
-          'Accept': 'application/json',
-        },
-      }
+    const res = await marketDataCircuitBreaker.execute(() =>
+      withRetry(() => fetch(
+        'https://query2.finance.yahoo.com/v8/finance/chart/%5EVNINDEX.VN?interval=1d&range=5d',
+        {
+          cache: 'no-store',
+          headers: {
+            'User-Agent': 'Mozilla/5.0',
+            'Accept': 'application/json',
+          },
+        }
+      ), { maxRetries: 1, baseDelayMs: 2000 })
     );
     if (!res.ok) return null;
 
@@ -205,9 +214,11 @@ async function fetchYahooFinanceVnindex(): Promise<{ price: number; change: numb
 
 async function fetchCoinGecko() {
   try {
-    const res = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true',
-      { cache: 'no-store' }
+    const res = await marketDataCircuitBreaker.execute(() =>
+      withRetry(() => fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true',
+        { cache: 'no-store' }
+      ), { maxRetries: 1, baseDelayMs: 2000 })
     );
     if (!res.ok) return null;
     return await res.json();
@@ -295,10 +306,12 @@ type VangTodayResponse = {
 
 async function fetchGoldPrice(): Promise<{ price: string; change: string; percent: string; up: boolean } | null> {
   try {
-    const res = await fetch('https://vang.today/api/prices?type=SJL1L10', { 
-      cache: 'no-store',
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const res = await marketDataCircuitBreaker.execute(() =>
+      withRetry(() => fetch('https://vang.today/api/prices?type=SJL1L10', { 
+        cache: 'no-store',
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      }), { maxRetries: 1, baseDelayMs: 2000 })
+    );
 
     if (!res.ok) return null;
 

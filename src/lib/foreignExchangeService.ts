@@ -2,6 +2,8 @@ import { and, asc, between, eq, lte } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { forexRatesHistory } from '@/db/schema';
 import { getGoldPrices, GoldPriceItem } from '@/lib/goldPriceService';
+import { marketDataCircuitBreaker } from '@/lib/circuitBreaker';
+import { withRetry } from '@/lib/retry';
 
 const VIETCOMBANK_URL = 'https://portal.vietcombank.com.vn/UserControls/TVPortal.TyGia/pXML.aspx';
 const FRANKFURTER_LATEST_URL = 'https://api.frankfurter.app/latest?from=USD';
@@ -56,10 +58,12 @@ function parseVcbValue(val: string | undefined): number | null {
 
 async function fetchVietcombankRates(): Promise<VcbRate[]> {
   try {
-    const res = await fetch(VIETCOMBANK_URL, {
-      cache: 'no-store',
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
+    const res = await marketDataCircuitBreaker.execute(() =>
+      withRetry(() => fetch(VIETCOMBANK_URL, {
+        cache: 'no-store',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      }), { maxRetries: 1, baseDelayMs: 2000 })
+    );
     if (!res.ok) return [];
 
     const xml = await res.text();
@@ -98,11 +102,13 @@ async function fetchVietcombankRates(): Promise<VcbRate[]> {
 
 async function fetchFrankfurterRates(): Promise<{ rates: Record<string, number>; date: string } | null> {
   try {
-    const res = await fetch(FRANKFURTER_LATEST_URL, {
-      cache: 'no-store',
-      redirect: 'follow',
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
+    const res = await marketDataCircuitBreaker.execute(() =>
+      withRetry(() => fetch(FRANKFURTER_LATEST_URL, {
+        cache: 'no-store',
+        redirect: 'follow',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      }), { maxRetries: 1, baseDelayMs: 2000 })
+    );
     if (!res.ok) return null;
 
     const json = await res.json();
