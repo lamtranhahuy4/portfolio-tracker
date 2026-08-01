@@ -45,14 +45,16 @@ async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: Import
     }));
 
     if (mappedData.length > 0) {
-      await db.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({
-        target: [
-          cashLedgerEvents.userId,
-          cashLedgerEvents.date,
-          cashLedgerEvents.description,
-          cashLedgerEvents.amount,
-          cashLedgerEvents.balanceAfter,
-        ],
+      await db.transaction(async (tx) => {
+        await tx.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({
+          target: [
+            cashLedgerEvents.userId,
+            cashLedgerEvents.date,
+            cashLedgerEvents.description,
+            cashLedgerEvents.amount,
+            cashLedgerEvents.balanceAfter,
+          ],
+        });
       });
     }
     revalidatePath('/');

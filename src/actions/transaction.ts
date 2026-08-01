@@ -45,7 +45,9 @@ export const saveTransactionsBatch = withErrorHandler(async function saveTransac
     }));
 
     if (mappedData.length > 0) {
-      await db.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
+      await db.transaction(async (tx) => {
+        await tx.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
+      });
     }
     revalidatePath('/');
 

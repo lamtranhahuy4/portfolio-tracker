@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { z } from 'zod';
 import { ImportParseResult, ImportWarning, NormalizedTransaction } from '@/types/portfolio';
 import {
   buildTransaction,
@@ -8,6 +9,17 @@ import {
   parseViDate,
   resolveColumn,
 } from './BaseParser';
+
+const csvRowSchema = z.object({
+  type: z.enum(['BUY', 'SELL', 'DIVIDEND_CASH', 'DIVIDEND_STOCK', 'DEPOSIT', 'WITHDRAW', 'FEE']),
+  ticker: z.string().min(1, 'Thiếu mã tài sản'),
+  quantity: z.number().positive('Khối lượng phải lớn hơn 0'),
+  price: z.number().positive('Giá giao dịch phải lớn hơn 0'),
+  fee: z.number().min(0, 'Phí giao dịch không được âm'),
+  tax: z.number().min(0, 'Thuế không được âm'),
+  date: z.date({ invalid_type_error: 'Ngày không hợp lệ' }),
+  notes: z.string().optional(),
+});
 
 export async function parseCsv(file: File): Promise<ImportParseResult> {
   return new Promise((resolve, reject) => {
@@ -35,10 +47,26 @@ export async function parseCsv(file: File): Promise<ImportParseResult> {
           const rawTax = resolveColumn(row, ['tax', 'thue']);
           const rawNotes = resolveColumn(row, ['notes', 'ghi chu']);
 
-          const pushWarning = (msg: string) => {
+          const rawTickerStr = String(rawTicker ?? '').trim();
+          const assetClass = type ? getAssetClass(type, rawTickerStr) : undefined;
+          
+          const parsedData = {
+            type,
+            ticker: assetClass === 'CASH' ? 'CASH_VND' : rawTickerStr,
+            quantity: parseNumber(rawQuantity),
+            price: assetClass === 'CASH' ? 1 : parseNumber(rawPrice),
+            fee: Number.isNaN(parseNumber(rawFee)) ? 0 : parseNumber(rawFee),
+            tax: Number.isNaN(parseNumber(rawTax)) ? 0 : parseNumber(rawTax),
+            date: parseViDate(rawDate),
+            notes: rawNotes ? String(rawNotes) : undefined,
+          };
+
+          const validation = csvRowSchema.safeParse(parsedData);
+          if (!validation.success) {
+            const errorMessages = validation.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
             warnings.push({
               row: rowNumber,
-              message: msg,
+              message: `Lỗi dữ liệu: ${errorMessages}`,
               rawType: String(rawType ?? ''),
               rawTicker: String(rawTicker ?? ''),
               rawQuantity: String(rawQuantity ?? ''),
@@ -46,26 +74,19 @@ export async function parseCsv(file: File): Promise<ImportParseResult> {
               rawDate: String(rawDate ?? ''),
             });
             rejectedRows++;
-          };
-
-          if (!type) { pushWarning('Không nhận diện được loại giao dịch.'); return; }
-
-          const rawTickerStr = String(rawTicker ?? '').trim();
-          const assetClass = getAssetClass(type, rawTickerStr);
-          const ticker = assetClass === 'CASH' ? 'CASH_VND' : rawTickerStr;
-          const quantity = parseNumber(rawQuantity);
-          const price = assetClass === 'CASH' ? 1 : parseNumber(rawPrice);
-          const fee = Number.isNaN(parseNumber(rawFee)) ? 0 : parseNumber(rawFee);
-          const tax = Number.isNaN(parseNumber(rawTax)) ? 0 : parseNumber(rawTax);
-          const date = parseViDate(rawDate) ?? new Date();
-
-          if (!ticker) { pushWarning('Thiếu mã tài sản.'); return; }
-          if (Number.isNaN(quantity) || quantity <= 0) { pushWarning('Khối lượng hoặc số tiền không hợp lệ.'); return; }
-          if (Number.isNaN(price) || price <= 0) { pushWarning('Giá giao dịch không hợp lệ.'); return; }
+            return;
+          }
 
           transactions.push(buildTransaction({
-            row: rowNumber, ticker, type, quantity, price, fee, tax, date,
-            notes: rawNotes ? String(rawNotes) : undefined,
+            row: rowNumber,
+            ticker: validation.data.ticker,
+            type: validation.data.type,
+            quantity: validation.data.quantity,
+            price: validation.data.price,
+            fee: validation.data.fee,
+            tax: validation.data.tax,
+            date: validation.data.date,
+            notes: validation.data.notes,
             source: 'csv',
           }));
           acceptedRows++;
