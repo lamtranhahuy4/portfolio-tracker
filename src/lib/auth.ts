@@ -14,9 +14,9 @@ function getAuthSecret(): string {
       throw new Error('[AUTH] CRITICAL: AUTH_SECRET environment variable is not set. This is required for production deployments.');
     }
     console.warn('[AUTH] AUTH_SECRET not set, using fallback for development only');
-    return process.env.DATABASE_URL 
-      ? createHmac('sha256', process.env.DATABASE_URL).update('portfolio-tracker').digest('hex')
-      : 'dev-only-auth-secret-not-for-production';
+    return process.env.NODE_ENV !== 'production'
+      ? 'dev-only-auth-secret-not-for-production'
+      : 'fallback-secret-should-never-be-used-in-prod';
   }
   return secret;
 }
