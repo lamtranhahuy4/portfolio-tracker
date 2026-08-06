@@ -34,16 +34,31 @@ export default function NumberInput({ value, onChange, placeholder, className }:
   const cursorRef = useRef<number | null>(null);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const allowed = e.target.value.replace(/[^0-9.,]/g, '');
-    const normalized = normalizeNumericInput(allowed);
+    const raw = e.target.value.replace(/[^0-9.,]/g, '');
+    
+    // In vi-VN, '.' is thousands, ',' is decimal
+    // 1. Remove thousands separators
+    const noDots = raw.replace(/\./g, '');
+    // 2. Convert decimal separator to JS dot
+    let jsFormat = noDots.replace(/,/g, '.');
+    
+    // Ensure at most one decimal point
+    const parts = jsFormat.split('.');
+    if (parts.length > 2) {
+      jsFormat = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
     const cursor = e.target.selectionStart ?? 0;
+    const rawBeforeCursor = e.target.value.slice(0, cursor).replace(/[^0-9.,]/g, '');
+    const beforeDots = rawBeforeCursor.replace(/\./g, '');
+    let beforeJsFormat = beforeDots.replace(/,/g, '.');
+    const bParts = beforeJsFormat.split('.');
+    if (bParts.length > 2) {
+      beforeJsFormat = bParts[0] + '.' + bParts.slice(1).join('');
+    }
+    cursorRef.current = formatNumber(beforeJsFormat).length;
 
-    const rawBeforeCursor = normalizeNumericInput(
-      e.target.value.slice(0, cursor).replace(/[^0-9.,]/g, '')
-    );
-    cursorRef.current = formatNumber(rawBeforeCursor).length;
-
-    onChange(normalized);
+    onChange(jsFormat);
   }, [onChange]);
 
   useEffect(() => {
