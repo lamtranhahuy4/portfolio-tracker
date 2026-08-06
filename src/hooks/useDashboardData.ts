@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import useSWR from 'swr';
 import { toast } from 'sonner';
-import { withRetry } from '@/lib/retry';
 import { QUOTE_REFRESH_INTERVAL_MS } from '@/lib/constants';
 
 interface UseDashboardDataProps {
@@ -12,6 +12,11 @@ interface UseDashboardDataProps {
   historicalPricesLastUpdated: string | null;
 }
 
+const fetcher = (url: string) => fetch(url).then(r => {
+  if (!r.ok) throw new Error('API Error');
+  return r.json();
+});
+
 export function useDashboardData({
   isMounted,
   liveTickerQuery,
@@ -21,73 +26,26 @@ export function useDashboardData({
   historicalPricesLastUpdated,
 }: UseDashboardDataProps) {
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
-  const [priceFreshness, setPriceFreshness] = useState<'fresh' | 'stale' | 'unknown'>('unknown');
-  const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
-  const [forexSummary, setForexSummary] = useState<{ usdSell: number | null; usdBuyTransfer: number | null } | null>(null);
 
-  useEffect(() => {
-    if (!isMounted || !liveTickerQuery) return;
-
-    let active = true;
-    const refresh = async () => {
-      try {
-        setIsRefreshingPrices(true);
-        const response = await withRetry(
-          () => fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' }),
-          { maxRetries: 2, baseDelayMs: 1000 }
-        );
-        if (!response.ok) return;
-        const data = await response.json() as { quotes?: Array<{ ticker: string; price: number }> };
-        if (!active || !data.quotes) return;
-        data.quotes.forEach((quote) => updatePrice(quote.ticker, quote.price));
-        setLastPriceUpdate(new Date());
-        setPriceFreshness('fresh');
-      } catch (error) {
-        console.error('Failed to fetch quotes:', error);
-        setPriceFreshness('stale');
-      } finally {
-        setIsRefreshingPrices(false);
+  const { 
+    data: quotesData,
+    error: quotesError,
+    isValidating: isRefreshingPrices,
+    mutate: mutateQuotes 
+  } = useSWR<{ quotes: Array<{ ticker: string; price: number }> }>(
+    isMounted && liveTickerQuery ? `/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}` : null,
+    fetcher,
+    {
+      refreshInterval: QUOTE_REFRESH_INTERVAL_MS,
+      revalidateOnFocus: true,
+      onSuccess: (data) => {
+        if (data.quotes) {
+          data.quotes.forEach((quote) => updatePrice(quote.ticker, quote.price));
+          setLastPriceUpdate(new Date());
+        }
       }
-    };
-
-    refresh();
-    const interval = window.setInterval(refresh, QUOTE_REFRESH_INTERVAL_MS);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [isMounted, liveTickerQuery, updatePrice]);
-
-  useEffect(() => {
-    if (!lastPriceUpdate) return;
-    const interval = setInterval(() => {
-      const ageMs = Date.now() - lastPriceUpdate.getTime();
-      const ageMinutes = ageMs / (1000 * 60);
-      if (ageMinutes > 15) {
-        setPriceFreshness('stale');
-      } else {
-        setPriceFreshness('fresh');
-      }
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [lastPriceUpdate]);
-
-  const fetchHistoricalPrices = useCallback(async () => {
-    if (!liveTickerQuery) return;
-    
-    try {
-      const response = await fetch(`/api/historical-prices?tickers=${encodeURIComponent(liveTickerQuery)}`);
-      if (!response.ok) return;
-      const data = await response.json() as { prices: Record<string, Record<string, number>>; lastUpdated: string };
-      if (data.prices) {
-        setHistoricalPrices(data.prices);
-        setHistoricalPricesLastUpdated(data.lastUpdated);
-      }
-    } catch (error) {
-      console.error('Failed to fetch historical prices:', error);
     }
-  }, [liveTickerQuery, setHistoricalPrices, setHistoricalPricesLastUpdated]);
+  );
 
   const shouldUpdateHistoricalPrices = useCallback(() => {
     if (!historicalPricesLastUpdated) return true;
@@ -95,72 +53,52 @@ export function useDashboardData({
     const now = new Date();
     const today15 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0);
     
-    if (now >= today15 && lastUpdate < today15) {
-      return true;
-    }
-    if (now < today15 && lastUpdate < new Date(today15.getTime() - 24 * 60 * 60 * 1000)) {
-      return true;
-    }
+    if (now >= today15 && lastUpdate < today15) return true;
+    if (now < today15 && lastUpdate < new Date(today15.getTime() - 24 * 60 * 60 * 1000)) return true;
     return false;
   }, [historicalPricesLastUpdated]);
 
-  useEffect(() => {
-    if (!isMounted || !liveTickerQuery) return;
-    
-    if (shouldUpdateHistoricalPrices()) {
-      fetchHistoricalPrices();
-    }
-    
-    const checkInterval = setInterval(() => {
-      if (shouldUpdateHistoricalPrices()) {
-        fetchHistoricalPrices();
-      }
-    }, 60 * 60 * 1000);
-    
-    return () => clearInterval(checkInterval);
-  }, [isMounted, liveTickerQuery, fetchHistoricalPrices, shouldUpdateHistoricalPrices]);
+  const needsHistoricalUpdate = isMounted && liveTickerQuery && shouldUpdateHistoricalPrices();
 
-  useEffect(() => {
-    if (!isMounted) return;
-    const fetchForex = async () => {
-      try {
-        const res = await fetch('/api/forex-summary', { cache: 'no-store' });
-        if (res.ok) setForexSummary(await res.json());
-      } catch {}
-    };
-    fetchForex();
-    const interval = setInterval(fetchForex, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [isMounted]);
+  useSWR<{ prices: Record<string, Record<string, number>>; lastUpdated: string }>(
+    needsHistoricalUpdate ? `/api/historical-prices?tickers=${encodeURIComponent(liveTickerQuery)}` : null,
+    fetcher,
+    {
+      refreshInterval: 60 * 60 * 1000,
+      onSuccess: (data) => {
+        if (data.prices) {
+          setHistoricalPrices(data.prices);
+          setHistoricalPricesLastUpdated(data.lastUpdated);
+        }
+      }
+    }
+  );
+
+  const { data: forexSummary } = useSWR<{ usdSell: number | null; usdBuyTransfer: number | null }>(
+    isMounted ? '/api/forex-summary' : null,
+    fetcher,
+    {
+      refreshInterval: 5 * 60 * 1000
+    }
+  );
 
   const handleManualRefresh = async () => {
     if (!liveTickerQuery) return;
-    setIsRefreshingPrices(true);
     try {
-      const response = await withRetry(
-        () => fetch(`/api/quotes?tickers=${encodeURIComponent(liveTickerQuery)}`, { cache: 'no-store' }),
-        { maxRetries: 2, baseDelayMs: 1000 }
-      );
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json() as { quotes?: Array<{ ticker: string; price: number }> };
-      if (!data.quotes) throw new Error('Invalid response');
-      data.quotes.forEach((quote) => updatePrice(quote.ticker, quote.price));
-      setLastPriceUpdate(new Date());
-      setPriceFreshness('fresh');
+      await mutateQuotes();
       toast.success('Đã cập nhật giá thành công');
     } catch {
       toast.error('Không thể cập nhật giá. Vui lòng thử lại.');
-      setPriceFreshness('stale');
-    } finally {
-      setIsRefreshingPrices(false);
     }
   };
+
+  const priceFreshness = quotesError ? 'stale' : (quotesData ? 'fresh' : 'unknown');
 
   return {
     lastPriceUpdate,
     priceFreshness,
     isRefreshingPrices,
-    forexSummary,
+    forexSummary: forexSummary || null,
     handleManualRefresh,
   };
 }

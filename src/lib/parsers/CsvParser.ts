@@ -11,7 +11,7 @@ import {
 } from './BaseParser';
 
 const csvRowSchema = z.object({
-  type: z.enum(['BUY', 'SELL', 'DIVIDEND_CASH', 'DIVIDEND_STOCK', 'DEPOSIT', 'WITHDRAW', 'FEE']),
+  type: z.enum(['BUY', 'SELL', 'DIVIDEND', 'STOCK_DIVIDEND', 'DEPOSIT', 'WITHDRAW', 'INTEREST']),
   ticker: z.string().min(1, 'Thiếu mã tài sản'),
   quantity: z.number().positive('Khối lượng phải lớn hơn 0'),
   price: z.number().positive('Giá giao dịch phải lớn hơn 0'),
