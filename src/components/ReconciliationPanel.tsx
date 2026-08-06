@@ -95,23 +95,34 @@ export default function ReconciliationPanel({ language }: { language: DashboardL
             {t.noInsights}
           </div>
         ) : (
-          breakdown.insights.map((insight) => (
-            <div
-              key={insight.code}
-              className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${
-                insight.level === 'warning'
-                  ? 'border-amber-900/40 bg-amber-950/20 text-amber-100'
-                  : 'border-cyan-900/40 bg-cyan-950/20 text-cyan-100'
-              }`}
-            >
-              {insight.level === 'warning' ? (
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-              ) : (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
-              )}
-              <span>{insight.message}</span>
-            </div>
-          ))
+          breakdown.insights.map((insight) => {
+            let message = insight.message;
+            if (language === 'vi') {
+              if (insight.code === 'negative-holdings') message = `Phát hiện ${breakdown.negativeStockCount} mã bị âm số lượng. Việc thiếu dữ liệu đầu kỳ sẽ làm sai lệch giá vốn và Lợi nhuận.`;
+              else if (insight.code === 'cash-drift') message = `Tiền mặt sổ quỹ và tiền mặt tái tạo lệch nhau ${formatCurrency(breakdown.cashDrift ?? 0)}. Hãy kiểm tra các khoản nạp/rút chưa được ghi nhận.`;
+              else if (insight.code === 'fee-debt') message = `Tổng tài sản (NAV) đang bị trừ đi khoản nợ phí ${formatCurrency(breakdown.feeDebt)}.`;
+              else if (insight.code === 'fallback-prices') message = `Có ${breakdown.fallbackPriceCount} mã đang dùng giá cũ (fallback price) thay vì giá realtime.`;
+              else if (insight.code === 'live-prices') message = `Toàn bộ ${breakdown.positiveStockCount} mã chứng khoán đang được cập nhật giá realtime.`;
+              else if (insight.code === 'opening-snapshot') message = `Snapshot đầu kỳ đang kích hoạt với ${breakdown.openingPositionCount} mã tài sản.`;
+            }
+            return (
+              <div
+                key={insight.code}
+                className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${
+                  insight.level === 'warning'
+                    ? 'border-amber-900/40 bg-amber-950/20 text-amber-100'
+                    : 'border-cyan-900/40 bg-cyan-950/20 text-cyan-100'
+                }`}
+              >
+                {insight.level === 'warning' ? (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                ) : (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                )}
+                <span>{message}</span>
+              </div>
+            );
+          })
         )}
       </div>
     </section>
