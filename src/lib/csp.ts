@@ -6,7 +6,7 @@ export function generateNonce(): string {
 
 export function buildCsp(nonce: string): string {
   return [
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://cdn.vercel-insights.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ""} https://cdn.vercel-insights.com`,
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src 'self' https://fonts.gstatic.com data:`,
     `img-src 'self' data: https:`,
