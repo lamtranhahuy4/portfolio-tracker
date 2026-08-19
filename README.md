@@ -65,12 +65,21 @@ MARKETAUX_API_KEY="your_marketaux_api_key"
 
 # API key cho tin tức từ Polygon
 POLYGON_API_KEY="your_polygon_api_key"
+
+# [NEW] Cấu hình Inngest (cho Background Jobs)
+# Nhận tại: https://app.inngest.com
+INNGEST_EVENT_KEY="local"
+INNGEST_SIGNING_KEY="local"
 ```
 
 ### 4. Khởi tạo Database Schema
-Đẩy cấu trúc bảng (schema) lên PostgreSQL:
+Sử dụng luồng Migration an toàn thay vì push trực tiếp:
 ```bash
-npx drizzle-kit push
+# Tạo các file SQL migration
+npm run db:generate
+
+# Chạy migrate để cập nhật cấu trúc bảng lên PostgreSQL (NeonDB)
+npm run db:migrate
 ```
 
 ### 5. Chạy môi trường Development
