@@ -4,9 +4,13 @@ export const assetTypeEnum = pgEnum('asset_type', ['STOCK', 'ETF', 'MUTUAL_FUND'
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull().default('User'),
   email: varchar('email', { length: 255 }).notNull(),
-  passwordHash: text('password_hash').notNull(),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  image: text('image'),
+  passwordHash: text('password_hash'),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 }, (table) => ({
   emailIdx: uniqueIndex('users_email_idx').on(table.email),
 }));
@@ -249,4 +253,47 @@ export const priceAlerts = pgTable('price_alerts', {
 }, (table) => ({
   userTickerIdx: index('price_alerts_user_ticker_idx').on(table.userId, table.ticker),
   activeIdx: index('price_alerts_active_idx').on(table.isActive),
+}));
+
+// --- Better Auth Schema ---
+export const authSessions = pgTable("auth_sessions", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+}, (table) => ({
+  userIdx: index("auth_session_userId_idx").on(table.userId),
+}));
+
+export const accounts = pgTable("accounts", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  accountId: varchar("account_id", { length: 255 }).notNull(),
+  providerId: varchar("provider_id", { length: 255 }).notNull(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("account_userId_idx").on(table.userId),
+}));
+
+export const verifications = pgTable("verifications", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  identifier: varchar("identifier", { length: 255 }).notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  identifierIdx: index("verification_identifier_idx").on(table.identifier),
 }));

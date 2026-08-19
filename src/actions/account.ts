@@ -85,11 +85,11 @@ export async function changePasswordAction(currentPassword: string, newPassword:
 
   const [dbUser] = await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, user.id));
 
-  if (!dbUser || !verifyPassword(currentPassword, dbUser.passwordHash)) {
+  if (!dbUser || !dbUser.passwordHash || !verifyPassword(currentPassword, dbUser.passwordHash)) {
     throw new Error('Mật khẩu hiện tại không đúng.');
   }
 
-  if (verifyPassword(newPassword, dbUser.passwordHash)) {
+  if (dbUser.passwordHash && verifyPassword(newPassword, dbUser.passwordHash)) {
     throw new Error('Mật khẩu mới không được trùng với mật khẩu cũ.');
   }
 

@@ -125,6 +125,11 @@ export async function signInAction(_prevState: ActionState, formData: FormData):
       return { error: 'Email hoặc mật khẩu không đúng.' };
     }
     
+    if (!user.passwordHash) {
+      await authRateLimiter.recordAttempt(normalizedEmail, false, ipAddress);
+      throw new Error('Tài khoản này được đăng nhập bằng Google/Github. Vui lòng đăng nhập qua đó.');
+    }
+    
     const passwordValid = verifyPassword(password, user.passwordHash);
     
     if (!passwordValid) {
