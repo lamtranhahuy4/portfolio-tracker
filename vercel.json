@@ -1,14 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/update-prices",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/forex-snapshot",
-      "schedule": "0 7 * * *"
-    }
-  ],
   "regions": ["sin1"],
   "redirects": [
     {

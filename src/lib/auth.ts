@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { auth } from '@/lib/better-auth';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { sessions, users } from '@/db/schema';
@@ -184,20 +185,35 @@ export async function getCurrentUser() {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-    if (!token) return null;
-
-    const session = await validateDbSession(token);
-    if (session) {
-      const [user] = await db
-        .select({
-          id: users.id,
-          email: users.email,
-        })
-        .from(users)
-        .where(eq(users.id, session.userId))
-        .limit(1);
-      return user ?? null;
+    // 1. Try Custom Session First
+    if (token) {
+      const session = await validateDbSession(token);
+      if (session) {
+        const [user] = await db
+          .select({
+            id: users.id,
+            email: users.email,
+          })
+          .from(users)
+          .where(eq(users.id, session.userId))
+          .limit(1);
+        if (user) return user;
+      }
     }
+
+    // 2. Try Better-Auth Session
+    const reqHeaders = await headers();
+    const betterAuthSession = await auth.api.getSession({
+      headers: reqHeaders,
+    });
+    
+    if (betterAuthSession?.user) {
+      return {
+        id: betterAuthSession.user.id,
+        email: betterAuthSession.user.email,
+      };
+    }
+
     return null;
   } catch (error) {
     console.error('[AUTH] Error in getCurrentUser:', error);
