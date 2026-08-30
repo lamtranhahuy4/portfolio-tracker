@@ -48,9 +48,12 @@ deployment-trigger.txt
 # repomix output
 repomix-output.xml
 
-# local reports & plans (not committed)
+# local reports, plans & internal summaries (not committed)
 REPORT.md
-ActionPlan_20260531.md
+ActionPlan_*.md
+COMPLETION_SUMMARY_*.md
+DEPLOYMENT_*.md
+EXECUTIVE_SUMMARY.md
 
 # lock files from other package managers (project uses pnpm exclusively)
 yarn.lock
