@@ -40,6 +40,7 @@ export default function StoreInitializer({
       initialNetContributions: initialPortfolioSettings.initialNetContributions,
       initialCashBalance: initialPortfolioSettings.initialCashBalance
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return null;

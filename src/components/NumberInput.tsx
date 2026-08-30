@@ -18,16 +18,6 @@ function formatNumber(raw: string): string {
   return fmt.format(num);
 }
 
-/**
- * Normalize user input: keep digits and at most one decimal separator,
- * converting both `.` and `,` to `.`.
- */
-function normalizeNumericInput(raw: string): string {
-  const withDot = raw.replace(/,/g, '.');
-  const parts = withDot.split('.');
-  if (parts.length <= 2) return withDot;
-  return parts[0] + '.' + parts.slice(1).join('');
-}
 
 export default function NumberInput({ value, onChange, placeholder, className }: NumberInputProps) {
   const ref = useRef<HTMLInputElement>(null);

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { act } from 'react-dom/test-utils';
+import { act } from 'react';
 import { usePortfolioStore } from '../usePortfolioStore';
 import { Transaction, CashLedgerEvent } from '@/types/portfolio';
 import { toMoney, toQuantity, toPrice } from '@/domain/portfolio/primitives';

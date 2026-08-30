@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 interface PriceUpdate {
@@ -79,7 +79,12 @@ export function useRealtimePrices(
     };
   }, [tickers, enabled, updatePrice, onPriceUpdate]);
 
-  connectRef.current = connect;
+  // Sync connectRef to the latest connect callback after every render.
+  // useLayoutEffect runs synchronously after DOM mutations, before paint —
+  // safe to write refs here without violating React render-purity rules.
+  useLayoutEffect(() => {
+    connectRef.current = connect;
+  });
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -94,15 +99,17 @@ export function useRealtimePrices(
     connect();
   }, [connect, disconnect]);
 
+  const tickersKey = tickers.join(',');
+
   useEffect(() => {
-    if (enabled && tickers.length > 0) {
+    if (enabled && tickersKey.length > 0) {
       connect();
     }
 
     return () => {
       disconnect();
     };
-  }, [tickers.join(','), enabled, connect, disconnect]);
+  }, [tickersKey, enabled, connect, disconnect]);
 
   return {
     isConnected,

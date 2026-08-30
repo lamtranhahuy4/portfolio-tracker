@@ -1,8 +1,9 @@
 /**
  * Memoization utilities for pure selectors and expensive computations.
  *
- * These are infrastructure-only helpers.  They are NOT wired into
- * `usePortfolioMetrics` yet — that belongs to a later refactoring step.
+ * These helpers are used by the Zustand store's `usePortfolioMetrics` selector
+ * via `memoizedCalculateMetrics` (see usePortfolioStore.ts) to avoid
+ * recomputing heavy PnL calculations on every price-update re-render.
  *
  * Usage patterns supported:
  *  - `createMemoizedSelector` — reference-equality cache with pluggable equality fn

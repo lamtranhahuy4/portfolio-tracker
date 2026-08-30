@@ -16,6 +16,10 @@ vi.mock('react', async (importOriginal) => {
       const cleanup = f();
       if (cleanup) cleanupFns.push(cleanup);
     }) as typeof actual.useEffect,
+    useLayoutEffect: ((f: () => void | (() => void), _deps: any[]) => {
+      const cleanup = f();
+      if (cleanup) cleanupFns.push(cleanup);
+    }) as typeof actual.useLayoutEffect,
     useState: vi.fn((init: any) => {
       const value = typeof init === 'function' ? init() : init;
       return [value, vi.fn()] as [any, any];

@@ -112,7 +112,7 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
     } finally {
       setIsLoading(false);
     }
-  }, [stockTickers, isLoading]);
+  }, [stockTickers, isLoading, t.failed, t.timeout, t.unavailable]);
 
   useEffect(() => {
     if (hasFetchedOnLoadRef.current) return;

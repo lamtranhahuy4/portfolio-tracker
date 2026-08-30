@@ -237,13 +237,6 @@ export async function requireUser() {
   return user;
 }
 
-export function getClientInfo() {
-  return {
-    userAgent: 'Unknown',
-    ipAddress: 'Unknown',
-  };
-}
-
 export class CsrfError extends Error {
   constructor(message = 'CSRF validation failed') {
     super(message);

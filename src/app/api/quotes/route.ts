@@ -2,10 +2,17 @@ import { NextResponse } from 'next/server';
 import { getCachedPrices, cachePrice, getFreshnessStats } from '@/lib/priceService';
 import { getRealtimeQuotes } from '@/lib/marketData';
 import { addRateLimitHeaders, checkRateLimit, getRateLimitKey } from '@/lib/apiRateLimiter';
+import { getCurrentUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  // Auth guard — must be logged in to trigger any live price fetch
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const rateLimitKey = getRateLimitKey(request);
   const rateLimit = checkRateLimit(rateLimitKey, { maxRequests: 60, windowMs: 60000 });
   

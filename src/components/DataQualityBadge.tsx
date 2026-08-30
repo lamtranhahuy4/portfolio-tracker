@@ -62,7 +62,7 @@ export default function DataQualityBadge({
           border: 'border-slate-500/30',
         };
     }
-  }, [type]);
+  }, [type, language]);
 
   const Icon = config.icon;
   const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4';

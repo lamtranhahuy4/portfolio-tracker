@@ -32,15 +32,22 @@ function validateCredentials(email: string, password: string) {
 
 async function getClientIP(): Promise<string> {
   const headersList = await headers();
-  const forwarded = headersList.get('x-forwarded-for');
+
+  // x-vercel-forwarded-for is set by Vercel's edge network and cannot be
+  // spoofed by clients — prefer it when running on Vercel.
+  const vercelIP = headersList.get('x-vercel-forwarded-for');
+  if (vercelIP) return vercelIP.split(',')[0].trim();
+
+  // x-real-ip is set by trusted reverse proxies (nginx, Cloudflare, etc.)
   const realIP = headersList.get('x-real-ip');
+  if (realIP) return realIP;
 
+  // Last resort: take the LAST entry of x-forwarded-for (the most recent
+  // trusted proxy hop), not the first (which a client can freely spoof).
+  const forwarded = headersList.get('x-forwarded-for');
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-
-  if (realIP) {
-    return realIP;
+    const parts = forwarded.split(',');
+    return parts[parts.length - 1].trim();
   }
 
   return '127.0.0.1';

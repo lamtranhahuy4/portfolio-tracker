@@ -39,6 +39,10 @@ vi.mock('@/lib/marketData', () => ({
   getRealtimeQuotes: mockGetRealtimeQuotes,
 }));
 
+vi.mock('@/lib/auth', () => ({
+  getCurrentUser: vitest.fn().mockResolvedValue({ id: 'test-user', email: 'test@example.com' }),
+}));
+
 vi.mock('@/lib/logger', () => ({
   logger: {
     info: vitest.fn(),
