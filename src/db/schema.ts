@@ -1,6 +1,4 @@
-import { boolean, index, integer, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-
-export const assetTypeEnum = pgEnum('asset_type', ['STOCK', 'ETF', 'MUTUAL_FUND', 'CASH']);
+import { boolean, index, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -38,7 +36,6 @@ export const transactions = pgTable('transactions', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   batchId: uuid('batch_id').references(() => importBatches.id, { onDelete: 'set null' }),
   assetClass: varchar('asset_class', { length: 20 }).default('STOCK').notNull(),
-  assetType: assetTypeEnum('asset_type').default('STOCK').notNull(),
   asset: varchar('asset', { length: 32 }).notNull(),
   type: varchar('type', { length: 32 }).notNull(),
   amount: numeric('amount', { precision: 18, scale: 4 }).notNull(),
@@ -147,7 +144,6 @@ export const marketPrices = pgTable('market_prices', {
   id: uuid('id').defaultRandom().primaryKey(),
   ticker: varchar('ticker', { length: 32 }).notNull(),
   assetClass: varchar('asset_class', { length: 20 }).notNull().default('STOCK'),
-  assetType: assetTypeEnum('asset_type').default('STOCK').notNull(),
   price: numeric('price', { precision: 18, scale: 6 }).notNull(),
   currency: varchar('currency', { length: 10 }).notNull().default('VND'),
   source: varchar('source', { length: 50 }),
@@ -165,7 +161,6 @@ export const priceHistory = pgTable('price_history', {
   id: uuid('id').defaultRandom().primaryKey(),
   ticker: varchar('ticker', { length: 32 }).notNull(),
   assetClass: varchar('asset_class', { length: 20 }).notNull(),
-  assetType: assetTypeEnum('asset_type').default('STOCK').notNull(),
   price: numeric('price', { precision: 18, scale: 6 }).notNull(),
   currency: varchar('currency', { length: 10 }).notNull().default('VND'),
   source: varchar('source', { length: 50 }),

@@ -15,6 +15,13 @@
       "when": 1787125417292,
       "tag": "0001_nappy_living_mummy",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1756518000000,
+      "tag": "0002_drop_asset_type_enum",
+      "breakpoints": true
     }
   ]
 }
