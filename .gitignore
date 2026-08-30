@@ -51,3 +51,7 @@ repomix-output.xml
 # local reports & plans (not committed)
 REPORT.md
 ActionPlan_20260531.md
+
+# lock files from other package managers (project uses pnpm exclusively)
+yarn.lock
+package-lock.json
