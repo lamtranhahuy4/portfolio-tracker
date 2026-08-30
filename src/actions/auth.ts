@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { auth } from '@/lib/better-auth';
 import { revalidatePath } from 'next/cache';
 import { eq, and, gt, isNull } from 'drizzle-orm';
 import { createHash, randomBytes } from 'crypto';
@@ -156,7 +157,12 @@ export async function signInAction(_prevState: ActionState, formData: FormData):
 }
 
 export async function signOutAction() {
-  await clearSession();
+  // Invalidate cả custom session lẫn Better-Auth session (OAuth) cùng lúc.
+  // Dùng allSettled để nếu một bên không có session thì bên kia vẫn được xóa.
+  await Promise.allSettled([
+    clearSession(),
+    auth.api.signOut({ headers: await headers() }),
+  ]);
   revalidatePath('/');
 }
 
@@ -164,8 +170,14 @@ export async function signOutAllDevicesAction() {
   const { requireUser } = await import('@/lib/auth');
   const user = await requireUser();
 
+  // Xóa tất cả custom sessions trong DB
   const invalidatedCount = await invalidateAllSessionsForUser(user.id);
-  await clearSession();
+
+  // Xóa cookie custom session và Better-Auth session đồng thời
+  await Promise.allSettled([
+    clearSession(),
+    auth.api.signOut({ headers: await headers() }),
+  ]);
 
   revalidatePath('/');
 
@@ -181,6 +193,7 @@ export async function signOutDeviceAction(sessionId: string) {
 
   return { success: true };
 }
+
 
 export async function getLoginHistoryAction() {
   const { requireUser } = await import('@/lib/auth');
