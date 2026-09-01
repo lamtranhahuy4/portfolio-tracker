@@ -1,8 +1,8 @@
-import { and, asc, between, eq, lte } from 'drizzle-orm';
+import { and, asc, between, eq, gte } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { forexRatesHistory } from '@/db/schema';
 import { getGoldPrices, GoldPriceItem } from '@/lib/goldPriceService';
-import { marketDataCircuitBreaker } from '@/lib/circuitBreaker';
+import { vietcombankCircuitBreaker, frankfurterCircuitBreaker } from '@/lib/circuitBreaker';
 import { withRetry } from '@/lib/retry';
 
 const VIETCOMBANK_URL = 'https://portal.vietcombank.com.vn/UserControls/TVPortal.TyGia/pXML.aspx';
@@ -58,7 +58,7 @@ function parseVcbValue(val: string | undefined): number | null {
 
 async function fetchVietcombankRates(): Promise<VcbRate[]> {
   try {
-    const res = await marketDataCircuitBreaker.execute(() =>
+    const res = await vietcombankCircuitBreaker.execute(() =>
       withRetry(() => fetch(VIETCOMBANK_URL, {
         cache: 'no-store',
         headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -102,7 +102,7 @@ async function fetchVietcombankRates(): Promise<VcbRate[]> {
 
 async function fetchFrankfurterRates(): Promise<{ rates: Record<string, number>; date: string } | null> {
   try {
-    const res = await marketDataCircuitBreaker.execute(() =>
+    const res = await frankfurterCircuitBreaker.execute(() =>
       withRetry(() => fetch(FRANKFURTER_LATEST_URL, {
         cache: 'no-store',
         redirect: 'follow',
@@ -189,7 +189,7 @@ export async function snapshotDailyRates(): Promise<void> {
         and(
           eq(forexRatesHistory.targetCurrency, rate.code),
           eq(forexRatesHistory.baseCurrency, 'VND'),
-          lte(forexRatesHistory.recordedAt, todayStart),
+          gte(forexRatesHistory.recordedAt, todayStart),
         )
       )
       .limit(1);

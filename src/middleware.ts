@@ -35,7 +35,7 @@ function handleCors(request: NextRequest): NextResponse | null {
   return null;
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (isStaticAsset(pathname)) return NextResponse.next();
 

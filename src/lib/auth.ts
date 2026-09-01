@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { cookies, headers } from 'next/headers';
 import { auth } from '@/lib/better-auth';
@@ -180,7 +181,7 @@ export async function clearDbSession(sessionId?: string) {
   (await cookies()).delete(SESSION_COOKIE);
 }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
@@ -219,7 +220,7 @@ export async function getCurrentUser() {
     console.error('[AUTH] Error in getCurrentUser:', error);
     return null;
   }
-}
+});
 
 export class UnauthorizedError extends Error {
   constructor(message = 'Unauthorized') {

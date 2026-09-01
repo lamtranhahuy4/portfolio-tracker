@@ -129,8 +129,38 @@ export const quotesCircuitBreaker = new CircuitBreaker({
   timeout: 60000, // 1 minute
 });
 
-export const marketDataCircuitBreaker = new CircuitBreaker({
+export const dnseCircuitBreaker = new CircuitBreaker({
   failureThreshold: 5,
   successThreshold: 2,
-  timeout: 30000, // 30 seconds
+  timeout: 30000,
+});
+
+export const yahooCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 3,
+  successThreshold: 1,
+  timeout: 60000,
+});
+
+export const coinGeckoCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 3,
+  successThreshold: 1,
+  timeout: 60000,
+});
+
+export const vangTodayCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  successThreshold: 2,
+  timeout: 30000,
+});
+
+export const vietcombankCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  successThreshold: 2,
+  timeout: 30000,
+});
+
+export const frankfurterCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  successThreshold: 2,
+  timeout: 30000,
 });

@@ -45,7 +45,10 @@ export const transactions = pgTable('transactions', {
   notes: text('notes'),
   source: varchar('source', { length: 32 }),
   date: timestamp('date', { mode: 'date' }).notNull(),
-});
+}, (table) => ({
+  userDateIdx: index('transactions_user_date_idx').on(table.userId, table.date),
+  userAssetIdx: index('transactions_user_asset_idx').on(table.userId, table.asset),
+}));
 
 export const cashLedgerEvents = pgTable('cash_ledger_events', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -164,9 +164,7 @@ function applyTransaction(state: ReplayState, tx: Transaction, _ledgerMode: bool
         const lot = lots[0];
         const consumed = decimalMin(remainingQtyToClear, lot.remainingQty);
         
-        const lotTotalCost = consumed.times(lot.unitCostNet)
-          .plus(consumed.times(lot.unitCostFee))
-          .plus(consumed.times(lot.unitCostTax));
+        const lotTotalCost = consumed.times(lot.unitCostNet);
         
         fifoCostBasis = fifoCostBasis.plus(lotTotalCost);
         

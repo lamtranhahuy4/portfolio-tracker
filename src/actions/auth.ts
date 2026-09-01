@@ -195,9 +195,15 @@ export async function signOutAllDevicesAction() {
 }
 
 export async function signOutDeviceAction(sessionId: string) {
-  await invalidateSession(sessionId);
-  revalidatePath('/account');
+  const { requireUser } = await import('@/lib/auth');
+  const user = await requireUser();
+  const { sessions } = await import('@/db/schema');
 
+  await db.delete(sessions).where(
+    and(eq(sessions.id, sessionId), eq(sessions.userId, user.id))
+  );
+
+  revalidatePath('/account');
   return { success: true };
 }
 

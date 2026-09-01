@@ -39,6 +39,15 @@ export async function GET(request: Request) {
   }
 
   const tickers = tickersParam.split(',').map(t => t.trim()).filter(Boolean);
+  
+  if (tickers.length > 50) {
+    const response = NextResponse.json(
+      { error: 'Quá nhiều mã chứng khoán. Tối đa 50 mã mỗi request.' },
+      { status: 400 }
+    );
+    addRateLimitHeaders(response, rateLimit.remaining, rateLimit.resetTime);
+    return response;
+  }
 
   try {
     if (forceRefresh) {

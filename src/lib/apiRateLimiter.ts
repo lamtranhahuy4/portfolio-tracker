@@ -18,7 +18,7 @@ const DEFAULT_CONFIG: RateLimitConfig = {
 };
 
 export function getRateLimitKey(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for');
+  const forwarded = request.headers.get('x-vercel-forwarded-for') || request.headers.get('x-forwarded-for');
   const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
   const url = new URL(request.url).pathname;
   return `${ip}:${url}`;

@@ -14,7 +14,7 @@ export type TrendingAssetCard = {
   up: boolean;
 };
 
-import { marketDataCircuitBreaker } from '@/lib/circuitBreaker';
+import { dnseCircuitBreaker, yahooCircuitBreaker, coinGeckoCircuitBreaker, vangTodayCircuitBreaker } from '@/lib/circuitBreaker';
 import { withRetry } from '@/lib/retry';
 
 type DnseSeriesResponse = {
@@ -39,7 +39,7 @@ async function fetchDnseSeries(
   const url = `${DNSE_BASE_URL}/${type}?resolution=${resolution}&symbol=${symbol}&from=${from}&to=${to}`;
 
   try {
-    const res = await marketDataCircuitBreaker.execute(() =>
+    const res = await dnseCircuitBreaker.execute(() =>
       withRetry(() => fetch(url, {
         cache: 'no-store',
         headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -98,7 +98,7 @@ async function fetchDnseSeriesWithDates(
   const url = `${DNSE_BASE_URL}/${type}?resolution=1D&symbol=${symbol}&from=${from}&to=${to}`;
 
   try {
-    const res = await marketDataCircuitBreaker.execute(() =>
+    const res = await dnseCircuitBreaker.execute(() =>
       withRetry(() => fetch(url, {
         cache: 'no-store',
         headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -179,7 +179,7 @@ export async function getHistoricalPrices(symbols: string[]): Promise<Record<str
 
 async function fetchYahooFinanceVnindex(): Promise<{ price: number; change: number; percent: number } | null> {
   try {
-    const res = await marketDataCircuitBreaker.execute(() =>
+    const res = await yahooCircuitBreaker.execute(() =>
       withRetry(() => fetch(
         'https://query2.finance.yahoo.com/v8/finance/chart/%5EVNINDEX.VN?interval=1d&range=5d',
         {
@@ -214,7 +214,7 @@ async function fetchYahooFinanceVnindex(): Promise<{ price: number; change: numb
 
 async function fetchCoinGecko() {
   try {
-    const res = await marketDataCircuitBreaker.execute(() =>
+    const res = await coinGeckoCircuitBreaker.execute(() =>
       withRetry(() => fetch(
         'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true',
         { cache: 'no-store' }
@@ -306,7 +306,7 @@ type VangTodayResponse = {
 
 async function fetchGoldPrice(): Promise<{ price: string; change: string; percent: string; up: boolean } | null> {
   try {
-    const res = await marketDataCircuitBreaker.execute(() =>
+    const res = await vangTodayCircuitBreaker.execute(() =>
       withRetry(() => fetch('https://vang.today/api/prices?type=SJL1L10', { 
         cache: 'no-store',
         headers: { 'User-Agent': 'Mozilla/5.0' }

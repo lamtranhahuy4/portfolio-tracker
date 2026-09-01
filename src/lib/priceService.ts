@@ -166,36 +166,27 @@ export async function cachePrice(
   const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
   const now = new Date();
 
-  const [existing] = await db
-    .select({ id: marketPrices.id })
-    .from(marketPrices)
-    .where(eq(marketPrices.ticker, ticker.toUpperCase()))
-    .limit(1);
-
-  if (existing) {
-    await db
-      .update(marketPrices)
-      .set({
-        price: price.toString(),
-        assetClass,
-        currency,
-        source: source ?? null,
-        fetchedAt: now,
-        expiresAt,
-        isManualOverride: false,
-      })
-      .where(eq(marketPrices.id, existing.id));
-  } else {
-    await db.insert(marketPrices).values({
-      ticker: ticker.toUpperCase(),
-      assetClass,
+  await db.insert(marketPrices).values({
+    ticker: ticker.toUpperCase(),
+    assetClass,
+    price: price.toString(),
+    currency,
+    source: source ?? null,
+    fetchedAt: now,
+    expiresAt,
+    isManualOverride: false,
+  }).onConflictDoUpdate({
+    target: marketPrices.ticker,
+    set: {
       price: price.toString(),
+      assetClass,
       currency,
       source: source ?? null,
       fetchedAt: now,
       expiresAt,
-    });
-  }
+      isManualOverride: false,
+    }
+  });
 
   await db.insert(priceHistory).values({
     ticker: ticker.toUpperCase(),
@@ -231,35 +222,25 @@ export async function setManualPrice(
   const ttlMinutes = getTTLForAssetClass(assetClass) * 24;
   const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
-  const [existing] = await db
-    .select({ id: marketPrices.id })
-    .from(marketPrices)
-    .where(eq(marketPrices.ticker, ticker.toUpperCase()))
-    .limit(1);
-
-  if (existing) {
-    await db
-      .update(marketPrices)
-      .set({
-        price: price.toString(),
-        assetClass,
-        currency,
-        fetchedAt: now,
-        expiresAt,
-        isManualOverride: true,
-      })
-      .where(eq(marketPrices.id, existing.id));
-  } else {
-    await db.insert(marketPrices).values({
-      ticker: ticker.toUpperCase(),
-      assetClass,
+  await db.insert(marketPrices).values({
+    ticker: ticker.toUpperCase(),
+    assetClass,
+    price: price.toString(),
+    currency,
+    fetchedAt: now,
+    expiresAt,
+    isManualOverride: true,
+  }).onConflictDoUpdate({
+    target: marketPrices.ticker,
+    set: {
       price: price.toString(),
+      assetClass,
       currency,
       fetchedAt: now,
       expiresAt,
       isManualOverride: true,
-    });
-  }
+    }
+  });
 
   await db.insert(priceHistory).values({
     ticker: ticker.toUpperCase(),
