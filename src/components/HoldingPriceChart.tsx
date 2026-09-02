@@ -18,6 +18,7 @@ interface PricePoint {
 }
 
 interface HoldingPriceChartProps {
+  historicalData?: PricePoint[];
   ticker: string;
   initialPrice: number;
   language: DashboardLanguage;
@@ -41,12 +42,19 @@ export default function HoldingPriceChart({
   ticker, 
   initialPrice, 
   language,
-  height = 120 
+  height = 120,
+  historicalData,
 }: HoldingPriceChartProps) {
   const t = copy[language];
-  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([
-    { time: new Date().toLocaleTimeString(), price: initialPrice }
-  ]);
+  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
+
+  useEffect(() => {
+    if (historicalData && historicalData.length > 0) {
+      setPriceHistory(historicalData);
+    } else if (initialPrice > 0) {
+      setPriceHistory([{ time: new Date().toLocaleTimeString(), price: initialPrice }]);
+    }
+  }, [historicalData]);
 
   useEffect(() => {
     setPriceHistory(prev => {
@@ -137,6 +145,18 @@ export function HoldingsRealtimeCharts({
   initialPrices, 
   language 
 }: HoldingsRealtimeChartProps) {
+  const [historyData, setHistoryData] = useState<Record<string, PricePoint[]>>({});
+
+  useEffect(() => {
+    if (tickers.length === 0) return;
+    fetch(`/api/history/prices?tickers=${tickers.join(',')}`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.data) setHistoryData(json.data);
+      })
+      .catch(console.error);
+  }, [tickers.join(',')]);
+
   if (tickers.length === 0 || Object.keys(initialPrices).length === 0) {
     return null;
   }
@@ -152,6 +172,7 @@ export function HoldingsRealtimeCharts({
             ticker={ticker}
             initialPrice={initialPrices[ticker] || 0}
             language={language}
+            historicalData={historyData[ticker]}
           />
         </div>
       ))}
