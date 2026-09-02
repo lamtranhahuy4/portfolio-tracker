@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "transactions_dedup_idx" ON "transactions" ("user_id","date","asset","type","amount","price");

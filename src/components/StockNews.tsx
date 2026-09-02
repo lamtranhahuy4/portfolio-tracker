@@ -60,7 +60,7 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const hasFetchedOnLoadRef = useRef(false);
+  const hasFetchedOnLoadRef = useRef<string | null>(null);
 
   const stockTickers = metrics.holdings
     .filter((h) => h.assetClass === 'STOCK' && h.totalShares > 0)
@@ -115,11 +115,12 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
   }, [stockTickers, isLoading, t.failed, t.timeout, t.unavailable]);
 
   useEffect(() => {
-    if (hasFetchedOnLoadRef.current) return;
+    const currentTickersHash = stockTickers.join(',');
+    if (hasFetchedOnLoadRef.current === currentTickersHash) return;
     if (stockTickers.length === 0) return;
-    hasFetchedOnLoadRef.current = true;
+    hasFetchedOnLoadRef.current = currentTickersHash;
     fetchNews();
-  }, [fetchNews, stockTickers.length]);
+  }, [fetchNews, stockTickers.join(',')]);
 
   useEffect(() => {
     return () => {

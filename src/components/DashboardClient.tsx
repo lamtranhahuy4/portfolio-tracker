@@ -32,8 +32,10 @@ import { downloadCsv } from '@/lib/exportCsv';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
-import { QUOTE_REFRESH_INTERVAL_MS } from '@/lib/constants';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useHoldingsRealtimePrices } from '@/lib/useRealtimePrices';
+import { QUOTE_REFRESH_INTERVAL_MS } from '@/lib/constants';
+
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
   currency: 'VND',
@@ -53,9 +55,13 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const transactions = usePortfolioStore((state) => state.transactions);
   const globalCutoffDate = usePortfolioStore((state) => state.globalCutoffDate);
   const updatePrice = usePortfolioStore((state) => state.updatePrice);
+  const updatePricesBatch = usePortfolioStore((state) => state.updatePricesBatch);
   const setHistoricalPrices = usePortfolioStore((state) => state.setHistoricalPrices);
   const setHistoricalPricesLastUpdated = usePortfolioStore((state) => state.setHistoricalPricesLastUpdated);
   const historicalPricesLastUpdated = usePortfolioStore((state) => state.historicalPricesLastUpdated);
+
+  useHoldingsRealtimePrices(isMounted);
+
   const valuationDate = usePortfolioStore((state) => state.valuationDate);
   const setValuationDate = usePortfolioStore((state) => state.setValuationDate);
   const cashEvents = usePortfolioStore((state) => state.cashEvents);
@@ -94,6 +100,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     isMounted,
     liveTickerQuery,
     updatePrice,
+    updatePricesBatch,
     setHistoricalPrices,
     setHistoricalPricesLastUpdated,
     historicalPricesLastUpdated,
@@ -492,7 +499,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   );
 }
 
-function StatCard({ title, value, valueColor, icon, subValue, tooltip }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; subValue?: React.ReactNode; tooltip?: string; }) {
+const StatCard = React.memo(function StatCard({ title, value, valueColor, icon, subValue, tooltip }: { title: string; value: string | number; valueColor?: string; icon: React.ReactNode; subValue?: React.ReactNode; tooltip?: string; }) {
   return (
     <div className="group relative z-0 overflow-visible rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl shadow-black/20 backdrop-blur-sm flex flex-col justify-between group-hover:z-20 group-focus-within:z-20">
       <div>
@@ -511,4 +518,4 @@ function StatCard({ title, value, valueColor, icon, subValue, tooltip }: { title
       </div>
     </div>
   );
-}
+});

@@ -1,6 +1,7 @@
 import { inngest } from "./client";
 import { db } from "@/db";
-import { marketPrices } from "@/db/schema";
+import { marketPrices, transactions, openingPositions } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { getRealtimeQuotes } from "@/lib/marketData";
 import { cachePrice } from "@/lib/priceService";
 import { snapshotDailyRates } from "@/lib/foreignExchangeService";
@@ -13,8 +14,9 @@ export const updatePricesCron = inngest.createFunction(
   async ({ step }) => {
     // Bước 1: Lấy danh sách ticker từ database
     const uniqueTickers = await step.run("fetch-unique-tickers", async () => {
-      const existingPrices = await db.select({ ticker: marketPrices.ticker }).from(marketPrices);
-      return [...new Set(existingPrices.map(p => p.ticker))];
+      const existingTxs = await db.select({ asset: transactions.asset }).from(transactions).where(eq(transactions.type, 'BUY'));
+      const existingPos = await db.select({ asset: openingPositions.asset }).from(openingPositions);
+      return [...new Set([...existingTxs.map(t => t.asset), ...existingPos.map(p => p.asset)])];
     });
 
     if (uniqueTickers.length === 0) {
@@ -63,5 +65,22 @@ export const forexSnapshotCron = inngest.createFunction(
       await snapshotDailyRates();
     });
     return { success: true, message: "Forex daily snapshot recorded." };
+  }
+);
+
+export const cleanupPricesCron = inngest.createFunction(
+  {
+    id: "cleanup-prices-cron",
+    triggers: [{ cron: "TZ=Asia/Ho_Chi_Minh 0 3 * * *" }] // 3h sáng
+  },
+  async ({ step }) => {
+    await step.run("cleanup-old-prices", async () => {
+      const { sql } = await import("drizzle-orm");
+      const { priceHistory } = await import("@/db/schema");
+      
+      await db.delete(priceHistory)
+        .where(sql`${priceHistory.recordedAt} < NOW() - INTERVAL '90 days'`);
+    });
+    return { success: true, message: "Old price history cleaned up." };
   }
 );

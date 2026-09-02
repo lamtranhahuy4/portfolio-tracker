@@ -1,4 +1,6 @@
 import { boolean, index, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -28,7 +30,10 @@ export const importBatches = pgTable('import_batches', {
   rolledBackAt: timestamp('rolled_back_at', { mode: 'date' }),
 }, (table) => ({
   userImportedAtIdx: index('import_batches_user_imported_at_idx').on(table.userId, table.importedAt),
-  checksumIdx: index('import_batches_checksum_idx').on(table.userId, table.fileChecksum, table.importKind),
+  // Enforce unique active checksums per user and importKind at the database engine level
+  activeChecksumUniqueIdx: uniqueIndex('import_batches_active_checksum_unique_idx')
+    .on(table.userId, table.fileChecksum, table.importKind)
+    .where(sql`${table.rolledBackAt} IS NULL`),
 }));
 
 export const transactions = pgTable('transactions', {
@@ -48,6 +53,7 @@ export const transactions = pgTable('transactions', {
 }, (table) => ({
   userDateIdx: index('transactions_user_date_idx').on(table.userId, table.date),
   userAssetIdx: index('transactions_user_asset_idx').on(table.userId, table.asset),
+  dedupIdx: uniqueIndex('transactions_dedup_idx').on(table.userId, table.date, table.asset, table.type, table.amount, table.price),
 }));
 
 export const cashLedgerEvents = pgTable('cash_ledger_events', {

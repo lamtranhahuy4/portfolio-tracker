@@ -1,7 +1,7 @@
 'use server';
 
 import Decimal from 'decimal.js';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { createImportBatch } from '@/actions/importBatch';
 import { db } from '@/db/index';
@@ -24,48 +24,100 @@ function toLegacyImportInput(data: NormalizedTransaction[]): ImportBatchInput {
   };
 }
 
-export const saveTransactionsBatch = withErrorHandler(async function saveTransactionsBatch(data: NormalizedTransaction[], importInput?: ImportBatchInput) {
+import { AppError } from '@/lib/errorHandler';
+import { deriveImportBatchStatus } from '@/lib/importBatches';
+import { ImportBatchRecord } from '@/types/importAudit';
+
+export const saveTransactionsBatch = withErrorHandler(async function saveTransactionsBatch(
+  data: NormalizedTransaction[],
+  importInput?: ImportBatchInput
+) {
   const user = await requireUser();
-  const batch = await createImportBatch(importInput ?? toLegacyImportInput(data));
-  try {
-    const mappedData = data.map((tx) => ({
-      id: tx.id,
+  const input = importInput ?? toLegacyImportInput(data);
+
+  return await db.transaction(async (tx) => {
+    // 1. Check for active duplicate within the same transaction lock
+    const existing = await tx
+      .select({ id: importBatches.id })
+      .from(importBatches)
+      .where(
+        and(
+          eq(importBatches.userId, user.id),
+          eq(importBatches.fileChecksum, input.fileChecksum),
+          eq(importBatches.importKind, input.importKind),
+          sql`${importBatches.rolledBackAt} IS NULL`
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      throw new AppError(
+        'Tệp này đã được nhập trước đó. Vui lòng kiểm tra lịch sử nhập tệp.',
+        'DUPLICATE_IMPORT',
+        400
+      );
+    }
+
+    // 2. Insert import_batch record inside the transaction
+    const [batchRecord] = await tx
+      .insert(importBatches)
+      .values({
+        userId: user.id,
+        fileName: input.fileName,
+        fileChecksum: input.fileChecksum,
+        source: input.source,
+        importKind: input.importKind,
+        status: deriveImportBatchStatus(input),
+        totalRows: input.totalRows,
+        acceptedRows: input.acceptedRows,
+        rejectedRows: input.rejectedRows,
+      })
+      .returning({
+        id: importBatches.id,
+        status: importBatches.status,
+        importedAt: importBatches.importedAt,
+      });
+
+    // 3. Insert transaction rows referencing the new batchId
+    const mappedData = data.map((txItem) => ({
+      id: txItem.id,
       userId: user.id,
-      batchId: batch.batchId,
-      assetClass: tx.assetClass,
-      asset: tx.ticker,
-      type: tx.type,
-      amount: tx.quantity.toString(),
-      price: tx.price.toString(),
-      fee: tx.fee.toString(),
-      tax: tx.tax.toString(),
-      notes: tx.notes ?? null,
-      source: tx.source ?? null,
-      date: new Date(tx.date),
+      batchId: batchRecord.id,
+      assetClass: txItem.assetClass,
+      asset: txItem.ticker,
+      type: txItem.type,
+      amount: txItem.quantity.toString(),
+      price: txItem.price.toString(),
+      fee: txItem.fee.toString(),
+      tax: txItem.tax.toString(),
+      notes: txItem.notes ?? null,
+      source: txItem.source ?? null,
+      date: new Date(txItem.date),
     }));
 
     if (mappedData.length > 0) {
-      await db.transaction(async (tx) => {
-        await tx.insert(transactions).values(mappedData).onConflictDoNothing({ target: transactions.id });
+      await tx.insert(transactions).values(mappedData).onConflictDoNothing({
+        target: [
+          transactions.userId,
+          transactions.date,
+          transactions.asset,
+          transactions.type,
+          transactions.amount,
+          transactions.price,
+        ],
       });
     }
+
     revalidatePath('/');
 
-    return batch;
-  } catch (error) {
-    try {
-      await db.delete(importBatches).where(and(
-        eq(importBatches.id, batch.batchId),
-        eq(importBatches.userId, user.id)
-      ));
-    } catch (rollbackError) {
-      console.error('Rollback failed:', rollbackError);
-      // Don't overwrite original error - throw it after rollback
-    }
-    // Original error will be thrown here
-    throw error;
-  }
+    return {
+      batchId: batchRecord.id,
+      status: batchRecord.status as ImportBatchRecord['status'],
+      importedAt: batchRecord.importedAt,
+    };
+  });
 });
+
 
 export async function saveManualTransaction(tx: NormalizedTransaction) {
   const user = await requireUser();

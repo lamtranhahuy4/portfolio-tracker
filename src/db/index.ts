@@ -1,15 +1,19 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import ws from 'ws';
 import Decimal from 'decimal.js';
 import * as schema from './schema';
+
+if (typeof WebSocket === 'undefined') {
+  neonConfig.webSocketConstructor = ws;
+}
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL connection string is missing in environment variables (.env)');
 }
 
-// Khởi tạo kết nối Serverless PostgreSQL thông qua Neon
-const sql = neon(process.env.DATABASE_URL);
-export const db = drizzle(sql, { schema });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle(pool, { schema });
 
 /**
  * Database Serialization Helpers for Decimal Values

@@ -8,6 +8,7 @@ interface UseDashboardDataProps {
   isMounted: boolean;
   liveTickerQuery: string;
   updatePrice: (ticker: string, price: number) => void;
+  updatePricesBatch: (updates: Record<string, number>) => void;
   setHistoricalPrices: (prices: Record<string, Record<string, number>>) => void;
   setHistoricalPricesLastUpdated: (date: string) => void;
   historicalPricesLastUpdated: string | null;
@@ -22,6 +23,7 @@ export function useDashboardData({
   isMounted,
   liveTickerQuery,
   updatePrice,
+  updatePricesBatch,
   setHistoricalPrices,
   setHistoricalPricesLastUpdated,
   historicalPricesLastUpdated,
@@ -40,8 +42,12 @@ export function useDashboardData({
       refreshInterval: QUOTE_REFRESH_INTERVAL_MS,
       revalidateOnFocus: true,
       onSuccess: (data) => {
-        if (data.quotes) {
-          data.quotes.forEach((quote) => updatePrice(quote.ticker, quote.price));
+        if (data.quotes && data.quotes.length > 0) {
+          const batch: Record<string, number> = {};
+          data.quotes.forEach((q) => {
+            batch[q.ticker] = q.price;
+          });
+          updatePricesBatch(batch);
           setLastPriceUpdate(new Date());
         }
       }

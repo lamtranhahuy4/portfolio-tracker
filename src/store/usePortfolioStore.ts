@@ -108,6 +108,7 @@ interface PricesSlice {
   historicalPrices: Record<string, Record<string, number>>;
   historicalPricesLastUpdated: string | null;
   updatePrice: (ticker: string, newPrice: number) => void;
+  updatePricesBatch: (updates: Record<string, number>) => void;
   setHistoricalPrices: (prices: Record<string, Record<string, number>>) => void;
   setHistoricalPricesLastUpdated: (date: string) => void;
 }
@@ -120,6 +121,11 @@ const createPricesSlice: StateCreator<PortfolioState, [], [], PricesSlice> = (se
   updatePrice: (ticker, newPrice) =>
     set((state) => ({
       currentPrices: { ...state.currentPrices, [ticker]: newPrice },
+    })),
+  
+  updatePricesBatch: (updates) =>
+    set((state) => ({
+      currentPrices: { ...state.currentPrices, ...updates },
     })),
   
   setHistoricalPrices: (prices) =>

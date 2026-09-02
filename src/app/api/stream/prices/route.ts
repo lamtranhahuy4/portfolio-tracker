@@ -38,6 +38,8 @@ export async function GET(request: Request) {
 
     const encoder = new TextEncoder();
     
+    let activeInterval: NodeJS.Timeout | null = null;
+    
     const stream = new ReadableStream({
       async start(controller) {
         const sendUpdate = async () => {
@@ -57,6 +59,9 @@ export async function GET(request: Request) {
             if (updates.length > 0) {
               const data = `data: ${JSON.stringify(updates)}\n\n`;
               controller.enqueue(encoder.encode(data));
+            } else {
+              // Send keep-alive comment to prevent proxy timeouts
+              controller.enqueue(encoder.encode(`: keep-alive\n\n`));
             }
           } catch (error) {
             console.error('SSE price update error:', error);
@@ -65,7 +70,7 @@ export async function GET(request: Request) {
 
         await sendUpdate();
 
-        const interval = setInterval(async () => {
+        activeInterval = setInterval(async () => {
           try {
             await sendUpdate();
           } catch (error) {
@@ -74,10 +79,17 @@ export async function GET(request: Request) {
         }, 5000);
 
         request.signal.addEventListener('abort', () => {
-          clearInterval(interval);
-          controller.close();
+          if (activeInterval) clearInterval(activeInterval);
+          try {
+            controller.close();
+          } catch (e) {
+            // Already closed
+          }
         });
       },
+      cancel() {
+        if (activeInterval) clearInterval(activeInterval);
+      }
     });
 
     const headers: Record<string, string> = {

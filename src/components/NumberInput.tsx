@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface NumberInputProps {
   value: string;
@@ -20,16 +20,21 @@ function formatNumber(raw: string): string {
 
 
 export default function NumberInput({ value, onChange, placeholder, className }: NumberInputProps) {
-  const ref = useRef<HTMLInputElement>(null);
-  const cursorRef = useRef<number | null>(null);
+  const [localValue, setLocalValue] = useState<string>(formatNumber(value));
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setLocalValue(formatNumber(value));
+    }
+  }, [value, isFocused]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9.,]/g, '');
+    setLocalValue(raw);
     
     // In vi-VN, '.' is thousands, ',' is decimal
-    // 1. Remove thousands separators
     const noDots = raw.replace(/\./g, '');
-    // 2. Convert decimal separator to JS dot
     let jsFormat = noDots.replace(/,/g, '.');
     
     // Ensure at most one decimal point
@@ -38,34 +43,22 @@ export default function NumberInput({ value, onChange, placeholder, className }:
       jsFormat = parts[0] + '.' + parts.slice(1).join('');
     }
     
-    const cursor = e.target.selectionStart ?? 0;
-    const rawBeforeCursor = e.target.value.slice(0, cursor).replace(/[^0-9.,]/g, '');
-    const beforeDots = rawBeforeCursor.replace(/\./g, '');
-    let beforeJsFormat = beforeDots.replace(/,/g, '.');
-    const bParts = beforeJsFormat.split('.');
-    if (bParts.length > 2) {
-      beforeJsFormat = bParts[0] + '.' + bParts.slice(1).join('');
-    }
-    cursorRef.current = formatNumber(beforeJsFormat).length;
-
     onChange(jsFormat);
   }, [onChange]);
 
-  useEffect(() => {
-    if (ref.current && cursorRef.current !== null) {
-      const pos = Math.min(cursorRef.current, ref.current.value.length);
-      ref.current.setSelectionRange(pos, pos);
-      cursorRef.current = null;
-    }
-  }, [value]);
+  const handleBlur = () => {
+    setIsFocused(false);
+    setLocalValue(formatNumber(value));
+  };
 
   return (
     <input
-      ref={ref}
       type="text"
       inputMode="decimal"
-      value={formatNumber(value)}
+      value={localValue}
       onChange={handleChange}
+      onFocus={() => setIsFocused(true)}
+      onBlur={handleBlur}
       placeholder={placeholder}
       className={className}
     />

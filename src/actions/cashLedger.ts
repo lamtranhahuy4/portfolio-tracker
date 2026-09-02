@@ -1,6 +1,6 @@
 'use server';
 
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { createImportBatch } from '@/actions/importBatch';
 import { db } from '@/db/index';
@@ -23,15 +23,63 @@ function toLegacyImportInput(data: CashLedgerEvent[]): ImportBatchInput {
   };
 }
 
+import { AppError } from '@/lib/errorHandler';
+import { deriveImportBatchStatus } from '@/lib/importBatches';
+import { ImportBatchRecord } from '@/types/importAudit';
+
 export const saveCashEventsBatch = withErrorHandler(
 async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: ImportBatchInput) {
   const user = await requireUser();
-  const batch = await createImportBatch(importInput ?? toLegacyImportInput(data));
-  try {
+  const input = importInput ?? toLegacyImportInput(data);
+
+  return await db.transaction(async (tx) => {
+    // 1. Concurrency-safe duplicate check
+    const existing = await tx
+      .select({ id: importBatches.id })
+      .from(importBatches)
+      .where(
+        and(
+          eq(importBatches.userId, user.id),
+          eq(importBatches.fileChecksum, input.fileChecksum),
+          eq(importBatches.importKind, input.importKind),
+          sql`${importBatches.rolledBackAt} IS NULL`
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      throw new AppError(
+        'Tệp này đã được nhập trước đó. Vui lòng kiểm tra lịch sử nhập tệp.',
+        'DUPLICATE_IMPORT',
+        400
+      );
+    }
+
+    // 2. Insert batch record
+    const [batchRecord] = await tx
+      .insert(importBatches)
+      .values({
+        userId: user.id,
+        fileName: input.fileName,
+        fileChecksum: input.fileChecksum,
+        source: input.source,
+        importKind: input.importKind,
+        status: deriveImportBatchStatus(input),
+        totalRows: input.totalRows,
+        acceptedRows: input.acceptedRows,
+        rejectedRows: input.rejectedRows,
+      })
+      .returning({
+        id: importBatches.id,
+        status: importBatches.status,
+        importedAt: importBatches.importedAt,
+      });
+
+    // 3. Insert cash ledger events
     const mappedData = data.map((evt) => ({
       id: evt.id,
       userId: user.id,
-      batchId: batch.batchId,
+      batchId: batchRecord.id,
       date: new Date(evt.date),
       direction: evt.direction,
       amount: evt.amount.toString(),
@@ -45,32 +93,25 @@ async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: Import
     }));
 
     if (mappedData.length > 0) {
-      await db.transaction(async (tx) => {
-        await tx.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({
-          target: [
-            cashLedgerEvents.userId,
-            cashLedgerEvents.date,
-            cashLedgerEvents.description,
-            cashLedgerEvents.amount,
-            cashLedgerEvents.balanceAfter,
-          ],
-        });
+      await tx.insert(cashLedgerEvents).values(mappedData).onConflictDoNothing({
+        target: [
+          cashLedgerEvents.userId,
+          cashLedgerEvents.date,
+          cashLedgerEvents.description,
+          cashLedgerEvents.amount,
+          cashLedgerEvents.balanceAfter,
+        ],
       });
     }
+
     revalidatePath('/');
 
-    return batch;
-  } catch (error) {
-    try {
-      await db.delete(importBatches).where(and(
-        eq(importBatches.id, batch.batchId),
-        eq(importBatches.userId, user.id)
-      ));
-    } catch (rollbackError) {
-      console.error('[saveCashEventsBatch] Rollback failed:', rollbackError);
-    }
-    throw error;
-  }
+    return {
+      batchId: batchRecord.id,
+      status: batchRecord.status as ImportBatchRecord['status'],
+      importedAt: batchRecord.importedAt,
+    };
+  });
 });
 
 export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {

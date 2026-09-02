@@ -1,48 +1,78 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
-interface PriceUpdate {
+export interface RealtimePriceUpdate {
   ticker: string;
   price: number | null;
   timestamp: string;
 }
 
-interface UseRealtimePricesOptions {
+export interface UseRealtimePricesOptions {
   enabled?: boolean;
   tickers: string[];
-  onPriceUpdate?: (update: PriceUpdate) => void;
+  onPriceUpdate?: (update: RealtimePriceUpdate) => void;
 }
 
-interface UseRealtimePricesReturn {
+export interface UseRealtimePricesReturn {
   isConnected: boolean;
   lastUpdate: Date | null;
   reconnect: () => void;
   disconnect: () => void;
 }
 
-export function useRealtimePrices(
-  options: UseRealtimePricesOptions
-): UseRealtimePricesReturn {
-  const { enabled = true, tickers, onPriceUpdate } = options;
-  const eventSourceRef = useRef<EventSource | null>(null);
+export function useRealtimePrices({
+  tickers,
+  enabled = true,
+  onPriceUpdate,
+}: UseRealtimePricesOptions): UseRealtimePricesReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const updatePrice = usePortfolioStore((state) => state.updatePrice);
-
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const connectRef = useRef<() => void>(() => {});
+  
+  // Stabilize onPriceUpdate callback reference to prevent recreation of connect()
+  const onPriceUpdateRef = useRef(onPriceUpdate);
+  useLayoutEffect(() => {
+    onPriceUpdateRef.current = onPriceUpdate;
+  });
+
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }, []);
+
+  const tickersKey = useMemo(() => {
+    return [...new Set(tickers.map(t => t.trim().toUpperCase()))].sort().join(',');
+  }, [tickers]);
+
+  const disconnect = useCallback(() => {
+    clearReconnectTimer();
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+      setIsConnected(false);
+    }
+  }, [clearReconnectTimer]);
+
   const connect = useCallback(() => {
-    if (tickers.length === 0 || !enabled) {
+    clearReconnectTimer();
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    const tickerList = tickersKey.split(',').filter(Boolean);
+    if (!enabled || tickerList.length === 0) {
+      setIsConnected(false);
       return;
     }
 
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    const tickerParam = tickers.join(',');
-    const url = `/api/stream/prices?tickers=${encodeURIComponent(tickerParam)}`;
+    const url = `/api/stream/prices?tickers=${encodeURIComponent(tickersKey)}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
@@ -52,14 +82,24 @@ export function useRealtimePrices(
 
     eventSource.onmessage = (event) => {
       try {
-        const updates: PriceUpdate[] = JSON.parse(event.data);
+        const updates: RealtimePriceUpdate[] = JSON.parse(event.data);
+        const batch: Record<string, number> = {};
         
         updates.forEach((update) => {
-          if (update.price !== null) {
-            updatePrice(update.ticker, update.price);
-            onPriceUpdate?.(update);
+          if (
+            update.ticker &&
+            typeof update.price === 'number' &&
+            Number.isFinite(update.price) &&
+            update.price >= 0
+          ) {
+            batch[update.ticker.toUpperCase()] = update.price;
+            onPriceUpdateRef.current?.(update);
           }
         });
+        
+        if (Object.keys(batch).length > 0) {
+          usePortfolioStore.getState().updatePricesBatch(batch);
+        }
         
         setLastUpdate(new Date());
       } catch {
@@ -69,37 +109,28 @@ export function useRealtimePrices(
 
     eventSource.onerror = () => {
       setIsConnected(false);
-      eventSource.close();
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
 
-      setTimeout(() => {
-        if (enabled && tickers.length > 0) {
+      clearReconnectTimer();
+      reconnectTimerRef.current = setTimeout(() => {
+        if (enabled && tickersKey.length > 0) {
           connectRef.current();
         }
       }, 5000);
     };
-  }, [tickers, enabled, updatePrice, onPriceUpdate]);
+  }, [tickersKey, enabled, clearReconnectTimer]);
 
-  // Sync connectRef to the latest connect callback after every render.
-  // useLayoutEffect runs synchronously after DOM mutations, before paint —
-  // safe to write refs here without violating React render-purity rules.
   useLayoutEffect(() => {
     connectRef.current = connect;
   });
-
-  const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-      setIsConnected(false);
-    }
-  }, []);
 
   const reconnect = useCallback(() => {
     disconnect();
     connect();
   }, [connect, disconnect]);
-
-  const tickersKey = tickers.join(',');
 
   useEffect(() => {
     if (enabled && tickersKey.length > 0) {
@@ -119,17 +150,17 @@ export function useRealtimePrices(
   };
 }
 
-export function useHoldingsRealtimePrices() {
+export function useHoldingsRealtimePrices(isMounted: boolean = true) {
   const transactions = usePortfolioStore((state) => state.transactions);
+  const openingPositions = usePortfolioStore((state) => state.openingPositions);
 
-  const uniqueTickers = [...new Set(
-    transactions
-      .filter(tx => tx.type === 'BUY')
-      .map(tx => tx.ticker)
-  )];
+  const uniqueTickers = [...new Set([
+    ...transactions.filter(tx => tx.type === 'BUY').map(tx => tx.ticker),
+    ...openingPositions.map(pos => pos.ticker)
+  ])];
 
   return useRealtimePrices({
     tickers: uniqueTickers,
-    enabled: uniqueTickers.length > 0,
+    enabled: isMounted && uniqueTickers.length > 0,
   });
 }

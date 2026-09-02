@@ -172,18 +172,19 @@ export async function getForexRates(): Promise<ForexResponse> {
  * Save today's VCB rates as a snapshot to the DB.
  * Skips if already recorded for today.
  */
-export async function snapshotDailyRates(): Promise<void> {
+export async function snapshotDailyRates(): Promise<number> {
   const vcbRates = await fetchVietcombankRates();
-  if (vcbRates.length === 0) return;
+  if (vcbRates.length === 0) return 0;
 
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let insertedCount = 0;
 
   for (const rate of vcbRates) {
     if (rate.sell === null && rate.buyTransfer === null) continue;
 
     const existing = await db
-      .select()
+      .select({ id: forexRatesHistory.id })
       .from(forexRatesHistory)
       .where(
         and(
@@ -205,7 +206,10 @@ export async function snapshotDailyRates(): Promise<void> {
       sell: rate.sell?.toString() ?? null,
       source: 'VIETCOMBANK',
     });
+    insertedCount++;
   }
+
+  return insertedCount;
 }
 
 /**

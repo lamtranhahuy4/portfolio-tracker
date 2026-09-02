@@ -5,6 +5,7 @@ import { auth } from '@/lib/better-auth';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { sessions, users } from '@/db/schema';
+import { AppError } from '@/lib/errorHandler';
 
 const SESSION_COOKIE = 'portfolio_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
@@ -222,9 +223,9 @@ export const getCurrentUser = cache(async () => {
   }
 });
 
-export class UnauthorizedError extends Error {
+export class UnauthorizedError extends AppError {
   constructor(message = 'Unauthorized') {
-    super(message);
+    super(message, 'UNAUTHORIZED', 401);
     this.name = 'UnauthorizedError';
   }
 }

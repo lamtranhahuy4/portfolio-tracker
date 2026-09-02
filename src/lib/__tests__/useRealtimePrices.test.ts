@@ -26,6 +26,7 @@ vi.mock('react', async (importOriginal) => {
     }) as unknown as typeof actual.useState,
     useRef: ((init: any) => ({ current: init ?? null })) as typeof actual.useRef,
     useCallback: ((fn: any) => fn) as typeof actual.useCallback,
+    useMemo: ((fn: any) => fn()) as typeof actual.useMemo,
   };
 });
 
@@ -44,16 +45,19 @@ class MockEventSource {
 vi.stubGlobal('EventSource', MockEventSource);
 
 describe('useRealtimePrices', () => {
-  const updatePriceMock = vi.fn();
+  const updatePricesBatchMock = vi.fn();
 
   beforeEach(() => {
     MockEventSource.instances = [];
     cleanupFns = [];
-    updatePriceMock.mockClear();
+    updatePricesBatchMock.mockClear();
+    
+    // Mock the hook call and getState
+    const state = { updatePricesBatch: updatePricesBatchMock } as any;
     vi.mocked(usePortfolioStore).mockImplementation((selector: any) => {
-      const state = { updatePrice: updatePriceMock } as any;
-      return selector(state);
+      return selector ? selector(state) : state;
     });
+    (usePortfolioStore as any).getState = () => state;
   });
 
   afterEach(() => {
@@ -78,7 +82,7 @@ describe('useRealtimePrices', () => {
       data: JSON.stringify([{ ticker: 'HPG', price: 29000, timestamp: '2026-05-31T12:00:00Z' }]),
     });
 
-    expect(updatePriceMock).toHaveBeenCalledWith('HPG', 29000);
+    expect(updatePricesBatchMock).toHaveBeenCalledWith({ 'HPG': 29000 });
     expect(priceUpdateSpy).toHaveBeenCalledWith({ ticker: 'HPG', price: 29000, timestamp: '2026-05-31T12:00:00Z' });
   });
 
@@ -111,6 +115,6 @@ describe('useRealtimePrices', () => {
       data: JSON.stringify([{ ticker: 'HPG', price: null, timestamp: '2026-05-31T12:00:00Z' }]),
     });
 
-    expect(updatePriceMock).not.toHaveBeenCalled();
+    expect(updatePricesBatchMock).not.toHaveBeenCalled();
   });
 });

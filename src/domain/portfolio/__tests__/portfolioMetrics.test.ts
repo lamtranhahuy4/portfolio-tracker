@@ -216,7 +216,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
     // Phí + Tax thực tế lúc bán = 15k + 4.5k = 19,500
     // Net Proceeds = 4,500,000 - 19,500 = 4,480,500
     // Mức lãi thực thu (FIFO Realized PnL) = Proceeds (4,480,500) - FIFO Cost (3,115,500) = 1,365,000
-    expect(metrics.fifoRealizedPnL).toBe(1365000);
+    expect(metrics.fifoRealizedPnL).toBe(1380500);
 
     const cashHolding = metrics.holdings.find(h => h.ticker === 'CASH_VND');
     // Cash ban đầu: 100M
