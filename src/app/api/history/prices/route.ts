@@ -4,6 +4,7 @@ import { priceHistory } from '@/db/schema';
 import { inArray, desc, and, gte } from 'drizzle-orm';
 import { checkRateLimit } from '@/lib/apiRateLimiter';
 import { getCurrentUser } from '@/lib/auth';
+import { fetchDnseSeries } from '@/lib/marketData';
 
 export async function GET(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
@@ -25,46 +26,57 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing tickers parameter' }, { status: 400 });
   }
 
-  const tickers = tickersParam.split(',').map(t => t.trim()).filter(Boolean);
+  const tickers = tickersParam.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
   
   if (tickers.length === 0) {
     return NextResponse.json({ data: {} });
   }
 
-  // Lấy dữ liệu 24 giờ gần nhất
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const fromUnix = nowUnix - 24 * 60 * 60;
 
   try {
-    const history = await db
-      .select({
-        ticker: priceHistory.ticker,
-        price: priceHistory.price,
-        recordedAt: priceHistory.recordedAt,
-      })
-      .from(priceHistory)
-      .where(
-        and(
-          inArray(priceHistory.ticker, tickers),
-          gte(priceHistory.recordedAt, oneDayAgo)
-        )
-      )
-      .orderBy(desc(priceHistory.recordedAt));
-
-    // Group by ticker
     const result: Record<string, { time: string, price: number }[]> = {};
     tickers.forEach(t => { result[t] = []; });
 
-    // History is descending, we want ascending for charts
-    const reversedHistory = [...history].reverse();
-    
-    for (const record of reversedHistory) {
-      if (record.price && record.recordedAt) {
-        result[record.ticker].push({
-          time: record.recordedAt.toLocaleTimeString(),
-          price: Number(record.price)
-        });
+    // Fetch from DNSE API for intraday history
+    await Promise.all(tickers.map(async (ticker) => {
+      const isIndex = ['VNINDEX', 'VN30', 'HNX', 'HNX30', 'UPCOM'].includes(ticker);
+      const series = await fetchDnseSeries(ticker, isIndex, '1', fromUnix, nowUnix);
+      
+      if (series && series.length > 0) {
+        result[ticker] = series.map(s => ({
+          time: new Date(s.time * 1000).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+          price: s.price * (isIndex ? 1 : 1000)
+        }));
+      } else {
+        // Fallback to DB
+        const history = await db
+          .select({
+            price: priceHistory.price,
+            recordedAt: priceHistory.recordedAt,
+          })
+          .from(priceHistory)
+          .where(
+            and(
+              inArray(priceHistory.ticker, [ticker]),
+              gte(priceHistory.recordedAt, oneDayAgo)
+            )
+          )
+          .orderBy(desc(priceHistory.recordedAt));
+          
+        const reversedHistory = [...history].reverse();
+        for (const record of reversedHistory) {
+          if (record.price && record.recordedAt) {
+            result[ticker].push({
+              time: record.recordedAt.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+              price: Number(record.price)
+            });
+          }
+        }
       }
-    }
+    }));
 
     // Limit to max 30 points per ticker so the chart doesn't get cluttered
     for (const t of tickers) {

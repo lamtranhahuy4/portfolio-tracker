@@ -52,7 +52,7 @@ export default function HoldingPriceChart({
     if (historicalData && historicalData.length > 0) {
       setPriceHistory(historicalData);
     } else if (initialPrice > 0) {
-      setPriceHistory([{ time: new Date().toLocaleTimeString(), price: initialPrice }]);
+      setPriceHistory([{ time: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), price: initialPrice }]);
     }
   }, [historicalData]);
 
@@ -60,7 +60,7 @@ export default function HoldingPriceChart({
     setPriceHistory(prev => {
       const currentPrice = prev[prev.length - 1]?.price;
       if (currentPrice !== initialPrice && initialPrice > 0) {
-        const newHistory = [...prev, { time: new Date().toLocaleTimeString(), price: initialPrice }];
+        const newHistory = [...prev, { time: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), price: initialPrice }];
         if (newHistory.length > MAX_DATA_POINTS) {
           return newHistory.slice(-MAX_DATA_POINTS);
         }

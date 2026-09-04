@@ -28,7 +28,7 @@ function uniqueSymbols(symbols: string[]) {
   return [...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))];
 }
 
-async function fetchDnseSeries(
+export async function fetchDnseSeries(
   symbol: string,
   isIndex: boolean,
   resolution: '1' | '1D',
@@ -48,9 +48,12 @@ async function fetchDnseSeries(
     if (!res.ok) return null;
 
     const json = await res.json() as DnseSeriesResponse;
-    if (!Array.isArray(json.c) || json.c.length === 0) return null;
+    if (!Array.isArray(json.c) || json.c.length === 0 || !Array.isArray(json.t)) return null;
 
-    return json.c;
+    return json.t.map((time, index) => ({
+      time: time,
+      price: json.c![index],
+    }));
   } catch {
     return null;
   }
@@ -64,8 +67,8 @@ async function fetchDnseLatest(symbol: string, isIndex = false) {
     const dailySeries = await fetchDnseSeries(symbol, isIndex, '1D', now - (30 * 24 * 60 * 60), now);
     if (!dailySeries || dailySeries.length === 0) return null;
 
-    const latest = dailySeries[dailySeries.length - 1];
-    const previous = dailySeries.length >= 2 ? dailySeries[dailySeries.length - 2] : latest;
+    const latest = dailySeries[dailySeries.length - 1].price;
+    const previous = dailySeries.length >= 2 ? dailySeries[dailySeries.length - 2].price : latest;
     const change = latest - previous;
     const percent = previous === 0 ? 0 : (change / previous) * 100;
 
@@ -80,8 +83,8 @@ async function fetchDnseLatest(symbol: string, isIndex = false) {
 
   if (!closes || closes.length === 0) return null;
 
-  const latest = closes[closes.length - 1];
-  const previous = closes.length >= 2 ? closes[closes.length - 2] : latest;
+  const latest = closes[closes.length - 1].price;
+  const previous = closes.length >= 2 ? closes[closes.length - 2].price : latest;
   const change = latest - previous;
   const percent = previous === 0 ? 0 : (change / previous) * 100;
 
