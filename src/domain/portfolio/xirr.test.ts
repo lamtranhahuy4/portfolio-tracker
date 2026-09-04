@@ -27,7 +27,7 @@ describe('XIRR Calculation', () => {
           if (args.length === 0) {
             super(fakeCurrentDate);
           } else {
-            super(...(args as any));
+            super(...(args as []));
           }
         }
       } as any;

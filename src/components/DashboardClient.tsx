@@ -376,14 +376,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <NetWorthChart series={metrics.navSeries} language={language} />
-              </div>
-              <div className="lg:col-span-1">
-                <IRRWidget xirr={metrics.xirr} language={language} />
-              </div>
-            </div>
+            <NetWorthChart series={metrics.navSeries} language={language} />
             <ErrorBoundary componentName="ReconciliationPanel"><ReconciliationPanel language={language} /></ErrorBoundary>
             <ErrorBoundary componentName="MarkToMarketGrid">
             <section className="space-y-4">
@@ -477,6 +470,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
 
           <aside className="flex flex-col gap-6 lg:col-span-1">
+            <ErrorBoundary componentName="IRRWidget"><IRRWidget xirr={metrics.xirr} language={language} /></ErrorBoundary>
             <ErrorBoundary componentName="CsvUpload">
             <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-3 backdrop-blur-sm">
               <CsvUploaderServerImport language={language} />
