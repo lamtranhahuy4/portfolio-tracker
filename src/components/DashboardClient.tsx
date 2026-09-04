@@ -14,6 +14,7 @@ import OpeningPositionCard from '@/components/OpeningPositionCard';
 import ReconciliationPanel from '@/components/ReconciliationPanel';
 import LogoutButton from '@/components/LogoutButton';
 import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
+import IRRWidget from '@/components/widgets/IRRWidget';
 import NetWorthChart from '@/components/NetWorthChart';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import EmptyStateHero from '@/components/EmptyStateHero';
@@ -375,7 +376,14 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
-            <NetWorthChart series={metrics.navSeries} language={language} />
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <NetWorthChart series={metrics.navSeries} language={language} />
+              </div>
+              <div className="lg:col-span-1">
+                <IRRWidget xirr={metrics.xirr} language={language} />
+              </div>
+            </div>
             <ErrorBoundary componentName="ReconciliationPanel"><ReconciliationPanel language={language} /></ErrorBoundary>
             <ErrorBoundary componentName="MarkToMarketGrid">
             <section className="space-y-4">

@@ -149,6 +149,7 @@ export interface PortfolioMetrics {
   netContributions: Money;
   returnVsCostBasis: number;
   returnOnInvestmentPercent: number;
+  xirr?: number;
   navSeries: NavPoint[];
   calculationWarnings: string[];
   cashBalanceSource?: 'derived' | 'ledger';

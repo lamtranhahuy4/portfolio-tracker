@@ -4,6 +4,7 @@ import { CashLedgerEvent, GroupedTransactionsByDay, Holding, NavPoint, OpeningPo
 import { CASH_DRIFT_THRESHOLD_VND } from '@/lib/constants';
 import { toMoney, toQuantity, toPrice } from './primitives';
 import { HoldingState, Lot, ReplayState } from './entities/ReplayEntities';
+import { calculatePortfolioXIRR } from './xirr';
 
 
 function getDateKey(date: Date | string) {
@@ -492,13 +493,37 @@ export function calculatePortfolioMetrics(
   const state = createEmptyState();
   seedOpeningSnapshot(state, openingSnapshot);
 
-  sortedTx.forEach((tx) => applyTransaction(state, tx, ledgerMode));
+  
+  const cashFlowAmounts: number[] = [];
+  const cashFlowDates: Date[] = [];
+  if (openingSnapshot?.settings?.initialNetContributions) {
+    cashFlowAmounts.push(openingSnapshot.settings.initialNetContributions);
+    cashFlowDates.push(openingSnapshot.settings.globalCutoffDate ? new Date(openingSnapshot.settings.globalCutoffDate) : new Date());
+  }
+
+  sortedTx.forEach((tx) => {
+    if (!ledgerMode) {
+      if (tx.type === 'BUY') {
+        cashFlowAmounts.push(tx.totalValue);
+        cashFlowDates.push(new Date(tx.date));
+      } else if (tx.type === 'SELL') {
+        cashFlowAmounts.push(-tx.totalValue);
+        cashFlowDates.push(new Date(tx.date));
+      }
+    }
+    applyTransaction(state, tx, ledgerMode);
+  });
 
   let finalLedgerBalance = openingSnapshot?.settings?.initialCashBalance ? toDecimal(openingSnapshot.settings.initialCashBalance) : DECIMAL_ZERO;
   let finalNetContributionsLedger = openingSnapshot?.settings?.initialNetContributions ? toDecimal(openingSnapshot.settings.initialNetContributions) : DECIMAL_ZERO;
   sortedCashEvents.forEach((evt) => {
     finalLedgerBalance = toDecimal(evt.balanceAfter);
     finalNetContributionsLedger = finalNetContributionsLedger.plus(getCashContributionDelta(evt));
+    const delta = getCashContributionDelta(evt).toNumber();
+    if (delta !== 0) {
+      cashFlowAmounts.push(delta);
+      cashFlowDates.push(new Date(evt.date));
+    }
   });
 
   const holdings = buildHoldingsFromState(state, currentPrices, !!valuationDate);
@@ -617,6 +642,7 @@ export function calculatePortfolioMetrics(
     netContributions: toMoney(activeNetContributionsDec),
     returnVsCostBasis: activeNetContributionsDec.eq(0) ? 0 : decimalToNumber(netPnLDec.div(activeNetContributionsDec)),
     returnOnInvestmentPercent: activeNetContributionsDec.eq(0) ? 0 : decimalToNumber(netNavDec.div(activeNetContributionsDec).minus(DECIMAL_ONE)),
+    xirr: calculatePortfolioXIRR(cashFlowAmounts, cashFlowDates, decimalToNumber(netNavDec)) ?? undefined,
     navSeries: buildDailyNavSeries(sortedTx, currentPrices, sortedCashEvents, valuationDate, openingSnapshot, historicalPrices),
     calculationWarnings: state.calculationWarnings,
     cashBalanceSource: ledgerMode ? 'ledger' : 'derived',
