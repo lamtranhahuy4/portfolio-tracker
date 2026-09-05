@@ -311,17 +311,18 @@ export default function ForexClient({
                 className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === 'vnd'
                     ? 'bg-emerald-600/20 text-emerald-300'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {t.tabVnd}
+                <Wallet className="mr-1.5 inline-block h-4 w-4" />
+                {t.vndTab}
               </button>
               <button
                 role="tab"
-                aria-selected={activeTab === 'cross'}
-                onClick={() => setActiveTab('cross')}
+                aria-selected={activeTab === 'intl'}
+                onClick={() => setActiveTab('intl')}
                 className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeTab === 'cross'
+                  activeTab === 'intl'
                     ? 'bg-emerald-600/20 text-emerald-300'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
