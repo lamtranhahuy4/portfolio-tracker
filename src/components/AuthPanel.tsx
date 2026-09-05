@@ -7,6 +7,7 @@ import { useFormStatus } from 'react-dom';
 import { signInAction, signUpAction } from '@/actions/auth';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { ActionState } from '@/types/action';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const LOGIN_ERROR_VI = 'Bạn đã nhập sai tài khoản/mật khẩu. Nếu không nhớ có thể dùng chức năng Quên mật khẩu.';
 const LOGIN_ERROR_EN = 'Incorrect email or password. If you forgot your password, use the "Forgot password" feature.';

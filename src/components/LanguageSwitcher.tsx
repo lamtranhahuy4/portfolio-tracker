@@ -12,7 +12,7 @@ interface LanguageSwitcherProps {
 }
 
 export default function LanguageSwitcher({ language, setLanguage, className }: LanguageSwitcherProps) {
-  const t = i18n[language].common || { vi: 'VI', en: 'EN' };
+  const t = i18n[language].dashboard || { vietnamese: 'VI', english: 'EN' };
 
   const handleLanguageChange = (lang: DashboardLanguage) => {
     setLanguage(lang);
@@ -29,14 +29,14 @@ export default function LanguageSwitcher({ language, setLanguage, className }: L
         onClick={() => handleLanguageChange('vi')} 
         className={cn("rounded-xl px-3 py-1.5 transition-colors", language === 'vi' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-900')}
       >
-        {t.vi || 'VI'}
+        {t.vietnamese}
       </button>
       <button 
         type="button" 
         onClick={() => handleLanguageChange('en')} 
         className={cn("rounded-xl px-3 py-1.5 transition-colors", language === 'en' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-900')}
       >
-        {t.en || 'EN'}
+        {t.english}
       </button>
     </div>
   );

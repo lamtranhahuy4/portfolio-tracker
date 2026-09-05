@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { requestPasswordResetAction } from '@/actions/auth';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const copy = {
   vi: {
