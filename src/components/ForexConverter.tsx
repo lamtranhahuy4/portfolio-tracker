@@ -91,7 +91,7 @@ export default function ForexConverter({ data }: Props) {
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[120px]">
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-500">Amount</label>
+          <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-400">Amount</label>
           <input
             type="number"
             value={amount}
@@ -102,7 +102,7 @@ export default function ForexConverter({ data }: Props) {
         </div>
 
         <div className="flex-1 min-w-[120px]">
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-500">From</label>
+          <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-400">From</label>
           <select
             value={from}
             onChange={(e) => setFrom(e.target.value)}
@@ -122,7 +122,7 @@ export default function ForexConverter({ data }: Props) {
         </button>
 
         <div className="flex-1 min-w-[120px]">
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-500">To</label>
+          <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-400">To</label>
           <select
             value={to}
             onChange={(e) => setTo(e.target.value)}
@@ -143,7 +143,7 @@ export default function ForexConverter({ data }: Props) {
           <p className="text-2xl font-semibold text-emerald-300">
             {formatRate(result, getDecimals(to))} {to}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-400">
             1 {from} = {formatRate(result / parseFloat(amount || '1'), getDecimals(to))} {to}
           </p>
         </div>

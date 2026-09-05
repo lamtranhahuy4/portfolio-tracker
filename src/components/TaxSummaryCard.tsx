@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Receipt, Loader2 } from 'lucide-react';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
-import { cn } from '@/components/MarkToMarketGrid';
+import { cn } from '@/lib/utils';
 
 interface TaxResult {
   ticker: string;
@@ -110,7 +110,7 @@ export default function TaxSummaryCard({ language }: TaxSummaryCardProps) {
           </div>
         </div>
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </div>
       </div>
     );
@@ -128,7 +128,7 @@ export default function TaxSummaryCard({ language }: TaxSummaryCardProps) {
             <p className="text-sm text-slate-400">{t.noData}</p>
           </div>
         </div>
-        <p className="text-sm text-slate-500">{t.desc}</p>
+        <p className="text-sm text-slate-400">{t.desc}</p>
       </div>
     );
   }
@@ -149,26 +149,26 @@ export default function TaxSummaryCard({ language }: TaxSummaryCardProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="rounded-xl bg-slate-950/50 p-3 border border-slate-800">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">{t.proceeds}</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">{t.proceeds}</p>
           <p className="text-lg font-bold text-slate-200">{formatCurrency(data.totalProceeds)}</p>
         </div>
         <div className="rounded-xl bg-slate-950/50 p-3 border border-slate-800">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">{t.costBasis}</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">{t.costBasis}</p>
           <p className="text-lg font-bold text-slate-200">{formatCurrency(data.totalCostBasis)}</p>
         </div>
         <div className="rounded-xl bg-slate-950/50 p-3 border border-slate-800">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">{t.grossProfit}</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">{t.grossProfit}</p>
           <p className={cn('text-lg font-bold', data.totalGrossProfit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
             {data.totalGrossProfit > 0 ? '+' : ''}{formatCurrency(data.totalGrossProfit)}
           </p>
         </div>
         <div className="rounded-xl bg-slate-950/50 p-3 border border-slate-800">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">{t.tax}</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">{t.tax}</p>
           <p className="text-lg font-bold text-amber-400">{formatCurrency(data.totalTaxAmount)}</p>
-          <p className="text-xs text-slate-500">{taxRatePercent}%</p>
+          <p className="text-xs text-slate-400">{taxRatePercent}%</p>
         </div>
         <div className="rounded-xl bg-slate-950/50 p-3 border border-slate-800">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">{t.netProfit}</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">{t.netProfit}</p>
           <p className={cn('text-lg font-bold', data.totalNetProfit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
             {data.totalNetProfit > 0 ? '+' : ''}{formatCurrency(data.totalNetProfit)}
           </p>
@@ -180,7 +180,7 @@ export default function TaxSummaryCard({ language }: TaxSummaryCardProps) {
           <p className="text-sm font-medium text-slate-400 mb-3">{t.byTicker}</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-xs text-slate-500 uppercase">
+              <thead className="text-xs text-slate-400 uppercase">
                 <tr className="border-b border-slate-800">
                   <th className="text-left py-2 px-3">{t.ticker}</th>
                   <th className="text-right py-2 px-3">{t.quantity}</th>

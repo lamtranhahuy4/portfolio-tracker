@@ -142,7 +142,7 @@ function MiniStat({
 }) {
   return (
     <div className={`rounded-2xl border px-4 py-3 ${warning ? 'border-amber-900/40 bg-amber-950/15' : 'border-slate-800 bg-slate-950/35'}`}>
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-400">
         {icon}
         <span>{label}</span>
       </div>

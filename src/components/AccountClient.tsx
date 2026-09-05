@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, UserCircle2, Activity, HardDrive, Filter, Clock, Languages, Smartphone, Monitor, Globe, LogOut, Shield, AlertTriangle } from 'lucide-react';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import DeletePortfolioDataForm from '@/components/DeletePortfolioDataForm';
+import LanguageSwitcher from './LanguageSwitcher';
 import ImportHistoryCard from '@/components/ImportHistoryCard';
 import CutoffSetupForm from '@/components/CutoffSetupForm';
 import TaxRateForm from '@/components/TaxRateForm';
@@ -193,7 +194,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <main className="mx-auto w-full max-w-[860px] space-y-8 px-4 py-8 sm:px-0">
+      <main id="main-content" className="mx-auto w-full max-w-[860px] space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center">
             <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white">
@@ -202,14 +203,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
             </Link>
           </div>
 
-          <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/80 p-1 text-sm text-slate-300">
-            <div className="flex items-center gap-2 px-3 text-slate-400">
-              <Languages className="h-4 w-4" />
-              <span>{t.language}</span>
-            </div>
-            <button type="button" onClick={() => setLanguage('vi')} className={language === 'vi' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>{t.vi}</button>
-            <button type="button" onClick={() => setLanguage('en')} className={language === 'en' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>{t.en}</button>
-          </div>
+          <LanguageSwitcher language={language} setLanguage={setLanguage} />
         </div>
 
         <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-xl shadow-black/20">
@@ -268,7 +262,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
                 ))}
               </div>
             ) : (
-              <span className="px-3 py-1.5 text-sm font-medium text-slate-500">{t.noData}</span>
+              <span className="px-3 py-1.5 text-sm font-medium text-slate-400">{t.noData}</span>
             )}
           </div>
 
@@ -345,7 +339,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
               )}
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">{t.failedAttempts}</p>
+              <p className="text-xs text-slate-400">{t.failedAttempts}</p>
               <p className={`text-lg font-bold ${summary.security.failedAttemptsInWindow > 3 ? 'text-amber-400' : 'text-slate-300'}`}>
                 {summary.security.failedAttemptsInWindow}
               </p>
@@ -355,7 +349,7 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-slate-400">{t.activeSessions}</h4>
             {sessions.length === 0 ? (
-              <p className="text-sm text-slate-500 py-4 text-center">{t.noData}</p>
+              <p className="text-sm text-slate-400 py-4 text-center">{t.noData}</p>
             ) : (
               sessions.map((session) => {
                 const DeviceIcon = getDeviceIcon(session.userAgent);
@@ -365,14 +359,14 @@ export default function AccountClient({ summary }: { summary: AccountSummary }) 
                       <DeviceIcon className="h-5 w-5 text-slate-400" />
                       <div>
                         <p className="text-sm font-medium text-slate-200">{getDeviceType(session.userAgent)}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-400">
                           {session.ipAddress || 'Unknown IP'} • {t.lastActive}: {formatDate(session.lastUsedAt)}
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => handleSignOutDevice(session.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg border border-slate-700 transition-colors"
+                      className="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg border border-slate-700 transition-colors"
                       title={t.signOutDevice}
                     >
                       <LogOut className="h-3.5 w-3.5" />

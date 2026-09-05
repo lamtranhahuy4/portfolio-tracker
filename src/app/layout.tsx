@@ -92,6 +92,9 @@ export default function RootLayout({
         <link rel="security.txt" href="/.well-known/security.txt" />
       </head>
       <body className={inter.className}>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-slate-900 focus:text-slate-100">
+          Skip to main content
+        </a>
         <Toaster position="top-right" richColors />
         {children}
       </body>

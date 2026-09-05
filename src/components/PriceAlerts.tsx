@@ -193,7 +193,7 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
           <h3 className="text-lg font-semibold text-slate-100">{t.title}</h3>
         </div>
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </div>
       </div>
     );
@@ -211,7 +211,7 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="p-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors"
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -225,7 +225,7 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
               value={newAlert.ticker}
               onChange={(e) => setNewAlert((p) => ({ ...p, ticker: e.target.value.toUpperCase() }))}
               placeholder={t.ticker}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
               maxLength={10}
             />
             <input
@@ -233,7 +233,7 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
               value={newAlert.targetPrice}
               onChange={(e) => setNewAlert((p) => ({ ...p, targetPrice: e.target.value }))}
               placeholder={t.targetPrice}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
             />
             <select
               value={newAlert.condition}
@@ -248,7 +248,7 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
             <button
               onClick={handleAdd}
               disabled={!newAlert.ticker.trim() || !newAlert.targetPrice || isAdding}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-sm font-medium transition-colors"
+              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-lg text-sm font-medium transition-colors"
             >
               {isAdding ? <Loader2 className="h-4 w-4 animate-spin inline mr-1" /> : null}
               {t.addAlert}
@@ -265,9 +265,9 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
 
       {alerts.length === 0 ? (
         <div className="text-center py-6">
-          <Bell className="h-10 w-10 mx-auto text-slate-600 mb-3" />
+          <Bell className="h-10 w-10 mx-auto text-slate-400 mb-3" />
           <p className="text-sm text-slate-400">{t.empty}</p>
-          <p className="text-xs text-slate-500 mt-1">{t.emptyHint}</p>
+          <p className="text-xs text-slate-400 mt-1">{t.emptyHint}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -304,17 +304,17 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
                 <div className="flex items-center gap-3">
                   {currentPrice ? (
                     <div className="text-right">
-                      <p className="text-xs text-slate-500">{t.currentPrice}</p>
+                      <p className="text-xs text-slate-400">{t.currentPrice}</p>
                       <p className={`font-medium ${isTriggered ? 'text-emerald-400' : 'text-slate-200'}`}>
                         {formatCurrency(currentPrice)}
                       </p>
                     </div>
                   ) : (
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                   )}
                   <button
                     onClick={() => handleDelete(alert.id)}
-                    className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
+                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
                     title={t.delete}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -326,7 +326,7 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
           
           {triggeredAlerts.length > 0 && (
             <div className="pt-2 border-t border-slate-700/50 mt-3">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">{t.triggered}</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">{t.triggered}</p>
               {triggeredAlerts.map((alert) => (
                 <div
                   key={alert.id}
@@ -336,14 +336,14 @@ export default function PriceAlerts({ language }: { language: DashboardLanguage 
                     <Check className="h-5 w-5 text-emerald-400" />
                     <div>
                       <p className="font-medium text-slate-300">{alert.ticker}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-400">
                         {formatCurrency(parseFloat(alert.targetPrice))} - {alert.condition === 'above' ? t.above : t.below}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleDelete(alert.id)}
-                    className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
+                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>

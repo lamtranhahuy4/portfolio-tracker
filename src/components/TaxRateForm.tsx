@@ -84,7 +84,7 @@ export default function TaxRateForm({ initialTaxRate, language }: TaxRateFormPro
       </div>
 
       {!showForm && (
-        <p className="text-sm text-slate-500">{t.desc}</p>
+        <p className="text-sm text-slate-400">{t.desc}</p>
       )}
 
       {showForm && (

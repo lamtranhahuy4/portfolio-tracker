@@ -91,3 +91,37 @@ For every proposed solution or architectural change, you must include a specific
 - [ ] The final output must be an artifact named `sprint_5_plan.md`.
 - [ ] The document structure must include: Goals, Proposed Changes (grouped logically by component/file), Risk Assessment for each proposed change, and a Verification Plan.
 
+## 2026-09-04T03:35:31Z
+
+# Teamwork Project Prompt — Draft
+
+> Requested team: Full team
+
+Tiến hành đánh giá toàn diện UI và Layout của dự án portfolio-tracker, bao gồm tính nhất quán, responsive, UX, chất lượng code và phát hiện visual bugs. Sử dụng toàn bộ nhóm (Full team).
+
+Working directory: /Users/lamtranhahuy/Project/portfolio-tracker
+Integrity mode: development
+
+## Requirements
+
+### R1. Phân tích giao diện và trải nghiệm
+Phân tích UI/Layout trên toàn bộ mã nguồn của dự án để đánh giá tính nhất quán trong thiết kế, khả năng phản hồi (responsive) trên các kích thước màn hình, và trải nghiệm người dùng (UX) tổng thể. Đánh giá hoàn toàn dựa trên mã nguồn hiện tại, không có tài liệu tham chiếu bên ngoài.
+
+### R2. Đánh giá mã nguồn và lỗi hiển thị
+Đánh giá chất lượng code của các UI components, bao gồm cấu trúc HTML/JSX, cách quản lý CSS/styling, và khả năng tiếp cận (accessibility). Phát hiện và ghi nhận các lỗi hiển thị (visual bugs) tiềm ẩn thông qua việc đọc hiểu luồng UI.
+
+### R3. Xuất báo cáo đánh giá
+Tổng hợp kết quả thành một file Markdown chi tiết. Mỗi vấn đề phát hiện được phải ghi rõ vị trí (đường dẫn file), mô tả vấn đề và đề xuất cách khắc phục cụ thể.
+
+## Acceptance Criteria
+
+### Báo cáo Markdown
+- [ ] Báo cáo được lưu thành file `ui_review_report.md` trong thư mục dự án (hoặc thư mục gốc).
+- [ ] Báo cáo bao phủ đầy đủ 5 khía cạnh: Tính nhất quán thiết kế, Responsive, UX, Chất lượng code UI, và Lỗi hiển thị (Visual bugs).
+
+### Tính cụ thể và khả năng hành động
+- [ ] 100% các vấn đề được nêu ra phải có đường dẫn file tham chiếu chính xác.
+- [ ] Mỗi vấn đề đều đi kèm với một đề xuất sửa đổi cụ thể ở mức mã nguồn hoặc cấu trúc component.
+- [ ] Không có các đánh giá cảm tính, chung chung (như "nhìn không đẹp") mà thiếu dẫn chứng hoặc lý do kỹ thuật.
+
+

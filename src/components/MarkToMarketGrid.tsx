@@ -3,14 +3,9 @@
 import React, { useMemo, useState } from 'react';
 import { Holding } from '../types/portfolio';
 import { Pencil, Check, X, Search } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
 
 export interface MarkToMarketGridProps {
   holdings: Holding[];
@@ -89,16 +84,18 @@ export default function MarkToMarketGrid({ holdings, onPriceChange, language }: 
   return (
     <div className="w-full overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/60 shadow-xl shadow-black/20 backdrop-blur-sm">
       <div className="border-b border-slate-800 bg-slate-950/40 px-5 py-4 space-y-3">
-        <div className="flex items-center gap-1 rounded-xl bg-slate-950/80 p-1">
+        <div className="flex items-center gap-1 rounded-xl bg-slate-950/80 p-1" role="tablist">
           {(['ALL', 'STOCK', 'FUND', 'CASH'] as AssetTab[]).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
                 'flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors',
                 activeTab === tab
                   ? 'bg-slate-700 text-slate-100 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-300'
+                  : 'text-slate-400 hover:text-slate-300'
               )}
             >
               {tab === 'ALL' ? (language === 'vi' ? 'Tất cả' : 'All') :
@@ -145,7 +142,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange, language }: 
                       {h.ticker}
                       {h.ticker !== 'CASH_VND' && (
                         <button
-                          className="text-slate-500 transition-colors hover:text-indigo-400"
+                          className="p-2 -m-2 text-slate-400 transition-colors hover:text-indigo-400"
                           title={`Remaining Qty: ${h.totalShares}\nGross Price: ${formatGrossPrice(h.grossAveragePrice)}\nNet Cost: ${formatCurrency(h.netAverageCost)}\nTotal Net Basis: ${formatCurrency(h.totalShares * h.netAverageCost)}`}
                         >
                           <Search size={14} />
@@ -167,21 +164,21 @@ export default function MarkToMarketGrid({ holdings, onPriceChange, language }: 
                   <td className="px-5 py-4 text-right text-slate-400">{h.ticker === 'CASH_VND' ? '-' : formatGrossPrice(h.grossAveragePrice)}</td>
                   <td className="px-5 py-4 text-right">
                     {h.ticker === 'CASH_VND' ? (
-                      <span className="text-slate-500">-</span>
+                      <span className="text-slate-400">-</span>
                     ) : isEditing ? (
                       <div className="flex items-center justify-end gap-1.5">
                         <input
                           type="number"
-                          className="w-28 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-right text-sm text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className="w-28 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-right text-base sm:text-sm text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSave(h.ticker)}
                           autoFocus
                         />
-                        <button onClick={() => handleSave(h.ticker)} className="rounded-md p-1.5 text-emerald-400 transition-colors hover:bg-emerald-500/10" title={t.save}>
+                        <button onClick={() => handleSave(h.ticker)} className="rounded-md p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-emerald-400 transition-colors hover:bg-emerald-500/10" title={t.save}>
                           <Check size={16} strokeWidth={2.5} />
                         </button>
-                        <button onClick={handleCancel} className="rounded-md p-1.5 text-rose-400 transition-colors hover:bg-rose-500/10" title={t.cancel}>
+                        <button onClick={handleCancel} className="rounded-md p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-rose-400 transition-colors hover:bg-rose-500/10" title={t.cancel}>
                           <X size={16} strokeWidth={2.5} />
                         </button>
                       </div>
@@ -190,7 +187,7 @@ export default function MarkToMarketGrid({ holdings, onPriceChange, language }: 
                         <span className="font-semibold text-slate-100">{formatCurrency(h.currentPrice)}</span>
                         <button
                           onClick={() => handleEditClick(h.ticker, h.currentPrice)}
-                          className="rounded-md p-1.5 text-slate-500 opacity-0 transition-all hover:bg-blue-500/10 hover:text-blue-300 group-hover:opacity-100 focus:opacity-100"
+                          className="rounded-md p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 opacity-100 sm:opacity-0 transition-all hover:bg-blue-500/10 hover:text-blue-300 sm:group-hover:opacity-100 focus:opacity-100"
                           title={t.editPrice}
                         >
                           <Pencil size={14} />

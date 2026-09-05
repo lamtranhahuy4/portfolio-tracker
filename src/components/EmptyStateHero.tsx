@@ -40,7 +40,7 @@ export default function EmptyStateHero({ language }: { language: 'vi' | 'en' }) 
         
         <div className="relative flex items-center py-5">
           <div className="flex-grow border-t border-slate-700/50"></div>
-          <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-medium">{language === 'vi' ? 'HOẶC' : 'OR'}</span>
+          <span className="flex-shrink-0 mx-4 text-slate-400 text-sm font-medium">{language === 'vi' ? 'HOẶC' : 'OR'}</span>
           <div className="flex-grow border-t border-slate-700/50"></div>
         </div>
 

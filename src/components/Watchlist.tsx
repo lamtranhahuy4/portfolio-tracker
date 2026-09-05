@@ -165,7 +165,7 @@ export default function Watchlist({ language }: { language: DashboardLanguage })
           <h3 className="text-lg font-semibold text-slate-100">{t.title}</h3>
         </div>
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </div>
       </div>
     );
@@ -178,14 +178,14 @@ export default function Watchlist({ language }: { language: DashboardLanguage })
           <Star className="h-5 w-5 text-amber-400" />
           <h3 className="text-lg font-semibold text-slate-100">{t.title}</h3>
         </div>
-        <span className="text-xs text-slate-500">{items.length} {language === 'vi' ? 'mã' : 'tickers'}</span>
+        <span className="text-xs text-slate-400">{items.length} {language === 'vi' ? 'mã' : 'tickers'}</span>
       </div>
 
       {items.length === 0 ? (
         <div className="text-center py-6">
-          <Eye className="h-10 w-10 mx-auto text-slate-600 mb-3" />
+          <Eye className="h-10 w-10 mx-auto text-slate-400 mb-3" />
           <p className="text-sm text-slate-400">{t.empty}</p>
-          <p className="text-xs text-slate-500 mt-1">{t.emptyHint}</p>
+          <p className="text-xs text-slate-400 mt-1">{t.emptyHint}</p>
         </div>
       ) : (
         <div className="space-y-2 mb-4">
@@ -203,7 +203,7 @@ export default function Watchlist({ language }: { language: DashboardLanguage })
                   <div>
                     <p className="font-medium text-slate-200">{item.ticker}</p>
                     {item.name && (
-                      <p className="text-xs text-slate-500 truncate max-w-[120px]">{item.name}</p>
+                      <p className="text-xs text-slate-400 truncate max-w-[120px]">{item.name}</p>
                     )}
                   </div>
                 </div>
@@ -221,14 +221,14 @@ export default function Watchlist({ language }: { language: DashboardLanguage })
                       </div>
                       <button
                         onClick={() => handleRemove(item.id, item.ticker)}
-                        className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
                         title={t.remove}
                       >
                         <X className="h-4 w-4" />
                       </button>
                     </>
                   ) : (
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                   )}
                 </div>
               </div>
@@ -244,13 +244,13 @@ export default function Watchlist({ language }: { language: DashboardLanguage })
           onChange={(e) => setAddingTicker(e.target.value.toUpperCase())}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder={t.addTicker}
-          className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+          className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
           maxLength={10}
         />
         <button
           onClick={handleAdd}
           disabled={!addingTicker.trim() || isAdding}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
         >
           {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           {t.add}

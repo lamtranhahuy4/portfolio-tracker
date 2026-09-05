@@ -150,7 +150,7 @@ function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormP
         type="email"
         autoComplete="email"
         placeholder="you@example.com"
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base sm:text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
         required
       />
       <input
@@ -160,7 +160,7 @@ function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormP
         onChange={(e) => setPassword(e.target.value)}
         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
         placeholder={t.passwordPlaceholder}
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base sm:text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
         required
         minLength={8}
       />
@@ -173,7 +173,7 @@ function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormP
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
             placeholder={t.confirmPlaceholder}
-            className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 ${
+            className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-base sm:text-sm text-slate-100 outline-none focus:ring-2 ${
               mismatch
                 ? 'border-rose-600 focus:ring-rose-500'
                 : 'border-slate-700 focus:ring-indigo-500'
@@ -237,14 +237,7 @@ export default function AuthPanel() {
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-md space-y-6 rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
         <div className="flex items-center justify-end">
-          <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/80 p-1 text-sm text-slate-300">
-            <div className="flex items-center gap-2 px-3 text-slate-400">
-              <Languages className="h-4 w-4" />
-              <span>{t.language}</span>
-            </div>
-            <button type="button" onClick={() => setLanguage('vi')} className={language === 'vi' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>{t.vi}</button>
-            <button type="button" onClick={() => setLanguage('en')} className={language === 'en' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>{t.en}</button>
-          </div>
+          <LanguageSwitcher language={language} setLanguage={setLanguage} />
         </div>
 
         <div className="space-y-2">
@@ -265,7 +258,7 @@ export default function AuthPanel() {
         {mode === 'signin' && (
           <a
             href="/forgot-password"
-            className="block text-center text-xs text-slate-500 transition-colors hover:text-indigo-400"
+            className="block text-center text-xs text-slate-400 transition-colors hover:text-indigo-400"
           >
             {language === 'vi' ? 'Quên mật khẩu?' : 'Forgot password?'}
           </a>

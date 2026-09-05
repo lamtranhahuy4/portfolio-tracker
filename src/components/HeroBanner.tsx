@@ -161,7 +161,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.28em] text-slate-500">{t.marketLabel}</p>
+            <p className="text-sm uppercase tracking-[0.28em] text-slate-400">{t.marketLabel}</p>
             <h2 className="text-3xl font-semibold tracking-tight text-slate-100 md:text-4xl">
               {t.greeting}{' '}
               <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
@@ -172,7 +172,7 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
           </div>
 
           {(lastUpdate || error) && (
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
               {loading ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -197,18 +197,15 @@ export default function HeroBanner({ userEmail, language }: { userEmail: string;
           {cards.map((card) => (
             <article 
               key={card.label} 
-              tabIndex={0}
-              role="button"
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault(); }}
               className="min-w-0 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 shadow-inner backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" 
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-500">{card.symbol}</p>
+                  <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-400">{card.symbol}</p>
                   <h3 className="truncate text-xs font-semibold text-slate-100">{card.label}</h3>
                 </div>
                 {loading || card.price === t.unavailable ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400 shrink-0" />
                 ) : card.up ? (
                   <ArrowUpRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 ) : (

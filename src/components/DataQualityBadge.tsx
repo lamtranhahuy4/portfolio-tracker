@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { CheckCircle2, AlertTriangle, Clock, RefreshCw, Shield } from 'lucide-react';
-import { cn } from '@/components/MarkToMarketGrid';
+import { cn } from '@/lib/utils';
 
 interface DataQualityBadgeProps {
   type: 'fresh' | 'stale' | 'manual' | 'unknown';
@@ -170,7 +170,7 @@ export function DataProvenance({
   }, [source, isManualOverride]);
 
   return (
-    <div className={cn('flex items-center gap-2 text-xs text-slate-500', className)}>
+    <div className={cn('flex items-center gap-2 text-xs text-slate-400', className)}>
       <span className="font-medium">Nguồn: {sourceLabel}</span>
       {timestamp && (
         <>

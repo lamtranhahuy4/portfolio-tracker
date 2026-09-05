@@ -132,9 +132,9 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
       <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
         <div className="mb-4">
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">{t.title}</h3>
-          <p className="text-xs text-slate-500">{t.subtitle}</p>
+          <p className="text-xs text-slate-400">{t.subtitle}</p>
         </div>
-        <div className="flex h-[200px] items-center justify-center text-sm text-slate-500">
+        <div className="flex h-[200px] items-center justify-center text-sm text-slate-400">
           {t.noData}
         </div>
       </div>
@@ -145,11 +145,11 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
     <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
       <div className="mb-4">
         <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">{t.title}</h3>
-        <p className="text-xs text-slate-500">{t.subtitle}</p>
+        <p className="text-xs text-slate-400">{t.subtitle}</p>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="h-[180px] w-[180px] flex-shrink-0">
+      <div className="flex flex-col sm:flex-row items-center gap-6">
+        <div className="h-[180px] w-[180px] shrink-0 mx-auto sm:mx-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -184,7 +184,7 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
           </ResponsiveContainer>
         </div>
 
-        <div className="flex-1 space-y-3">
+        <div className="w-full flex-1 space-y-3">
           {allocationData.map((item) => (
             <div key={item.id} className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -198,7 +198,7 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
                 <div className="text-sm font-medium text-slate-200">
                   {formatCurrency(item.value)}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-400">
                   {(item.percent * 100).toFixed(1)}%
                 </div>
               </div>
@@ -215,9 +215,9 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-          <div className="text-xs text-slate-500">{t.stocks}</div>
+          <div className="text-xs text-slate-400">{t.stocks}</div>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-lg font-semibold text-blue-400">
               {stocksValue > 0 ? formatCurrency(stocksValue) : '0'}
@@ -225,7 +225,7 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
           </div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-          <div className="text-xs text-slate-500">{t.funds}</div>
+          <div className="text-xs text-slate-400">{t.funds}</div>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-lg font-semibold text-purple-400">
               {fundsValue > 0 ? formatCurrency(fundsValue) : '0'}
@@ -233,7 +233,7 @@ export default function AssetAllocationChart({ language }: { language: Dashboard
           </div>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-          <div className="text-xs text-slate-500">{t.cash}</div>
+          <div className="text-xs text-slate-400">{t.cash}</div>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-lg font-semibold text-green-400">
               {formatCurrency(cashBalance)}

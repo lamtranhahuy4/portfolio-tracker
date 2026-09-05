@@ -67,7 +67,7 @@ export default function ImportHistoryCard({ batches, language }: ImportHistoryCa
       </div>
 
       {batches.length === 0 ? (
-        <span className="text-sm text-slate-500">{t.empty}</span>
+        <span className="text-sm text-slate-400">{t.empty}</span>
       ) : (
         <div className="space-y-3">
           {batches.map((batch) => {
@@ -88,7 +88,7 @@ export default function ImportHistoryCard({ batches, language }: ImportHistoryCa
                     </div>
                     <div>
                       <div className="font-medium text-white">{batch.fileName}</div>
-                      <div className="mt-1 text-xs text-slate-500">{batch.source}</div>
+                      <div className="mt-1 text-xs text-slate-400">{batch.source}</div>
                     </div>
                     <div className="flex flex-wrap gap-3 text-xs text-slate-400">
                       <span>{t.importedAt}: {new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {

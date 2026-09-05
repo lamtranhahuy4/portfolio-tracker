@@ -154,7 +154,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
       {selected ? (
         <div className="mt-4 grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-slate-800 bg-slate-800/40 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-slate-500">{t.buy}</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">{t.buy}</p>
             <p className="text-lg font-semibold text-emerald-300">
               {formatPrice(selected.buy, selected.currency)}
             </p>
@@ -163,7 +163,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
             </p>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-800/40 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-slate-500">{t.sell}</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">{t.sell}</p>
             <p className="text-lg font-semibold text-rose-300">
               {formatPrice(selected.sell, selected.currency)}
             </p>
@@ -172,7 +172,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
             </p>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-800/40 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-slate-500">{t.change}</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">{t.change}</p>
             <p className={`text-lg font-semibold ${selected.changeBuy >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
               {selected.changeBuy >= 0 ? '+' : ''}
               {((selected.changeBuy / (selected.buy - selected.changeBuy)) * 100).toFixed(2)}%
@@ -180,7 +180,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
           </div>
         </div>
       ) : !loading && prices.length === 0 ? (
-        <p className="mt-4 text-center text-sm text-slate-500">{t.noData}</p>
+        <p className="mt-4 text-center text-sm text-slate-400">{t.noData}</p>
       ) : null}
 
       <div className="mt-4 flex items-center justify-between">
@@ -241,7 +241,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
           <p className="mt-2 text-xs text-slate-400">Ghi chú: Giá đã chia 1.000 (hiển thị theo nghìn).</p>
         </div>
       ) : (
-        <p className="py-12 text-center text-sm text-slate-500">{t.noChartData}</p>
+        <p className="py-12 text-center text-sm text-slate-400">{t.noChartData}</p>
       )}
     </section>
   );

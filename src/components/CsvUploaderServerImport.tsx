@@ -124,7 +124,7 @@ export default function CsvUploaderServerImport({ language }: { language: Dashbo
           <span className="text-center text-xs font-bold uppercase tracking-[0.24em] text-slate-300">
             {isUploading ? t.reading : t.upload}
           </span>
-          <span className="mb-1 mt-2 text-[10px] text-slate-500">.CSV, .XLSX, .XLS</span>
+          <span className="mb-1 mt-2 text-[10px] text-slate-400">.CSV, .XLSX, .XLS</span>
           <span className="mb-4 max-w-[220px] text-center text-xs text-slate-400">{t.helper}</span>
           <input
             ref={fileInputRef}

@@ -72,7 +72,7 @@ export default function OpeningPositionCard() {
   };
 
   return (
-    <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
+    <form onSubmit={(e) => { e.preventDefault(); saveSnapshot(); }} className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Cut-off Snapshot</h3>
@@ -104,19 +104,19 @@ export default function OpeningPositionCard() {
               value={row.ticker}
               onChange={(e) => setRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ticker: e.target.value } : item))}
               placeholder="Ticker"
-              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             />
             <input
               value={row.quantity}
               onChange={(e) => setRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: e.target.value } : item))}
               placeholder="Số lượng"
-              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             />
             <input
               value={row.averageCost}
               onChange={(e) => setRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, averageCost: e.target.value } : item))}
               placeholder="Giá vốn bình quân"
-              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             />
           </div>
         ))}
@@ -131,8 +131,7 @@ export default function OpeningPositionCard() {
           Thêm dòng
         </button>
         <button
-          type="button"
-          onClick={saveSnapshot}
+          type="submit"
           disabled={isPending}
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
@@ -148,6 +147,6 @@ export default function OpeningPositionCard() {
           Xóa snapshot
         </button>
       </div>
-    </div>
+    </form>
   );
 }

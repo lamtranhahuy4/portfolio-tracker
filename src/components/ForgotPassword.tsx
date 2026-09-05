@@ -76,10 +76,7 @@ export default function ForgotPassword() {
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
         <div className="w-full max-w-md space-y-6 rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
           <div className="flex items-center justify-end">
-            <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/80 p-1 text-sm text-slate-300">
-              <button type="button" onClick={() => setLanguage('vi')} className={language === 'vi' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>VI</button>
-              <button type="button" onClick={() => setLanguage('en')} className={language === 'en' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>EN</button>
-            </div>
+            <LanguageSwitcher language={language} setLanguage={setLanguage} />
           </div>
 
           <div className="space-y-2 text-center">
@@ -112,10 +109,7 @@ export default function ForgotPassword() {
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-md space-y-6 rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
         <div className="flex items-center justify-end">
-          <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/80 p-1 text-sm text-slate-300">
-            <button type="button" onClick={() => setLanguage('vi')} className={language === 'vi' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>VI</button>
-            <button type="button" onClick={() => setLanguage('en')} className={language === 'en' ? 'rounded-xl bg-blue-600 px-3 py-1.5 text-white' : 'rounded-xl px-3 py-1.5 text-slate-400 hover:bg-slate-900'}>EN</button>
-          </div>
+          <LanguageSwitcher language={language} setLanguage={setLanguage} />
         </div>
 
         <div className="space-y-2">
@@ -132,7 +126,7 @@ export default function ForgotPassword() {
             placeholder={t.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base sm:text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
 

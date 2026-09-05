@@ -156,7 +156,7 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
           </div>
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">{t.title}</h3>
-            <p className="text-xs text-slate-500">{stockTickers.length} {t.watching}</p>
+            <p className="text-xs text-slate-400">{stockTickers.length} {t.watching}</p>
           </div>
         </div>
         <button
@@ -172,7 +172,7 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
 
       {isLoading && !hasLoaded && (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </div>
       )}
 
@@ -207,13 +207,13 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
                           <p className="text-sm font-medium text-slate-200 line-clamp-2 leading-snug">
                             {article.headline}
                           </p>
-                          <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+                          <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-400">
                             <span>{article.source}</span>
-                            <span className="text-slate-600">•</span>
+                            <span className="text-slate-400">•</span>
                             <span>{formatTime(article.datetime)}</span>
                           </div>
                         </div>
-                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
+                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
                       </div>
                     </a>
                   ))}
@@ -223,9 +223,9 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
           })}
 
           {!hasNews && (
-            <div className="text-center py-4 text-sm text-slate-500 space-y-2">
+            <div className="text-center py-4 text-sm text-slate-400 space-y-2">
               <p>{t.noNews}</p>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-400">
                 {stockTickers.every(t => t.length <= 3) 
                   ? t.hintVN
                   : t.hintOther}

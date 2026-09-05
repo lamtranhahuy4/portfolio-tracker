@@ -58,3 +58,6 @@ EXECUTIVE_SUMMARY.md
 # lock files from other package managers (project uses pnpm exclusively)
 yarn.lock
 package-lock.json
+# AI Agents
+.agents/
+scratch/

@@ -29,7 +29,7 @@ export default function IRRWidget({ xirr, language }: IRRWidgetProps) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 flex flex-col justify-center">
         <h3 className="text-sm font-semibold text-slate-400">{t.title}</h3>
-        <p className="mt-2 text-xl font-bold text-slate-500">{t.unavailable}</p>
+        <p className="mt-2 text-xl font-bold text-slate-400">{t.unavailable}</p>
       </div>
     );
   }
@@ -49,7 +49,7 @@ export default function IRRWidget({ xirr, language }: IRRWidgetProps) {
           <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-1.5">
             {t.title}
             <div className="group relative">
-              <Info className="h-3.5 w-3.5 text-slate-500 cursor-help" />
+              <Info className="h-3.5 w-3.5 text-slate-400 cursor-help" />
               <div className="pointer-events-none absolute left-1/2 bottom-full z-20 mb-2 w-48 -translate-x-1/2 rounded-md bg-slate-800 px-3 py-2 text-xs text-slate-200 opacity-0 transition-opacity group-hover:opacity-100">
                 {t.desc}
               </div>

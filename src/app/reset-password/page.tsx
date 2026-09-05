@@ -47,7 +47,7 @@ function ResetPasswordContent() {
   const t = copy[language];
 
   useEffect(() => {
-    const storedLang = window.localStorage.getItem('dashboard_language');
+    const storedLang = window.localStorage.getItem('portfolio-dashboard-language');
     if (storedLang === 'vi' || storedLang === 'en') {
       setLanguage(storedLang);
     }
@@ -123,7 +123,7 @@ function ResetPasswordContent() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-400">Portfolio Tracker</p>
           <h1 className="text-3xl font-bold text-slate-100">{t.title}</h1>
           <p className="text-sm text-slate-400 truncate">
-            <span className="text-slate-500">{language === 'vi' ? 'Email: ' : 'Email: '}</span>
+            <span className="text-slate-400">{language === 'vi' ? 'Email: ' : 'Email: '}</span>
             {email}
           </p>
         </div>
@@ -134,7 +134,7 @@ function ResetPasswordContent() {
             placeholder={t.passwordPlaceholder}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base sm:text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
             minLength={8}
             required
           />
@@ -144,7 +144,7 @@ function ResetPasswordContent() {
             placeholder={t.confirmPlaceholder}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base sm:text-sm text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
             minLength={8}
             required
           />

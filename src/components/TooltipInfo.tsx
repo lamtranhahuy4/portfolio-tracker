@@ -7,7 +7,7 @@ export default function TooltipInfo({ content }: { content: string }) {
       <button
         type="button"
         aria-label="Thông tin thêm"
-        className="inline-flex cursor-help items-center justify-center rounded-full text-slate-500 outline-none transition-colors hover:text-amber-400 focus-visible:text-amber-400"
+        className="inline-flex cursor-help p-2 -m-2 items-center justify-center rounded-full text-slate-400 outline-none transition-colors hover:text-amber-400 focus-visible:text-amber-400"
       >
         <HelpCircle className="h-3.5 w-3.5" />
       </button>

@@ -81,7 +81,7 @@ export default function GroupedTransactionHistoryTable({ language }: { language:
       <div className="relative w-full overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/60 p-12 text-center shadow-xl shadow-black/20">
         <div className="absolute inset-0 max-w-full bg-slate-950/20" />
         <div className="relative z-10 flex flex-col items-center justify-center gap-4">
-          <div className="rounded-full bg-slate-800 p-4 text-slate-500 shadow-inner">
+          <div className="rounded-full bg-slate-800 p-4 text-slate-400 shadow-inner">
             <History className="h-8 w-8" />
           </div>
           <div>
@@ -104,7 +104,7 @@ export default function GroupedTransactionHistoryTable({ language }: { language:
                 <p className="text-sm text-slate-400">{group.count} {t.tradeCount}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs uppercase tracking-wide text-slate-500">{t.grossValue}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-400">{t.grossValue}</p>
                 <p className="text-sm font-semibold text-slate-100">{formatCurrency(group.dayGrossValue)}</p>
               </div>
             </div>
@@ -125,7 +125,7 @@ export default function GroupedTransactionHistoryTable({ language }: { language:
                   {group.items.map((tx) => {
                     const badge = getTxBadge(tx.type, language);
                     return (
-                      <tr key={tx.id} tabIndex={0} className="transition-colors hover:bg-slate-800/30 focus:outline-none focus:bg-slate-800/40">
+                      <tr key={tx.id} className="transition-colors hover:bg-slate-800/30 focus:outline-none focus:bg-slate-800/40">
                         <td className="px-6 py-4 text-slate-400">{group.displayDate}</td>
                         <td className="px-6 py-4 font-semibold text-slate-100">{tx.ticker}</td>
                         <td className="px-6 py-4">

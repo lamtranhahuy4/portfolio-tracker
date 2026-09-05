@@ -54,7 +54,7 @@ export default function ForexMiniWidget() {
           <Globe className="h-4 w-4 text-emerald-400" />
           Tỷ giá
         </Link>
-        <button onClick={fetchSummary} disabled={loading} className="text-slate-500 transition-colors hover:text-slate-200">
+        <button onClick={fetchSummary} disabled={loading} className="p-2 -m-2 text-slate-400 transition-colors hover:text-slate-200">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
@@ -76,13 +76,13 @@ export default function ForexMiniWidget() {
             </div>
           ))}
           {rates.length === 0 && (
-            <p className="py-4 text-center text-xs text-slate-500">Không có dữ liệu</p>
+            <p className="py-4 text-center text-xs text-slate-400">Không có dữ liệu</p>
           )}
         </div>
       )}
 
       {summary && (
-        <div className="mt-2 border-t border-slate-800 pt-2 text-right text-[10px] text-slate-600">
+        <div className="mt-2 border-t border-slate-800 pt-2 text-right text-[10px] text-slate-400">
           {summary.intlCount} cặp Q.tế · {summary.goldCount} giá vàng
         </div>
       )}

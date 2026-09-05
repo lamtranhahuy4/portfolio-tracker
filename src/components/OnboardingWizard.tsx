@@ -119,7 +119,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
 
   return (
     <div ref={wizardRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80">
-      <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto">
         {/* Header */}
         <div className="p-8 pb-6 border-b border-slate-800 bg-gradient-to-b from-slate-800/50">
           <h1 className="text-2xl font-bold text-white tracking-tight">{t.welcome}</h1>
@@ -163,7 +163,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
 
               <div className="relative flex items-center py-8">
                 <div className="flex-grow border-t border-slate-700/50"></div>
-                <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-medium">{language === 'vi' ? 'HOẶC' : 'OR'}</span>
+                <span className="flex-shrink-0 mx-4 text-slate-400 text-sm font-medium">{language === 'vi' ? 'HOẶC' : 'OR'}</span>
                 <div className="flex-grow border-t border-slate-700/50"></div>
               </div>
 
@@ -203,7 +203,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
                       onChange={setNetContributions}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 outline-none focus:border-emerald-500 transition-colors"
                     />
-                    <span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium pointer-events-none">VND</span>
+                    <span className="absolute right-4 top-3.5 text-slate-400 text-sm font-medium pointer-events-none">VND</span>
                   </div>
                 </div>
                 <div>
@@ -214,7 +214,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
                       onChange={setCashBalance}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 outline-none focus:border-emerald-500 transition-colors"
                     />
-                    <span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium pointer-events-none">VND</span>
+                    <span className="absolute right-4 top-3.5 text-slate-400 text-sm font-medium pointer-events-none">VND</span>
                   </div>
                 </div>
               </div>
@@ -238,7 +238,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
                     <Upload className="w-6 h-6" />
                   </div>
                   <span className="text-sm font-medium text-slate-300">{t.uploadHint}</span>
-                  <span className="text-xs text-slate-500">{language === 'vi' ? 'Kết thúc thiết lập, dùng CSV upload ở sidebar' : 'Finish setup, use CSV upload in sidebar'}</span>
+                  <span className="text-xs text-slate-400">{language === 'vi' ? 'Kết thúc thiết lập, dùng CSV upload ở sidebar' : 'Finish setup, use CSV upload in sidebar'}</span>
                 </button>
                 <button
                   onClick={() => setShowManualTrade(true)}
@@ -248,7 +248,7 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
                     <Landmark className="w-6 h-6" />
                   </div>
                   <span className="text-sm font-medium text-slate-300">{t.manualHint}</span>
-                  <span className="text-xs text-slate-500">{language === 'vi' ? 'Nhập giao dịch mua/bán thủ công' : 'Enter buy/sell transactions manually'}</span>
+                  <span className="text-xs text-slate-400">{language === 'vi' ? 'Nhập giao dịch mua/bán thủ công' : 'Enter buy/sell transactions manually'}</span>
                 </button>
               </div>
             </div>

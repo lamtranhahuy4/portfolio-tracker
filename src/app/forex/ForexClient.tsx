@@ -11,7 +11,7 @@ import {
 import { ForexResponse, ForexHistoryPoint } from '@/lib/foreignExchangeService';
 import { DashboardLanguage, DASHBOARD_LANGUAGE_STORAGE_KEY } from '@/lib/dashboardLocale';
 import { downloadCsv } from '@/lib/exportCsv';
-import { cn } from '@/components/MarkToMarketGrid';
+import { cn } from '@/lib/utils';
 import ForexConverter from '@/components/ForexConverter';
 import GoldPriceCard from '@/components/GoldPriceCard';
 
@@ -237,7 +237,7 @@ export default function ForexClient({
                 <Globe className="h-6 w-6 text-white" />
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">{t.title}</p>
+                <p className="text-[11px] uppercase tracking-[0.32em] text-slate-400">{t.title}</p>
                 <h1 className="text-2xl font-semibold tracking-tight text-slate-100 lg:text-3xl">
                   {t.title}
                 </h1>
@@ -247,7 +247,7 @@ export default function ForexClient({
 
           <div className="flex items-center gap-3">
             {lastUpdated && (
-              <span className="flex items-center gap-2 text-xs text-slate-500">
+              <span className="flex items-center gap-2 text-xs text-slate-400">
                 <span className={cn(
                   'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
                   dataFreshness === 'fresh'
@@ -303,22 +303,25 @@ export default function ForexClient({
 
         {data && (
           <div className="mt-6">
-            <div className="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
+            <div className="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto" role="tablist">
               <button
+                role="tab"
+                aria-selected={activeTab === 'vnd'}
                 onClick={() => setActiveTab('vnd')}
                 className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === 'vnd'
                     ? 'bg-emerald-600/20 text-emerald-300'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                 }`}
               >
-                <Wallet className="mr-1.5 inline-block h-4 w-4" />
-                {t.vndTab}
+                {t.tabVnd}
               </button>
               <button
-                onClick={() => setActiveTab('intl')}
+                role="tab"
+                aria-selected={activeTab === 'cross'}
+                onClick={() => setActiveTab('cross')}
                 className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeTab === 'intl'
+                  activeTab === 'cross'
                     ? 'bg-emerald-600/20 text-emerald-300'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
@@ -366,7 +369,7 @@ export default function ForexClient({
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500">
+                    <tr className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-400">
                       <th className="px-4 py-3 font-medium">{t.code}</th>
                       <th className="px-4 py-3 text-right font-medium">{t.buyCash}</th>
                       <th className="px-4 py-3 text-right font-medium">{t.buyTransfer}</th>
@@ -415,7 +418,7 @@ export default function ForexClient({
                               e.stopPropagation();
                               handleSelectPair(`${rate.code}/VND`);
                             }}
-                            className="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-400 transition-colors hover:border-emerald-700 hover:text-emerald-400"
+                            className="rounded-lg border border-slate-700 px-3 py-1 min-h-[44px] text-xs text-slate-400 transition-colors hover:border-emerald-700 hover:text-emerald-400"
                           >
                             <TrendingUp className="inline-block h-3 w-3" />
                           </button>
@@ -426,7 +429,7 @@ export default function ForexClient({
                   </tbody>
                 </table>
                 {vndRates.length === 0 && (
-                  <p className="py-8 text-center text-sm text-slate-500">{t.error}</p>
+                  <p className="py-8 text-center text-sm text-slate-400">{t.error}</p>
                 )}
               </div>
             )}
@@ -435,7 +438,7 @@ export default function ForexClient({
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500">
+                    <tr className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-400">
                       <th className="px-4 py-3 font-medium">{t.code}</th>
                       <th className="px-4 py-3 text-right font-medium">{t.rate}</th>
                       <th className="px-4 py-3 text-center font-medium">Chart</th>
@@ -473,7 +476,7 @@ export default function ForexClient({
                   </tbody>
                 </table>
                 {intlRates.length === 0 && (
-                  <p className="py-8 text-center text-sm text-slate-500">{t.error}</p>
+                  <p className="py-8 text-center text-sm text-slate-400">{t.error}</p>
                 )}
               </div>
             )}
@@ -561,7 +564,7 @@ export default function ForexClient({
               const toCurrency = selectedPair ? selectedPair.split('/')[1] : null;
               const msg = toCurrency === 'VND' ? t.noChartVnd : t.noChartNoData || t.noChart;
               return (
-                <p className="py-16 text-center text-sm text-slate-500">{msg}</p>
+                <p className="py-16 text-center text-sm text-slate-400">{msg}</p>
               );
             })()
           )}

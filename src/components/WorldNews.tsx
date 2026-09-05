@@ -73,8 +73,8 @@ export default function WorldNews({ language }: { language: DashboardLanguage })
           <h3 className="text-lg font-semibold text-slate-100">{t.title}</h3>
         </div>
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
-          <span className="ml-2 text-sm text-slate-500">{t.loading}</span>
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <span className="ml-2 text-sm text-slate-400">{t.loading}</span>
         </div>
       </div>
     );
@@ -87,7 +87,7 @@ export default function WorldNews({ language }: { language: DashboardLanguage })
           <Globe className="h-5 w-5 text-blue-400" />
           <h3 className="text-lg font-semibold text-slate-100">{t.title}</h3>
         </div>
-        <p className="text-center text-sm text-slate-500 py-4">{t.noNews}</p>
+        <p className="text-center text-sm text-slate-400 py-4">{t.noNews}</p>
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function WorldNews({ language }: { language: DashboardLanguage })
           <Globe className="h-5 w-5 text-blue-400" />
           <h3 className="text-lg font-semibold text-slate-100">{t.title}</h3>
         </div>
-        <span className="text-xs text-slate-500">{t.source}: Bloomberg</span>
+        <span className="text-xs text-slate-400">{t.source}: Bloomberg</span>
       </div>
 
       <div className="space-y-3">
@@ -117,11 +117,11 @@ export default function WorldNews({ language }: { language: DashboardLanguage })
                   {item.headline}
                 </h4>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <Clock className="h-3 w-3 text-slate-500" />
-                  <span className="text-xs text-slate-500">{formatTime(item.datetime, language)}</span>
+                  <Clock className="h-3 w-3 text-slate-400" />
+                  <span className="text-xs text-slate-400">{formatTime(item.datetime, language)}</span>
                 </div>
               </div>
-              <ExternalLink className="h-4 w-4 text-slate-500 group-hover:text-blue-400 transition-colors shrink-0 mt-1" />
+              <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0 mt-1" />
             </div>
           </a>
         ))}

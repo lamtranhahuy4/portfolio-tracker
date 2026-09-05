@@ -83,7 +83,7 @@ export default function AddTradeForm() {
   };
 
   return (
-    <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
+    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Thêm giao dịch</h3>
@@ -97,11 +97,11 @@ export default function AddTradeForm() {
       <div className="mt-4 space-y-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Loại</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Loại</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             >
               {TX_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -109,11 +109,11 @@ export default function AddTradeForm() {
             </select>
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Loại TS</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Loại TS</label>
             <select
               value={assetClass}
               onChange={(e) => setAssetClass(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             >
               {ASSET_CLASSES.map((a) => (
                 <option key={a.value} value={a.value}>{a.label}</option>
@@ -123,77 +123,76 @@ export default function AddTradeForm() {
         </div>
 
         <div>
-          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Mã cổ phiếu</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Mã cổ phiếu</label>
           <input
             type="text"
             value={ticker}
             onChange={(e) => setTicker(e.target.value.toUpperCase())}
             placeholder="HPG"
-            className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none uppercase"
+            className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none uppercase"
             maxLength={10}
           />
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Số lượng</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Số lượng</label>
             <NumberInput
               value={quantity}
               onChange={setQuantity}
               placeholder="1000"
-              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             />
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Giá (VND)</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Giá (VND)</label>
             <NumberInput
               value={price}
               onChange={setPrice}
               placeholder="30.000"
-              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             />
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Phí</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Phí</label>
             <NumberInput
               value={fee}
               onChange={setFee}
               placeholder="0"
-              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Ngày</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Ngày</label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none [color-scheme:dark]"
+            className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none [color-scheme:dark]"
           />
         </div>
 
         <div>
-          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Ghi chú (tuỳ chọn)</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Ghi chú (tuỳ chọn)</label>
           <input
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Mua cổ phiếu lần đầu"
-            className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+            className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
           />
         </div>
       </div>
 
       <button
-        type="button"
-        onClick={handleSubmit}
+        type="submit"
         disabled={isPending}
         className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
         {isPending ? 'Đang lưu...' : 'Ghi nhận giao dịch'}
       </button>
-    </div>
+    </form>
   );
 }

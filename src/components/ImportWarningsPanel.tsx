@@ -69,7 +69,7 @@ export default function ImportWarningsPanel({ language }: { language: DashboardL
           <div>
             <h3 className="flex items-center gap-2 text-sm font-bold text-slate-100">
               {t.title}
-              <span className="text-xs font-normal text-slate-500">({importedAt.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US')})</span>
+              <span className="text-xs font-normal text-slate-400">({importedAt.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US')})</span>
             </h3>
             <p className="mt-0.5 max-w-[200px] truncate font-mono text-xs text-slate-400">{summary.fileName}</p>
           </div>
@@ -80,7 +80,7 @@ export default function ImportWarningsPanel({ language }: { language: DashboardL
             <span className="whitespace-nowrap font-medium text-slate-400"><strong className="text-emerald-300">{summary.acceptedRows}</strong> {t.valid}</span>
             {summary.rejectedRows > 0 && <span className="whitespace-nowrap font-medium text-slate-400"><strong className="text-rose-300">{summary.rejectedRows}</strong> {t.skipped}</span>}
           </div>
-          {expanded ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
+          {expanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
         </div>
       </div>
 
@@ -95,7 +95,7 @@ export default function ImportWarningsPanel({ language }: { language: DashboardL
             <>
               <div className="overflow-x-auto rounded-xl border border-rose-900/40">
                 <table className="w-full border-collapse text-left text-sm text-slate-400">
-                  <thead className="border-b border-rose-900/40 bg-slate-950/40 text-xs font-medium uppercase tracking-wider text-slate-500">
+                  <thead className="border-b border-rose-900/40 bg-slate-950/40 text-xs font-medium uppercase tracking-wider text-slate-400">
                     <tr>
                       <th className="w-16 px-4 py-3 text-center">{t.row}</th>
                       <th className="min-w-[200px] px-4 py-3 font-bold text-rose-300">{t.reason}</th>

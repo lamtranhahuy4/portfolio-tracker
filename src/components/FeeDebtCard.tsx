@@ -32,7 +32,7 @@ export default function FeeDebtCard() {
   };
 
   return (
-    <div className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
+    <form onSubmit={(e) => { e.preventDefault(); saveValue(); }} className="rounded-[28px] border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Fee Debt</h3>
@@ -44,25 +44,24 @@ export default function FeeDebtCard() {
       </div>
 
       <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
-        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Current Fee Debt</label>
+        <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Current Fee Debt</label>
         <NumberInput
           value={draftValue}
           onChange={setDraftValue}
-          className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+          className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
         />
-        <div className="mt-3 text-xs text-slate-500">
+        <div className="mt-3 text-xs text-slate-400">
           NAV đang trừ: {new Intl.NumberFormat('vi-VN').format(metrics.feeDebt)} VND
         </div>
       </div>
 
       <button
-        type="button"
-        onClick={saveValue}
+        type="submit"
         disabled={isPending}
         className="mt-4 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
         Lưu nợ phí
       </button>
-    </div>
+    </form>
   );
 }

@@ -13,7 +13,9 @@ import ImportWarningsPanel from '@/components/ImportWarningsPanel';
 import OpeningPositionCard from '@/components/OpeningPositionCard';
 import ReconciliationPanel from '@/components/ReconciliationPanel';
 import LogoutButton from '@/components/LogoutButton';
-import MarkToMarketGrid, { cn } from '@/components/MarkToMarketGrid';
+import MarkToMarketGrid from '@/components/MarkToMarketGrid';
+import { cn } from '@/lib/utils';
+import LanguageSwitcher from './LanguageSwitcher';
 import IRRWidget from '@/components/widgets/IRRWidget';
 import NetWorthChart from '@/components/NetWorthChart';
 import OnboardingWizard from '@/components/OnboardingWizard';
@@ -109,10 +111,10 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
   if (!isMounted) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-8">
+      <main id="main-content" className="mx-auto flex w-[95%] max-w-[1680px] flex-col gap-6 py-6">
         <div className="animate-pulse space-y-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="h-28 rounded-2xl bg-slate-800/50" />
             ))}
           </div>
@@ -164,7 +166,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         </div>
       )}
 
-      <main className="mx-auto flex w-[95%] max-w-[1680px] flex-col gap-6 py-6">
+      <main id="main-content" className="mx-auto flex w-[95%] max-w-[1680px] flex-col gap-6 py-6">
         <header className="rounded-[28px] border border-slate-800/80 bg-slate-900/60 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -174,7 +176,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                     <Wallet className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">{t.product}</p>
+                    <p className="text-[11px] uppercase tracking-[0.32em] text-slate-400">{t.product}</p>
                     <h1 className="text-2xl font-semibold tracking-tight text-slate-100 lg:text-3xl">{t.dashboard}</h1>
                   </div>
                 </div>
@@ -203,7 +205,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                   </div>
 
                   <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-sm text-slate-300">
-                    <CalendarDays className="h-4 w-4 text-slate-500" />
+                    <CalendarDays className="h-4 w-4 text-slate-400" />
                     <span className="text-slate-400">{t.snapshot}</span>
                     <input
                       type="date"
@@ -215,7 +217,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                     {valuationDate && (
                       <button
                         onClick={() => setValuationDate(null)}
-                        className="text-slate-500 transition-colors hover:text-slate-200"
+                        className="text-slate-400 transition-colors hover:text-slate-200"
                         title={t.clearSnapshot}
                       >
                         ×
@@ -223,26 +225,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                     )}
                   </div>
 
-                  <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/80 p-1 text-sm text-slate-300">
-                    <div className="flex items-center gap-2 px-3 text-slate-400">
-                      <Languages className="h-4 w-4" />
-                      <span>{t.language}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setLanguage('vi')}
-                      className={cn('rounded-xl px-3 py-1.5 font-medium transition-colors', language === 'vi' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-900')}
-                    >
-                      {t.vietnamese}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLanguage('en')}
-                      className={cn('rounded-xl px-3 py-1.5 font-medium transition-colors', language === 'en' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-900')}
-                    >
-                      {t.english}
-                    </button>
-                  </div>
+                  <LanguageSwitcher language={language} setLanguage={setLanguage} />
 
                   {liveTickerQuery && (
                     <div className="flex items-center gap-2">
@@ -278,7 +261,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                         </span>
                       </button>
                       {lastPriceUpdate && (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-400">
                           {lastPriceUpdate.toLocaleTimeString()}
                         </span>
                       )}
@@ -288,7 +271,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
                 <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3">
                   <div className="min-w-[180px] px-2">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">{t.operator}</p>
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t.operator}</p>
                     <p className="truncate text-sm font-medium text-slate-200">{userEmail}</p>
                   </div>
                   <Link
@@ -323,7 +306,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
         ) : (
           <>
             <ErrorBoundary componentName="StatCards">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
           <StatCard 
             title={t.totalNav} 
             tooltip={t.glossary?.totalNav}
@@ -507,15 +490,15 @@ const StatCard = React.memo(function StatCard({ title, value, valueColor, icon, 
       <div>
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
         <div className="flex items-center justify-between gap-4">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 flex items-center">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400 flex items-center">
             {title}
             {tooltip && <TooltipInfo content={tooltip} />}
           </h3>
           <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">{icon}</div>
         </div>
       </div>
-      <div className="mt-5 flex flex-col gap-1">
-        <div className={cn('text-3xl font-semibold tracking-tight text-slate-100', valueColor)}>{value}</div>
+      <div className="mt-5 flex flex-col gap-1 min-w-0" aria-live="polite">
+        <div title={String(value)} className={cn('text-2xl sm:text-3xl lg:text-2xl xl:text-2xl 2xl:text-3xl font-semibold tracking-tight text-slate-100 truncate', valueColor)}>{value}</div>
         {subValue && <div className="text-sm mt-1">{subValue}</div>}
       </div>
     </div>
