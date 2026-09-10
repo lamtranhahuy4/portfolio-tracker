@@ -96,6 +96,7 @@ export const portfolioSettings = pgTable('portfolio_settings', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   feeDebt: numeric('fee_debt', { precision: 18, scale: 4 }).notNull().default('0'),
+  telegramChatId: varchar('telegram_chat_id', { length: 64 }),
   globalCutoffDate: timestamp('global_cutoff_date', { mode: 'date' }),
   initialNetContributions: numeric('initial_net_contributions', { precision: 18, scale: 4 }).notNull().default('0'),
   initialCashBalance: numeric('initial_cash_balance', { precision: 18, scale: 4 }).notNull().default('0'),

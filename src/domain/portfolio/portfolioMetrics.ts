@@ -209,6 +209,9 @@ function applyTransaction(state: ReplayState, tx: Transaction, _ledgerMode: bool
 
     if (tx.type === 'DIVIDEND') {
       cash.totalShares = cash.totalShares.plus(txTotalValue);
+      // Hạch toán thẳng vào Realized PnL của mã cổ phiếu
+      stock.averageCostRealizedPnL = stock.averageCostRealizedPnL.plus(txTotalValue);
+      stock.fifoRealizedPnL = stock.fifoRealizedPnL.plus(txTotalValue);
       return;
     }
   }

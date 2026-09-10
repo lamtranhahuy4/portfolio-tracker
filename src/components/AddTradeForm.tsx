@@ -12,6 +12,8 @@ import NumberInput from '@/components/NumberInput';
 const TX_TYPES = [
   { value: 'BUY', label: 'Mua' },
   { value: 'SELL', label: 'Bán' },
+  { value: 'DIVIDEND', label: 'Cổ tức tiền mặt' },
+  { value: 'STOCK_DIVIDEND', label: 'Cổ tức cổ phiếu' },
 ] as const;
 
 const ASSET_CLASSES = [
@@ -44,9 +46,19 @@ export default function AddTradeForm() {
   };
 
   const handleSubmit = () => {
-    const numericQuantity = Number(quantity);
-    const numericPrice = Number(price);
+    let numericQuantity = Number(quantity) || 0;
+    let numericPrice = Number(price) || 0;
     const numericFee = Number(fee) || 0;
+
+    if (type === 'DIVIDEND') {
+      numericQuantity = 0; // Not applicable for cash dividend
+    } else if (type === 'STOCK_DIVIDEND') {
+      numericPrice = 0; // Cost is 0
+    }
+
+    if (!ticker.trim()) { toast.error('Mã cổ phiếu không hợp lệ.'); return; }
+    if (type !== 'DIVIDEND' && (!numericQuantity || numericQuantity <= 0)) { toast.error('Số lượng không hợp lệ.'); return; }
+    if (type !== 'STOCK_DIVIDEND' && type !== 'DIVIDEND' && (!numericPrice || numericPrice <= 0)) { toast.error('Giá không hợp lệ.'); return; }
 
     if (!ticker.trim()) { toast.error('Mã cổ phiếu không hợp lệ.'); return; }
     if (!numericQuantity || numericQuantity <= 0) { toast.error('Số lượng không hợp lệ.'); return; }
@@ -63,9 +75,10 @@ export default function AddTradeForm() {
       fee: toMoney(numericFee),
       tax: toMoney(0),
       totalValue: toMoney(
-        type === 'SELL'
-          ? numericQuantity * numericPrice - numericFee
-          : numericQuantity * numericPrice + numericFee
+        type === 'SELL' ? numericQuantity * numericPrice - numericFee :
+        type === 'DIVIDEND' ? numericPrice : // We repurpose 'price' input as total cash received for DIVIDEND
+        type === 'STOCK_DIVIDEND' ? 0 :
+        numericQuantity * numericPrice + numericFee
       ),
       notes: notes.trim() || undefined,
     };
@@ -135,15 +148,17 @@ export default function AddTradeForm() {
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Số lượng</label>
-            <NumberInput
-              value={quantity}
-              onChange={setQuantity}
-              placeholder="1000"
-              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
-            />
-          </div>
+          {type !== 'DIVIDEND' && (
+            <div>
+              <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Số lượng</label>
+              <NumberInput
+                value={quantity}
+                onChange={setQuantity}
+                placeholder="1000"
+                className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base sm:text-sm text-slate-100 outline-none"
+              />
+            </div>
+          )}
           <div>
             <label className="text-xs uppercase tracking-[0.2em] text-slate-400">Giá (VND)</label>
             <NumberInput

@@ -84,3 +84,94 @@ export const cleanupPricesCron = inngest.createFunction(
     return { success: true, message: "Old price history cleaned up." };
   }
 );
+
+
+export const checkPriceAlertsCron = inngest.createFunction(
+  {
+    id: "check-price-alerts-cron",
+    triggers: [{ cron: "TZ=Asia/Ho_Chi_Minh */30 9-14 * * 1-5" }] // M-F, 9:00 - 14:30
+  },
+  async ({ step }) => {
+    // 1. Fetch active alerts
+    const alertsToProcess = await step.run("fetch-active-alerts", async () => {
+      const { priceAlerts, portfolioSettings } = await import("@/db/schema");
+      const { eq, and } = await import("drizzle-orm");
+      
+      const activeAlerts = await db
+        .select({
+          id: priceAlerts.id,
+          ticker: priceAlerts.ticker,
+          targetPrice: priceAlerts.targetPrice,
+          condition: priceAlerts.condition,
+          telegramChatId: portfolioSettings.telegramChatId,
+        })
+        .from(priceAlerts)
+        .leftJoin(portfolioSettings, eq(priceAlerts.userId, portfolioSettings.userId))
+        .where(
+          and(
+            eq(priceAlerts.isActive, true),
+            eq(priceAlerts.isTriggered, false)
+          )
+        );
+        
+      return activeAlerts.filter(a => !!a.telegramChatId);
+    });
+
+    if (alertsToProcess.length === 0) {
+      return { success: true, message: "No active alerts with telegram chat IDs." };
+    }
+
+    // 2. Fetch realtime prices for these tickers
+    const uniqueTickers = [...new Set(alertsToProcess.map(a => a.ticker))];
+    const prices = await step.run("fetch-realtime-prices", async () => {
+      return await getRealtimeQuotes(uniqueTickers as string[]);
+    });
+
+    // 3. Evaluate and notify
+    const triggeredAlerts = await step.run("evaluate-and-notify", async () => {
+      const { priceAlerts } = await import("@/db/schema");
+      const { eq } = await import("drizzle-orm");
+      let notifiedCount = 0;
+      
+      const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+      if (!BOT_TOKEN) return 0;
+
+      for (const alert of alertsToProcess) {
+        const currentPrice = (prices as any)[alert.ticker];
+        if (!currentPrice) continue;
+        
+        const target = Number(alert.targetPrice);
+        let triggered = false;
+        
+        if (alert.condition === 'above' && currentPrice >= target) triggered = true;
+        if (alert.condition === 'below' && currentPrice <= target) triggered = true;
+        
+        if (triggered) {
+          // Send Telegram message
+          const message = `🚨 CẢNH BÁO GIÁ: ${alert.ticker} \nGiá hiện tại: ${currentPrice} ₫ \nĐã ${alert.condition === 'above' ? 'vượt ngưỡng' : 'thủng ngưỡng'}: ${target} ₫`;
+          
+          try {
+            const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: alert.telegramChatId, text: message })
+            });
+            
+            if (res.ok) {
+              // Mark as triggered
+              await db.update(priceAlerts)
+                .set({ isTriggered: true, isActive: false, triggeredAt: new Date() })
+                .where(eq(priceAlerts.id, alert.id as string));
+              notifiedCount++;
+            }
+          } catch (e) {
+            console.error("Telegram error:", e);
+          }
+        }
+      }
+      return notifiedCount;
+    });
+
+    return { success: true, triggeredCount: triggeredAlerts };
+  }
+);

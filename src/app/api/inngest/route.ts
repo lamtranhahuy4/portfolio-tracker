@@ -1,6 +1,7 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
-import { updatePricesCron, forexSnapshotCron, cleanupPricesCron } from "@/inngest/functions";
+import { updatePricesCron, forexSnapshotCron, cleanupPricesCron,
+    checkPriceAlertsCron } from "@/inngest/functions";
 
 // Khởi tạo Inngest API endpoint cho Vercel/Next.js
 export const { GET, POST, PUT } = serve({
@@ -8,6 +9,7 @@ export const { GET, POST, PUT } = serve({
   functions: [
     updatePricesCron,
     forexSnapshotCron,
-    cleanupPricesCron
+    cleanupPricesCron,
+    checkPriceAlertsCron
   ],
 });
