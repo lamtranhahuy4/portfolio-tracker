@@ -1,14 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test('Home page renders without crashing', async ({ page }) => {
-  // Navigate to the home page
   await page.goto('/');
 
-  // Check that the title or a basic element exists
-  // Adjust this based on your actual home page content
-  await expect(page).toHaveTitle(/Portfolio Tracker/i);
-  
-  // Example: check for a specific heading or element
+  // Root layout metadata title is "My Portfolio Oasis" (src/app/layout.tsx:9)
+  await expect(page).toHaveTitle(/Portfolio/i);
+
+  // Unauthenticated visitors see the AuthPanel, which renders an h1 heading
   const heading = page.locator('h1').first();
   await expect(heading).toBeVisible();
 });

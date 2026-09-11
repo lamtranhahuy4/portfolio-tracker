@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getForexRates, snapshotDailyRates, getForexHistory } from '../foreignExchangeService';
-import { setupFetchMock } from '../../test/fetchMock';
+import { setupFetchMock, type FetchMock } from '../../test/fetchMock';
 
 vi.mock('@/lib/circuitBreaker', () => ({
   vietcombankCircuitBreaker: { execute: vi.fn((cb) => cb()) },
