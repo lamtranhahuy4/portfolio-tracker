@@ -137,7 +137,7 @@ export const checkPriceAlertsCron = inngest.createFunction(
       if (!BOT_TOKEN) return 0;
 
       for (const alert of alertsToProcess) {
-        const currentPrice = (prices as any)[alert.ticker];
+        const currentPrice = (prices as Record<string, number>)[alert.ticker];
         if (!currentPrice) continue;
         
         const target = Number(alert.targetPrice);

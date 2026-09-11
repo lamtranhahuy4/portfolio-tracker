@@ -65,7 +65,7 @@ export async function fetchMarketIndices() {
     fetchCoinGecko(),
   ]);
 
-  const formattedData: any[] = [];
+  const formattedData: { name: string; price: string; change: string; percent: string; up: boolean }[] = [];
 
   // Add VN-INDEX if available
   if (vnData) {

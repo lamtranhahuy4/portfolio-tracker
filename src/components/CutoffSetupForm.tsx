@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { Settings, Save, Calendar, Landmark, Coins, Loader2 } from 'lucide-react';
 import { saveCutoffSettings } from '@/actions/portfolioSettings';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { getErrorMessage } from '@/lib/types';
 import NumberInput from '@/components/NumberInput';
 
 interface CutoffSettings {
@@ -71,8 +72,8 @@ export default function CutoffSetupForm({ initialSettings, language }: { initial
         // Update store eagerly
         setPortfolioSettings(payload);
         setSuccess(t.success);
-      } catch (err: any) {
-        setError(err.message || 'Something went wrong');
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       }
     });
   };

@@ -7,6 +7,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { MOCK_TRANSACTIONS, MOCK_CASH_EVENTS } from '@/lib/mockData';
 import NumberInput from '@/components/NumberInput';
 import AddTradeForm from '@/components/AddTradeForm';
+import { getErrorMessage } from '@/lib/types';
 
 export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }) {
   const [step, setStep] = useState(1);
@@ -111,8 +112,8 @@ export default function OnboardingWizard({ language }: { language: 'vi' | 'en' }
         await saveCutoffSettings(payload);
         setPortfolioSettings(payload);
         // Tắt Wizard sẽ do DashboardClient lo khi globalCutoffDate được cập nhật khác null
-      } catch (err: any) {
-        setError(err.message || 'Something went wrong');
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       }
     });
   };

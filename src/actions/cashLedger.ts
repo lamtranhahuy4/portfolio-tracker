@@ -8,6 +8,7 @@ import { cashLedgerEvents, importBatches } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
 import { withErrorHandler } from '@/lib/errorHandler';
 import { CashLedgerEvent } from '@/types/portfolio';
+import { getErrorMessage } from '@/lib/types';
 import { ImportBatchInput } from '@/types/importAudit';
 import { toMoney, toQuantity } from '@/domain/portfolio/primitives';
 
@@ -137,7 +138,7 @@ export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
       referenceTradeDate: record.referenceTradeDate ? new Date(record.referenceTradeDate) : undefined,
     }));
   } catch (error) {
-    if ((error as any).message === 'Not authenticated') {
+    if (getErrorMessage(error) === 'Not authenticated') {
       return [];
     }
     throw error;

@@ -31,7 +31,7 @@ export default function ForexMiniWidget() {
         const json = await fullRes.json();
         const list = TOP_RATES
           .map((code) => {
-            const r = json.vndPairs?.rates?.find((x: any) => x.code === code);
+            const r = json.vndPairs?.rates?.find((x: { code: string; name: string; buyCash: number | null; sell: number | null }) => x.code === code);
             return r ? { code, name: r.name, buy: r.buyCash, sell: r.sell } : null;
           })
           .filter(Boolean) as { code: string; name: string; buy: number | null; sell: number | null }[];

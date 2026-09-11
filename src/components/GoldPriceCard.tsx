@@ -95,7 +95,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
         const json = await res.json();
         if (json.success && json.history) {
           const points: GoldHistoryPoint[] = json.history
-            .sort((a: any, b: any) => a.date.localeCompare(b.date));
+            .sort((a: GoldHistoryPoint, b: GoldHistoryPoint) => a.date.localeCompare(b.date));
           setHistory(points);
         }
       }
@@ -232,7 +232,7 @@ export default function GoldPriceCard({ initialPrices }: Props) {
               <Tooltip
                 contentStyle={{ borderRadius: '12px', border: '1px solid #334155', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor: 'rgba(15, 23, 42, 0.92)', color: '#e2e8f0' }}
                 labelStyle={{ color: '#94a3b8' }}
-                formatter={(value: any) => formatPrice(Number(value), selected?.currency ?? 'VND')}
+                formatter={(value: number | string) => formatPrice(Number(value), selected?.currency ?? 'VND')}
               />
               <Line type="monotone" dataKey="buy" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#10b981' }} name={t.buy} />
               <Line type="monotone" dataKey="sell" stroke="#f43f5e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#f43f5e' }} name={t.sell} />
