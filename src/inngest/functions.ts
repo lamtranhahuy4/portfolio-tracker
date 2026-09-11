@@ -1,6 +1,6 @@
 import { inngest } from "./client";
 import { db } from "@/db";
-import { marketPrices, transactions, openingPositions } from "@/db/schema";
+import { transactions, openingPositions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getRealtimeQuotes } from "@/lib/marketData";
 import { cachePrice } from "@/lib/priceService";

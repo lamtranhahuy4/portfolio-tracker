@@ -82,7 +82,7 @@ export async function GET(request: Request) {
           if (activeInterval) clearInterval(activeInterval);
           try {
             controller.close();
-          } catch (e) {
+          } catch (_e) {
             // Already closed
           }
         });

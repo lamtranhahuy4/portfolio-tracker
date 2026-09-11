@@ -24,7 +24,7 @@ export default tseslint.config(
       eqeqeq: ["error", "always"],
       "no-console": ["warn", { allow: ["warn", "error", "info", "debug"] }],
       "prefer-const": "error",
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
       ...reactHooks.configs.recommended.rules,
       "react-hooks/preserve-manual-memoization": "warn",
@@ -39,5 +39,13 @@ export default tseslint.config(
         ...globals.node,
       },
     },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }]
+    }
   }
 );

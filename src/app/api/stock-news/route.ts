@@ -390,9 +390,6 @@ interface RssItem {
   'content:encoded'?: string;
 }
 
-interface RssChannel {
-  item?: RssItem[];
-}
 
 const parseRssXml = (xmlString: string): RssItem[] => {
   const items: RssItem[] = [];

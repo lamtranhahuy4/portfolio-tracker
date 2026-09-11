@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, Languages, RefreshCw, CheckCircle, AlertCircle, AlertTriangle, Globe } from 'lucide-react';
+import { Wallet, PieChart as PieChartIcon, TrendingUp, CheckCircle2, ShieldCheck, CalendarDays, RefreshCw, CheckCircle, AlertCircle, AlertTriangle, Globe } from 'lucide-react';
 import AddDepositForm from '@/components/AddDepositForm';
 import AddTradeForm from '@/components/AddTradeForm';
 import CsvUploaderServerImport from '@/components/CsvUploaderServerImport';
@@ -28,16 +28,13 @@ import PriceAlerts from '@/components/PriceAlerts';
 import AssetAllocationChart from '@/components/AssetAllocationChart';
 import { HoldingsRealtimeCharts } from '@/components/HoldingPriceChart';
 import TooltipInfo from '@/components/TooltipInfo';
-import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { withRetry } from '@/lib/retry';
 import { downloadCsv } from '@/lib/exportCsv';
 import { DASHBOARD_LANGUAGE_STORAGE_KEY, DashboardLanguage } from '@/lib/dashboardLocale';
 import { i18n } from '@/lib/i18n';
 import { usePortfolioMetrics, usePortfolioStore } from '@/store/usePortfolioStore';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useHoldingsRealtimePrices } from '@/lib/useRealtimePrices';
-import { QUOTE_REFRESH_INTERVAL_MS } from '@/lib/constants';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -102,7 +99,6 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   } = useDashboardData({
     isMounted,
     liveTickerQuery,
-    updatePrice,
     updatePricesBatch,
     setHistoricalPrices,
     setHistoricalPricesLastUpdated,

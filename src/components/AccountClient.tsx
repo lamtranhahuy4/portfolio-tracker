@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, UserCircle2, Activity, HardDrive, Filter, Clock, Languages, Smartphone, Monitor, Globe, LogOut, Shield, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, UserCircle2, Activity, HardDrive, Filter, Clock, Smartphone, Monitor, Globe, LogOut, Shield, AlertTriangle } from 'lucide-react';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import DeletePortfolioDataForm from '@/components/DeletePortfolioDataForm';
 import LanguageSwitcher from './LanguageSwitcher';

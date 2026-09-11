@@ -7,7 +7,6 @@ import { QUOTE_REFRESH_INTERVAL_MS } from '@/lib/constants';
 interface UseDashboardDataProps {
   isMounted: boolean;
   liveTickerQuery: string;
-  updatePrice: (ticker: string, price: number) => void;
   updatePricesBatch: (updates: Record<string, number>) => void;
   setHistoricalPrices: (prices: Record<string, Record<string, number>>) => void;
   setHistoricalPricesLastUpdated: (date: string) => void;
@@ -22,7 +21,6 @@ const fetcher = (url: string) => fetch(url).then(r => {
 export function useDashboardData({
   isMounted,
   liveTickerQuery,
-  updatePrice,
   updatePricesBatch,
   setHistoricalPrices,
   setHistoricalPricesLastUpdated,

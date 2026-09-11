@@ -86,7 +86,7 @@ export default function ForexClient({
 }: {
   initialData: ForexResponse | null;
 }) {
-  const [language, setLanguage] = useState<DashboardLanguage>(() => {
+  const [language] = useState<DashboardLanguage>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
       if (stored === 'vi' || stored === 'en') return stored;

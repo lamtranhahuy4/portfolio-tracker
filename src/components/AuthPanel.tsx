@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, useActionState } from 'react';
-import { Languages } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { signInAction, signUpAction } from '@/actions/auth';

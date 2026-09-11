@@ -7,7 +7,7 @@ import { eq, and, gt, isNull } from 'drizzle-orm';
 import { createHash, randomBytes } from 'crypto';
 import { db } from '@/db/index';
 import { users, passwordResets } from '@/db/schema';
-import { clearSession, hashPassword, setDbSession, verifyPassword, getUserSessions, invalidateSession, invalidateAllSessionsForUser } from '@/lib/auth';
+import { clearSession, hashPassword, setDbSession, verifyPassword, getUserSessions, invalidateAllSessionsForUser } from '@/lib/auth';
 import { authRateLimiter } from '@/lib/rateLimiter';
 import { ActionState } from '@/types/action';
 
