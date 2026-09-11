@@ -96,11 +96,26 @@ npx inngest-cli@latest dev
 ```
 Truy cập Bảng điều khiển Inngest (Dashboard): `http://localhost:8288` (Để test và kích hoạt thủ công các hàm Cron ngầm).
 
-## 🧪 Quy trình Kiểm tra (Crosscheck)
+## 🧪 Quy trình Kiểm tra (Testing & Crosscheck)
 
-Trước khi tạo Pull Request hoặc Commit lên `main`, bắt buộc phải chạy bộ lệnh sau để đảm bảo hệ thống không có lỗi:
+Dự án chú trọng độ tin cậy thông qua hệ thống kiểm thử tự động (Vitest) với độ phủ mã nguồn (Coverage) cho các module logic lõi.
+
+### Chạy Unit Tests
 ```bash
-# Kiểm tra TypeScript, Linter và chạy 168+ Unit Tests
+# Chạy toàn bộ test
+pnpm run test
+
+# Chạy test với Coverage Report
+pnpm run test:coverage
+```
+
+Các thành phần được bảo vệ nghiêm ngặt:
+- Core Parsers (`BaseParser`, `CsvParser`, `DnseCashParser`, v.v.)
+- Data Services (`priceService`, `foreignExchangeService`, `marketData`, `ImportService`)
+- Utility functions (`circuitBreaker`, `retry`, `formatters`)
+
+Đảm bảo chạy `pnpm run check` (Lint + Typecheck + Test) trước khi commit.
+```bash
 pnpm run check
 
 # Kiểm thử quy trình Build Production
