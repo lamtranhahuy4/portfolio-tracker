@@ -43,13 +43,11 @@ function normalizeDecimalSeparator(raw: string): string {
 
   if (lastDot === -1 && lastComma === -1) return s;
 
-  if (lastComma > lastDot) {
-    // Vietnamese format: comma is decimal separator
-    // "1.234,56" → remove dots → "1234,56" → replace comma → "1234.56"
+  if (lastComma > lastDot && lastDot !== -1) {
+    // Both present, comma is decimal: "1.234,56"
     s = s.replace(/\./g, '').replace(',', '.');
-  } else if (lastDot > lastComma) {
-    // International format: dot is decimal separator
-    // "1,234.56" → remove commas → "1234.56"
+  } else if (lastDot > lastComma && lastComma !== -1) {
+    // Both present, dot is decimal: "1,234.56"
     s = s.replace(/,/g, '');
   } else if (lastComma !== -1 && lastDot === -1) {
     // Only comma(s) present
@@ -61,6 +59,16 @@ function normalizeDecimalSeparator(raw: string): string {
     } else {
       // Thousand separator commas like "1,234,567"
       s = s.replace(/,/g, '');
+    }
+  } else if (lastDot !== -1 && lastComma === -1) {
+    // Only dot(s) present
+    const dotCount = s.split('.').length - 1;
+    if (dotCount > 1) {
+      // Multiple dots like "1.000.000", must be thousand separators
+      s = s.replace(/\./g, '');
+    } else {
+      // Single dot like "1234.56" or "1.234", assume decimal
+      // Keep dot as is
     }
   }
 
