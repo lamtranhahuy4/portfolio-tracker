@@ -18,8 +18,7 @@ const MAX_NEWS_PER_TICKER = 6;
 const LOOKBACK_DAYS = 7;
 const PROVIDER_TIMEOUT_MS = 6000;
 const POLYGON_LIMIT_PER_TICKER = 10;
-const BLOOMBERG_RSS_URL = 'https://feeds.bloomberg.com/markets/news.rss';
-const MAX_BLOOMBERG_FALLBACK = 3;
+
 const providerWarnedKeys = new Set<string>();
 
 interface NewsItem {
@@ -395,10 +394,6 @@ interface RssChannel {
   item?: RssItem[];
 }
 
-interface RssFeed {
-  channel?: RssChannel;
-}
-
 const parseRssXml = (xmlString: string): RssItem[] => {
   const items: RssItem[] = [];
   const itemMatches = [...xmlString.matchAll(/<item>([\s\S]*?)<\/item>/gi)];
@@ -449,52 +444,6 @@ const parseRssJson = (jsonString: string): RssItem[] => {
   return [];
 };
 
-const fetchBloombergWorldNews = async (): Promise<NewsItem[]> => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
-
-    const response = await fetch(BLOOMBERG_RSS_URL, {
-      cache: 'no-store',
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PortfolioTracker/1.0)' },
-    });
-
-    clearTimeout(timeoutId);
-    if (!response.ok) return [];
-
-    const raw = await response.text();
-    const items = parseRssXml(raw);
-    const now = Date.now();
-    const oneDayAgo = now - (24 * 60 * 60 * 1000);
-
-    const news: NewsItem[] = [];
-    for (const item of items.slice(0, 10)) {
-      const pubTime = item.pubDate ? new Date(item.pubDate).getTime() : now;
-      if (pubTime < oneDayAgo) continue;
-
-      const headline = item.title || '';
-      const articleUrl = item.link || '';
-      if (!headline || !articleUrl) continue;
-
-      news.push({
-        id: stableId(`bloomberg:${articleUrl}`),
-        category: 'world-markets',
-        datetime: Math.floor(pubTime / 1000),
-        headline: headline.replace(/<!\[CDATA\[|\]\]>/g, '').trim(),
-        image: '',
-        related: 'WORLD',
-        source: 'Bloomberg Markets',
-        summary: (item.description || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]*>/g, '').trim().slice(0, 300),
-        url: articleUrl,
-      });
-    }
-
-    return news;
-  } catch {
-    return [];
-  }
-};
 
 const fetchVietnameseNews = async (
   tickers: string[],
