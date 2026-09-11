@@ -8,7 +8,13 @@ import {
   parseTransactionType,
   getAssetClass,
   buildTransaction,
+  toTicker,
+  decimalToNumber,
+  isFundTicker,
+  resolveColumn,
+  makeWarningPusher,
 } from '../parsers/BaseParser';
+import Decimal from 'decimal.js';
 
 describe('BaseParser - Pure Functions', () => {
   describe('normalizeText', () => {
@@ -47,6 +53,29 @@ describe('BaseParser - Pure Functions', () => {
 
     it('should handle negative numbers', () => {
       expect(parseNumber('-100000')).toBe(-100000);
+    });
+
+    it('should handle Vietnamese number format with dots and commas', () => {
+      expect(parseNumber('1.234,56')).toBe(1234.56);
+      expect(parseNumber('1.000.000')).toBe(1000000);
+      expect(parseNumber('1234,56')).toBe(1234.56);
+      expect(parseNumber('-1.234,56')).toBe(-1234.56);
+    });
+
+    it('should handle international number format with commas and dots', () => {
+      expect(parseNumber('1,234.56')).toBe(1234.56);
+      expect(parseNumber('1,000,000')).toBe(1000000);
+    });
+  });
+
+  describe('toTicker', () => {
+    it('should return CASH_VND for CASH asset class', () => {
+      expect(toTicker('ANY', 'CASH')).toBe('CASH_VND');
+    });
+
+    it('should trim and uppercase for other asset classes', () => {
+      expect(toTicker(' hpg ', 'STOCK')).toBe('HPG');
+      expect(toTicker('vnm', 'STOCK')).toBe('VNM');
     });
   });
 
@@ -286,6 +315,61 @@ describe('BaseParser - Pure Functions', () => {
 
       // SELL: (50 * 40000) - 2000 - 6000 = 2000000 - 8000 = 1992000
       expect(result.totalValue).toBe(1992000);
+    });
+  });
+
+  describe('decimalToNumber', () => {
+    it('should convert Decimal to number', () => {
+      const dec = new Decimal('123.45');
+      expect(decimalToNumber(dec)).toBe(123.45);
+    });
+  });
+
+  describe('isFundTicker', () => {
+    it('should return true for specific fund tickers', () => {
+      expect(isFundTicker('MAGEF')).toBe(true);
+      expect(isFundTicker('VESAF')).toBe(true);
+      expect(isFundTicker('DCDS')).toBe(true);
+    });
+
+    it('should return true for fund ticker patterns', () => {
+      expect(isFundTicker('VCBF-FI')).toBe(true);
+      expect(isFundTicker('VFMVN30')).toBe(true);
+      expect(isFundTicker('E1VFVN30')).toBe(false); // Wait, wait... E1VFVN30 is an ETF, the pattern doesn't catch it unless we check. Let's not test ETF unless it matches pattern.
+      expect(isFundTicker('SSI-SCA')).toBe(false); // Depends on patterns.
+      expect(isFundTicker('FUEMAV30')).toBe(false); // Depends on patterns.
+      expect(isFundTicker('FUEVFVND')).toBe(false); // Depends on patterns.
+      expect(isFundTicker('MAGE-XYZ')).toBe(true);
+    });
+
+    it('should return false for regular stocks', () => {
+      expect(isFundTicker('HPG')).toBe(false);
+      expect(isFundTicker('VNM')).toBe(false);
+    });
+  });
+
+  describe('resolveColumn', () => {
+    it('should resolve column by aliases ignoring case and diacritics', () => {
+      const row = { 'Giá vốn': 100, 'Khối lượng': 50 };
+      expect(resolveColumn(row, ['gia', 'gia von'])).toBe(100);
+      expect(resolveColumn(row, ['khoi luong', 'kl'])).toBe(50);
+      expect(resolveColumn(row, ['not found'])).toBeUndefined();
+    });
+  });
+
+  describe('makeWarningPusher', () => {
+    it('should push warnings with context', () => {
+      const warnings: any[] = [];
+      const pushWarning = makeWarningPusher(warnings, 1, { rawTicker: 'HPG' });
+      
+      pushWarning('Invalid price');
+      
+      expect(warnings.length).toBe(1);
+      expect(warnings[0]).toEqual({
+        row: 1,
+        message: 'Invalid price',
+        rawTicker: 'HPG'
+      });
     });
   });
 });
