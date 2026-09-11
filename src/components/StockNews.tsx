@@ -114,13 +114,14 @@ export default function StockNews({ language = 'vi' }: { language?: 'vi' | 'en' 
     }
   }, [stockTickers, isLoading, t.failed, t.timeout, t.unavailable]);
 
+  const tickersKey = stockTickers.join(',');
+
   useEffect(() => {
-    const currentTickersHash = stockTickers.join(',');
-    if (hasFetchedOnLoadRef.current === currentTickersHash) return;
+    if (hasFetchedOnLoadRef.current === tickersKey) return;
     if (stockTickers.length === 0) return;
-    hasFetchedOnLoadRef.current = currentTickersHash;
+    hasFetchedOnLoadRef.current = tickersKey;
     fetchNews();
-  }, [fetchNews, stockTickers.join(',')]);
+  }, [fetchNews, tickersKey, stockTickers]);
 
   useEffect(() => {
     return () => {

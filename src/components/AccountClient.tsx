@@ -121,17 +121,16 @@ const copy = {
 } satisfies Record<DashboardLanguage, Record<string, string>>;
 
 export default function AccountClient({ summary }: { summary: AccountSummary }) {
-  const [language, setLanguage] = useState<DashboardLanguage>('vi');
+  const [language, setLanguage] = useState<DashboardLanguage>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
+      if (stored === 'vi' || stored === 'en') return stored;
+    }
+    return 'vi';
+  });
   const [showCutoff, setShowCutoff] = useState(false);
   const [sessions, setSessions] = useState<SessionInfo[]>(summary.sessions);
   const [signingOutAll, setSigningOutAll] = useState(false);
-
-  useEffect(() => {
-    const storedLanguage = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
-    if (storedLanguage === 'vi' || storedLanguage === 'en') {
-      setLanguage(storedLanguage);
-    }
-  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(DASHBOARD_LANGUAGE_STORAGE_KEY, language);

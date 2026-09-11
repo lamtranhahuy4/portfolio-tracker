@@ -210,14 +210,13 @@ function AuthForm({ mode, language, action, onSuccess, onToggleMode }: AuthFormP
 export default function AuthPanel() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [language, setLanguage] = useState<DashboardLanguage>('vi');
-
-  useEffect(() => {
-    const storedLanguage = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
-    if (storedLanguage === 'vi' || storedLanguage === 'en') {
-      setLanguage(storedLanguage);
+  const [language, setLanguage] = useState<DashboardLanguage>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem(DASHBOARD_LANGUAGE_STORAGE_KEY);
+      if (stored === 'vi' || stored === 'en') return stored;
     }
-  }, []);
+    return 'vi';
+  });
 
   useEffect(() => {
     window.localStorage.setItem(DASHBOARD_LANGUAGE_STORAGE_KEY, language);

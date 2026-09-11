@@ -54,7 +54,7 @@ export default function HoldingPriceChart({
     } else if (initialPrice > 0) {
       setPriceHistory([{ time: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), price: initialPrice }]);
     }
-  }, [historicalData]);
+  }, [historicalData, initialPrice]);
 
   useEffect(() => {
     setPriceHistory(prev => {
@@ -147,15 +147,17 @@ export function HoldingsRealtimeCharts({
 }: HoldingsRealtimeChartProps) {
   const [historyData, setHistoryData] = useState<Record<string, PricePoint[]>>({});
 
+  const tickersKey = tickers.join(',');
+
   useEffect(() => {
     if (tickers.length === 0) return;
-    fetch(`/api/history/prices?tickers=${tickers.join(',')}`)
+    fetch(`/api/history/prices?tickers=${tickersKey}`)
       .then(res => res.json())
       .then(json => {
         if (json.data) setHistoryData(json.data);
       })
       .catch(console.error);
-  }, [tickers.join(',')]);
+  }, [tickersKey, tickers]);
 
   if (tickers.length === 0 || Object.keys(initialPrices).length === 0) {
     return null;
