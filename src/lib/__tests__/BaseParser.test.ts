@@ -15,6 +15,7 @@ import {
   makeWarningPusher,
 } from '../parsers/BaseParser';
 import Decimal from 'decimal.js';
+import { ImportWarning } from '@/types/portfolio';
 
 describe('BaseParser - Pure Functions', () => {
   describe('normalizeText', () => {
@@ -359,7 +360,7 @@ describe('BaseParser - Pure Functions', () => {
 
   describe('makeWarningPusher', () => {
     it('should push warnings with context', () => {
-      const warnings: any[] = [];
+      const warnings: ImportWarning[] = [];
       const pushWarning = makeWarningPusher(warnings, 1, { rawTicker: 'HPG' });
       
       pushWarning('Invalid price');

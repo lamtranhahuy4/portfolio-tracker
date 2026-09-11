@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { calculatePortfolioMetrics } from '../portfolioMetrics';
-import { CashLedgerEvent } from '@/types/portfolio';
+import { CashLedgerEvent, NormalizedTransaction } from '@/types/portfolio';
 
 describe('portfolioMetrics regression coverage', () => {
   it('handles multi-lot fifo and average cost separately', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: 'd1',
         date: new Date('2024-01-01T00:00:00.000Z'),
@@ -53,9 +53,9 @@ describe('portfolioMetrics regression coverage', () => {
         tax: 0,
         totalValue: 2250,
       },
-    ];
+    ] as unknown as NormalizedTransaction[];
 
-    const metrics = calculatePortfolioMetrics(transactions as any, {}, [], null);
+    const metrics = calculatePortfolioMetrics(transactions, {}, [], null);
     const holding = metrics.holdings.find((item) => item.ticker === 'AAA');
 
     expect(holding?.totalShares).toBe(50);
@@ -65,7 +65,7 @@ describe('portfolioMetrics regression coverage', () => {
   });
 
   it('keeps stock dividend at zero cost and cash dividend in cash balance', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: 'd1',
         date: new Date('2024-02-01T00:00:00.000Z'),
@@ -114,9 +114,9 @@ describe('portfolioMetrics regression coverage', () => {
         tax: 0,
         totalValue: 50,
       },
-    ];
+    ] as unknown as NormalizedTransaction[];
 
-    const metrics = calculatePortfolioMetrics(transactions as any, { BBB: 12 }, [], null);
+    const metrics = calculatePortfolioMetrics(transactions, { BBB: 12 }, [], null);
     const stockHolding = metrics.holdings.find((item) => item.ticker === 'BBB');
     const cashHolding = metrics.holdings.find((item) => item.ticker === 'CASH_VND');
 
@@ -127,7 +127,7 @@ describe('portfolioMetrics regression coverage', () => {
   });
 
   it('respects valuation snapshot dates', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: 'd1',
         date: new Date('2024-03-01T00:00:00.000Z'),
@@ -164,16 +164,16 @@ describe('portfolioMetrics regression coverage', () => {
         tax: 0,
         totalValue: 60,
       },
-    ];
+    ] as unknown as NormalizedTransaction[];
 
     const snapshotMetrics = calculatePortfolioMetrics(
-      transactions as any,
+      transactions,
       { CCC: 20 },
       [],
       new Date('2024-03-03T00:00:00.000Z')
     );
 
-    const currentMetrics = calculatePortfolioMetrics(transactions as any, { CCC: 20 }, [], null);
+    const currentMetrics = calculatePortfolioMetrics(transactions, { CCC: 20 }, [], null);
     const snapshotHolding = snapshotMetrics.holdings.find((item) => item.ticker === 'CCC');
     const currentHolding = currentMetrics.holdings.find((item) => item.ticker === 'CCC');
 
@@ -184,7 +184,7 @@ describe('portfolioMetrics regression coverage', () => {
   });
 
   it('supports Oversell without breaking cost basis', () => {
-    const transactions = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: 'b1', date: new Date('2024-04-01T00:00:00.000Z'),
         type: 'BUY', assetClass: 'STOCK', ticker: 'DDD',
@@ -195,7 +195,7 @@ describe('portfolioMetrics regression coverage', () => {
         type: 'SELL', assetClass: 'STOCK', ticker: 'DDD',
         quantity: 150, price: 15, fee: 0, tax: 0, totalValue: 2250,
       },
-    ] as any;
+    ] as unknown as NormalizedTransaction[];
 
     const metrics = calculatePortfolioMetrics(transactions, {}, [], null);
     const holding = metrics.holdings.find(item => item.ticker === 'DDD');
@@ -206,13 +206,13 @@ describe('portfolioMetrics regression coverage', () => {
   });
 
   it('detects ledger drift and generates reconciliation warnings', () => {
-    const transactions = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: 'd1', date: new Date('2024-05-01T00:00:00.000Z'),
         type: 'DEPOSIT', assetClass: 'CASH', ticker: 'CASH_VND',
         quantity: 1000, price: 1, fee: 0, tax: 0, totalValue: 1000,
       }
-    ] as any;
+    ] as unknown as NormalizedTransaction[];
 
     // missing a deposit in ledger to trigger drift
     const events: CashLedgerEvent[] = [
@@ -221,7 +221,7 @@ describe('portfolioMetrics regression coverage', () => {
         direction: 'INFLOW', amount: 500, balanceAfter: 500, eventType: 'DEPOSIT',
         description: '', source: ''
       }
-    ] as any;
+    ] as unknown as CashLedgerEvent[];
 
     const metrics = calculatePortfolioMetrics(transactions, {}, events, null);
     
@@ -230,7 +230,7 @@ describe('portfolioMetrics regression coverage', () => {
   });
 
   it('breaks down NAV and excludes cash from current cost basis', () => {
-    const transactions = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: 'd1',
         date: new Date('2024-06-01T00:00:00.000Z'),
@@ -255,7 +255,7 @@ describe('portfolioMetrics regression coverage', () => {
         tax: 0,
         totalValue: 1000,
       },
-    ] as any;
+    ] as unknown as NormalizedTransaction[];
 
     const metrics = calculatePortfolioMetrics(transactions, { EEE: 12 }, [], null, null, 50);
 

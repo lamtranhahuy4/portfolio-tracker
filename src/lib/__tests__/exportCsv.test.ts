@@ -18,7 +18,7 @@ describe('downloadCsv', () => {
         appendChild: vi.fn(),
         removeChild: vi.fn(),
       },
-    } as any);
+    } as unknown as Document);
   });
 
   it('should create a downloadable CSV with headers and rows', () => {

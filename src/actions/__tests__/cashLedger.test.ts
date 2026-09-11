@@ -5,6 +5,8 @@ import { requireUser } from '@/lib/auth';
 import { createImportBatch } from '@/actions/importBatch';
 import { revalidatePath } from 'next/cache';
 import Decimal from 'decimal.js';
+import { CashLedgerEvent } from '@/types/portfolio';
+import { toMoney } from '@/domain/portfolio/primitives';
 
 vi.mock('@/db/index', () => ({
   db: {
@@ -42,24 +44,23 @@ describe('cashLedger actions', () => {
   });
 
   it('saveCashEventsBatch should process data and call db.transaction', async () => {
-    vi.mocked(requireUser).mockResolvedValue({ id: 'user-1' } as any);
-    vi.mocked(createImportBatch).mockResolvedValue({ batchId: 'batch-1' } as any);
+    vi.mocked(requireUser).mockResolvedValue({ id: 'user-1' } as never);
+    vi.mocked(createImportBatch).mockResolvedValue({ batchId: 'batch-1' } as never);
 
-    const data: any[] = [
+    const data: CashLedgerEvent[] = [
       {
         id: 'evt-1',
-        date: new Date('2026-09-01').getTime(),
+        date: new Date('2026-09-01'),
         direction: 'INFLOW',
         eventType: 'DEPOSIT',
-        amount: new Decimal(1000),
-        balanceAfter: new Decimal(1000),
-        notes: 'Initial deposit',
+        amount: toMoney(1000),
+        balanceAfter: toMoney(1000),
         description: 'Deposit',
         source: 'manual'
       }
     ];
 
-    const result = await saveCashEventsBatch(data as any);
+    const result = await saveCashEventsBatch(data);
     expect(result.batchId).toBe('batch-1');
     expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(revalidatePath).toHaveBeenCalledWith('/');

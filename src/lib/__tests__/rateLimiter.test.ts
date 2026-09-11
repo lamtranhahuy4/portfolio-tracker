@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitKey, addRateLimitHeaders } from '../apiRateLimiter';
 
 describe('getRateLimitKey', () => {
@@ -65,8 +66,8 @@ describe('checkRateLimit', () => {
 
 describe('addRateLimitHeaders', () => {
   it('should set rate limit headers on response', () => {
-    const response = new Response();
-    const nextResponse = addRateLimitHeaders(response as any, 5, 9999999999);
+    const response = new NextResponse();
+    const nextResponse = addRateLimitHeaders(response, 5, 9999999999);
 
     expect(nextResponse.headers.get('X-RateLimit-Remaining')).toBe('5');
     expect(nextResponse.headers.get('X-RateLimit-Limit')).toBe('100');

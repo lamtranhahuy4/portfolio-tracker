@@ -1,24 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { calculatePortfolioMetrics } from '../portfolioMetrics';
+import { NormalizedTransaction } from '@/types/portfolio';
+import { toQuantity, toPrice, toMoney } from '@/domain/portfolio/primitives';
 
 describe('Dividend Handling Tests', () => {
   const defaultCurrentPrices: Record<string, number> = {};
 
   it('STOCK_DIVIDEND tăng lượng cổ phiếu nhưng KHÔNG thay đổi cost basis', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: '1', date: new Date('2023-01-01'), type: 'DEPOSIT', assetClass: 'CASH', ticker: 'CASH_VND',
-        quantity: 100000000, price: 1, fee: 0, tax: 0, totalValue: 100000000
+        quantity: toQuantity(100000000), price: toPrice(1), fee: toMoney(0), tax: toMoney(0), totalValue: toMoney(100000000)
       },
       // Mua lô cơ sở: 1000 cổ giá 20k
       {
         id: '2', date: new Date('2023-01-02'), type: 'BUY', assetClass: 'STOCK', ticker: 'FPT',
-        quantity: 1000, price: 20000, fee: 0, tax: 0, totalValue: 20000000
+        quantity: toQuantity(1000), price: toPrice(20000), fee: toMoney(0), tax: toMoney(0), totalValue: toMoney(20000000)
       },
       // Nhận cổ tức bằng cổ phiếu: 100 cổ, price = 0
       {
         id: '3', date: new Date('2023-01-03'), type: 'STOCK_DIVIDEND', assetClass: 'STOCK', ticker: 'FPT',
-        quantity: 100, price: 0, fee: 0, tax: 0, totalValue: 0
+        quantity: toQuantity(100), price: toPrice(0), fee: toMoney(0), tax: toMoney(0), totalValue: toMoney(0)
       }
     ];
 
@@ -33,25 +35,25 @@ describe('Dividend Handling Tests', () => {
   });
 
   it('SELL cổ phiếu thưởng sẽ dồn toàn bộ tiền vào fifoRealizedPnL', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: '1', date: new Date('2023-01-01'), type: 'DEPOSIT', assetClass: 'CASH', ticker: 'CASH_VND',
-        quantity: 100000000, price: 1, fee: 0, tax: 0, totalValue: 100000000
+        quantity: toQuantity(100000000), price: toPrice(1), fee: toMoney(0), tax: toMoney(0), totalValue: toMoney(100000000)
       },
       // Mua lô cơ sở: 100 cổ giá 20k
       {
         id: '2', date: new Date('2023-01-02'), type: 'BUY', assetClass: 'STOCK', ticker: 'FPT',
-        quantity: 100, price: 20000, fee: 0, tax: 0, totalValue: 2000000
+        quantity: toQuantity(100), price: toPrice(20000), fee: toMoney(0), tax: toMoney(0), totalValue: toMoney(2000000)
       },
       // Cổ tức bằng cổ phiếu: 20 cổ
       {
         id: '3', date: new Date('2023-01-03'), type: 'STOCK_DIVIDEND', assetClass: 'STOCK', ticker: 'FPT',
-        quantity: 20, price: 0, fee: 0, tax: 0, totalValue: 0
+        quantity: toQuantity(20), price: toPrice(0), fee: toMoney(0), tax: toMoney(0), totalValue: toMoney(0)
       },
       // Bán 120 cổ (Lô 1: 100, Lô 2 - cổ tức: 20) @ 30k, tax = 0, fee = 0
       {
         id: '4', date: new Date('2023-01-04'), type: 'SELL', assetClass: 'STOCK', ticker: 'FPT',
-        quantity: 120, price: 30000, fee: 0, tax: 0, totalValue: 3600000
+        quantity: toQuantity(120), price: toPrice(30000), fee: toMoney(0), tax: toMoney(0), totalValue: toMoney(3600000)
       }
     ];
 

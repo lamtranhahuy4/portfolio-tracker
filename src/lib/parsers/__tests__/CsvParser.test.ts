@@ -11,7 +11,7 @@ vi.mock('papaparse', () => ({
 }));
 
 function setupMockData(data: Record<string, unknown>[]) {
-  mockParse.mockImplementation((_file: File, config: any) => {
+  mockParse.mockImplementation((_file: File, config: { complete: (args: { data: unknown[]; errors: unknown[]; meta: { fields: string[] } }) => void }) => {
     config.complete({ data, errors: [], meta: { fields: Object.keys(data[0] ?? {}) } });
   });
 }

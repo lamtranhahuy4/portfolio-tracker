@@ -12,21 +12,21 @@ vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>();
   return {
     ...actual,
-    useEffect: ((f: () => void | (() => void), _deps: any[]) => {
+    useEffect: ((f: () => void | (() => void), _deps: unknown[]) => {
       const cleanup = f();
       if (cleanup) cleanupFns.push(cleanup);
     }) as typeof actual.useEffect,
-    useLayoutEffect: ((f: () => void | (() => void), _deps: any[]) => {
+    useLayoutEffect: ((f: () => void | (() => void), _deps: unknown[]) => {
       const cleanup = f();
       if (cleanup) cleanupFns.push(cleanup);
     }) as typeof actual.useLayoutEffect,
-    useState: vi.fn((init: any) => {
+    useState: vi.fn((init: unknown) => {
       const value = typeof init === 'function' ? init() : init;
-      return [value, vi.fn()] as [any, any];
+      return [value, vi.fn()] as [unknown, unknown];
     }) as unknown as typeof actual.useState,
-    useRef: ((init: any) => ({ current: init ?? null })) as typeof actual.useRef,
-    useCallback: ((fn: any) => fn) as typeof actual.useCallback,
-    useMemo: ((fn: any) => fn()) as typeof actual.useMemo,
+    useRef: ((init: unknown) => ({ current: init ?? null })) as typeof actual.useRef,
+    useCallback: (<T>(fn: T) => fn) as unknown as typeof actual.useCallback,
+    useMemo: (<T>(fn: () => T) => fn()) as typeof actual.useMemo,
   };
 });
 
@@ -53,11 +53,11 @@ describe('useRealtimePrices', () => {
     updatePricesBatchMock.mockClear();
     
     // Mock the hook call and getState
-    const state = { updatePricesBatch: updatePricesBatchMock } as any;
-    vi.mocked(usePortfolioStore).mockImplementation((selector: any) => {
+    const state = { updatePricesBatch: updatePricesBatchMock } as never;
+    vi.mocked(usePortfolioStore).mockImplementation(((selector?: (state: unknown) => unknown) => {
       return selector ? selector(state) : state;
-    });
-    (usePortfolioStore as any).getState = () => state;
+    }) as never);
+    (usePortfolioStore as unknown as { getState: () => unknown }).getState = () => state;
   });
 
   afterEach(() => {

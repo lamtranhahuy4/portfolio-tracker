@@ -325,7 +325,7 @@ describe('usePortfolioStore - Import Status Slice', () => {
     };
 
     act(() => {
-      usePortfolioStore.getState().setLastImportResult(result as any);
+      usePortfolioStore.getState().setLastImportResult(result as never);
     });
 
     expect(usePortfolioStore.getState().lastImportResult).toBeDefined();
@@ -343,7 +343,7 @@ describe('usePortfolioStore - Import Status Slice', () => {
     };
 
     act(() => {
-      usePortfolioStore.getState().setLastCashImportSummary(summary as any);
+      usePortfolioStore.getState().setLastCashImportSummary(summary as never);
     });
 
     expect(usePortfolioStore.getState().lastCashImportSummary).toBeDefined();

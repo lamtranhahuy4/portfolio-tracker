@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { calculateXIRR, calculatePortfolioXIRR } from './xirr';
 
 describe('XIRR Calculation', () => {
@@ -17,27 +17,14 @@ describe('XIRR Calculation', () => {
     const dates = [new Date('2023-01-01')];
     
     // Simulate exactly 1 year later with value 11000
-    const fakeCurrentDate = new Date('2024-01-01');
-    const OriginalDate = global.Date;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-01'));
     
     try {
-      // Mock new Date() to return fakeCurrentDate
-      const mockDate = class extends OriginalDate {
-        constructor(...args: any[]) {
-          if (args.length === 0) {
-            super(fakeCurrentDate);
-          } else {
-            super(...(args as []));
-          }
-        }
-      } as any;
-      global.Date = mockDate;
-
       const rate = calculatePortfolioXIRR(netContributions, dates, 11000);
       expect(rate).toBeCloseTo(0.10, 2);
-
     } finally {
-      global.Date = OriginalDate;
+      vi.useRealTimers();
     }
   });
 });

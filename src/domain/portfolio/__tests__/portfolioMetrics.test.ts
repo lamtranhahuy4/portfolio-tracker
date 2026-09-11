@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { calculatePortfolioMetrics } from '../portfolioMetrics';
+import { CashLedgerEvent, NormalizedTransaction } from '@/types/portfolio';
 
 describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
   const defaultCurrentPrices: Record<string, number> = {};
 
   it('Case 1: Tính net contributions từ transactions ở Derived Mode', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: '1',
         date: new Date('2023-01-01T00:00:00.000Z'),
@@ -30,7 +31,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
         tax: 0,
         totalValue: 2000000,
       },
-    ];
+    ] as unknown as NormalizedTransaction[];
 
     const metrics = calculatePortfolioMetrics(transactions, defaultCurrentPrices, [], null);
 
@@ -39,7 +40,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
   });
 
   it('Case 2: Tính FIFO realized PnL với BUY/SELL cơ bản', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: '1',
         date: new Date('2023-01-01T00:00:00.000Z'),
@@ -76,7 +77,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
         tax: 0,
         totalValue: 12500000,
       },
-    ];
+    ] as unknown as NormalizedTransaction[];
 
     const metrics = calculatePortfolioMetrics(transactions, defaultCurrentPrices, [], null);
 
@@ -88,7 +89,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
   });
 
   it('Case 3: Cash Ledger Mode thắng Derived Mode', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: '1',
         date: new Date('2023-01-01T00:00:00.000Z'),
@@ -101,9 +102,9 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
         tax: 0,
         totalValue: 10000000,
       },
-    ];
+    ] as unknown as NormalizedTransaction[];
 
-    const cashEvents: any[] = [
+    const cashEvents: CashLedgerEvent[] = [
       {
         id: 'evt-1',
         userId: 'usr1',
@@ -115,7 +116,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
         description: 'Nạp tiền',
         source: 'test-ledger',
       },
-    ];
+    ] as unknown as CashLedgerEvent[];
 
     const metrics = calculatePortfolioMetrics(transactions, defaultCurrentPrices, cashEvents, null);
 
@@ -128,7 +129,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
   });
 
   it('Case 4: Cảnh báo oversell khi bán vượt số lượng đang nắm giữ', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: '1',
         date: new Date('2023-01-01T00:00:00.000Z'),
@@ -165,7 +166,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
         tax: 0,
         totalValue: 37500000,
       },
-    ];
+    ] as unknown as NormalizedTransaction[];
 
     const metrics = calculatePortfolioMetrics(transactions, defaultCurrentPrices, [], null);
 
@@ -179,7 +180,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
   });
 
   it('Case 5: FIFO với Fee/Tax phân bổ và partial lot clearance', () => {
-    const transactions: any[] = [
+    const transactions: NormalizedTransaction[] = [
       {
         id: '1', date: new Date('2023-01-01'), type: 'DEPOSIT', assetClass: 'CASH', ticker: 'CASH_VND',
         quantity: 100000000, price: 1, fee: 0, tax: 0, totalValue: 100000000
@@ -199,7 +200,7 @@ describe('portfolioMetrics Golden Tests - Legacy Engine', () => {
         id: '4', date: new Date('2023-01-04'), type: 'SELL', assetClass: 'STOCK', ticker: 'HPG',
         quantity: 150, price: 30000, fee: 15000, tax: 4500, totalValue: 4500000
       }
-    ];
+    ] as unknown as NormalizedTransaction[];
 
     const metrics = calculatePortfolioMetrics(transactions, defaultCurrentPrices, [], null);
 

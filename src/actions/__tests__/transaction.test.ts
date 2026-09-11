@@ -5,6 +5,8 @@ import { requireUser } from '@/lib/auth';
 import { createImportBatch } from '@/actions/importBatch';
 import { revalidatePath } from 'next/cache';
 import Decimal from 'decimal.js';
+import { NormalizedTransaction } from '@/types/portfolio';
+import { toQuantity, toPrice, toMoney } from '@/domain/portfolio/primitives';
 
 vi.mock('@/db/index', () => ({
   db: {
@@ -42,25 +44,25 @@ describe('transaction actions', () => {
   });
 
   it('saveTransactionsBatch should process data and call db.transaction', async () => {
-    vi.mocked(requireUser).mockResolvedValue({ id: 'user-1' } as any);
-    vi.mocked(createImportBatch).mockResolvedValue({ batchId: 'batch-1' } as any);
+    vi.mocked(requireUser).mockResolvedValue({ id: 'user-1' } as never);
+    vi.mocked(createImportBatch).mockResolvedValue({ batchId: 'batch-1' } as never);
 
-    const data: any[] = [
+    const data: NormalizedTransaction[] = [
       {
         id: 'tx-1',
         assetClass: 'STOCK',
         ticker: 'VND',
         type: 'BUY',
-        quantity: new Decimal(100),
-        price: new Decimal(10),
-        fee: new Decimal(1),
-        tax: new Decimal(0),
-        date: new Date('2026-09-01').getTime(),
-        totalValue: new Decimal(1000)
+        quantity: toQuantity(100),
+        price: toPrice(10),
+        fee: toMoney(1),
+        tax: toMoney(0),
+        date: new Date('2026-09-01'),
+        totalValue: toMoney(1000)
       }
     ];
 
-    const result = await saveTransactionsBatch(data as any);
+    const result = await saveTransactionsBatch(data);
     expect(result.batchId).toBe('batch-1');
     expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(revalidatePath).toHaveBeenCalledWith('/');

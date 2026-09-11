@@ -12,8 +12,8 @@ import * as XLSX from 'xlsx';
 
 function createMockExcel(rows: string[][]): void {
   const mockWorkbook = { SheetNames: ['Sheet1'], Sheets: { Sheet1: {} } };
-  vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as any);
-  vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(rows as any);
+  vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as unknown as XLSX.WorkBook);
+  vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(rows as unknown[]);
 }
 
 function mockFile(): File {

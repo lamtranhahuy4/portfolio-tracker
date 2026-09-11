@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getForexRates, snapshotDailyRates, getForexHistory } from '../foreignExchangeService';
-import { setupFetchMock, mockFetchResponse, mockFetchError } from '../../test/fetchMock';
+import { setupFetchMock } from '../../test/fetchMock';
 
 vi.mock('@/lib/circuitBreaker', () => ({
   vietcombankCircuitBreaker: { execute: vi.fn((cb) => cb()) },
@@ -42,7 +42,7 @@ const FRANK_JSON = {
 };
 
 describe('foreignExchangeService', () => {
-  let fetchMock: any;
+  let fetchMock: FetchMock;
 
   beforeEach(() => {
     fetchMock = setupFetchMock();
@@ -70,7 +70,7 @@ describe('foreignExchangeService', () => {
     expect(usd?.sell).toBe(24300);
 
     expect(data.international.rates.length).toBeGreaterThan(0);
-    const eur = data.international.rates.find((r: any) => r.currency === 'EUR');
+    const eur = data.international.rates.find((r) => r.currency === 'EUR');
     expect(eur?.rate).toBe(0.9);
   });
 

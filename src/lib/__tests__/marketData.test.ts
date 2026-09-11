@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getRealtimeQuotes, getHistoricalPrices, getMarketIndices, getTrendingAssets } from '../marketData';
+import { getRealtimeQuotes, getHistoricalPrices, getMarketIndices } from '../marketData';
 import { setupFetchMock } from '../../test/fetchMock';
 
 vi.mock('@/lib/circuitBreaker', () => ({
@@ -15,7 +15,7 @@ const DNSE_SERIES_JSON = {
 };
 
 describe('marketData', () => {
-  let fetchMock: any;
+  let fetchMock: ReturnType<typeof setupFetchMock>;
 
   beforeEach(() => {
     fetchMock = setupFetchMock();

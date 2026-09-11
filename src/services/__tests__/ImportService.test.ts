@@ -28,9 +28,10 @@ describe('ImportService', () => {
       expect(() => validateImportFile({}, 'checksum123')).toThrow(AppError);
       try {
         validateImportFile({}, 'checksum123');
-      } catch (err: any) {
-        expect(err.code).toBe('BAD_REQUEST');
-        expect(err.statusCode).toBe(400);
+      } catch (err: unknown) {
+        const error = err as AppError;
+        expect(error.code).toBe('BAD_REQUEST');
+        expect(error.statusCode).toBe(400);
       }
     });
 
@@ -59,8 +60,8 @@ describe('ImportService', () => {
       };
       const mockAudit = { id: 100 };
 
-      vi.mocked(parseImportCashFile).mockResolvedValue(mockResult as any);
-      vi.mocked(saveCashEventsBatch).mockResolvedValue(mockAudit as any);
+      vi.mocked(parseImportCashFile).mockResolvedValue(mockResult as never);
+      vi.mocked(saveCashEventsBatch).mockResolvedValue(mockAudit as never);
 
       const res = await processImportFile(file, checksum);
 
@@ -95,8 +96,8 @@ describe('ImportService', () => {
       };
       const mockAudit = { id: 200 };
 
-      vi.mocked(parseImportFile).mockResolvedValue(mockResult as any);
-      vi.mocked(saveTransactionsBatch).mockResolvedValue(mockAudit as any);
+      vi.mocked(parseImportFile).mockResolvedValue(mockResult as never);
+      vi.mocked(saveTransactionsBatch).mockResolvedValue(mockAudit as never);
 
       const res = await processImportFile(file, checksum);
 
@@ -134,8 +135,8 @@ describe('ImportService', () => {
       };
       const mockCashAudit = { id: 300 };
 
-      vi.mocked(parseImportCashFile).mockResolvedValue(mockCashResult as any);
-      vi.mocked(saveCashEventsBatch).mockResolvedValue(mockCashAudit as any);
+      vi.mocked(parseImportCashFile).mockResolvedValue(mockCashResult as never);
+      vi.mocked(saveCashEventsBatch).mockResolvedValue(mockCashAudit as never);
 
       const res = await processImportFile(file, checksum);
 
