@@ -1,7 +1,10 @@
 import { config } from 'dotenv';
 import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { migrate } from 'drizzle-orm/neon-http/migrator';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
+import { migrate as migrateNeon } from 'drizzle-orm/neon-http/migrator';
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator';
+import { Pool } from 'pg';
 
 // Tải biến môi trường từ .env.local hoặc .env
 config({ path: '.env.local' });
@@ -16,11 +19,20 @@ async function runMigrations() {
   }
 
   try {
-    const sql = neon(dbUrl);
-    const db = drizzle(sql);
-    
-    // Thư mục chứa các file SQL do Drizzle sinh ra
-    await migrate(db, { migrationsFolder: './drizzle' });
+    const isLocal = /localhost|127\.0\.0\.1/.test(dbUrl) && !/neon\.tech/.test(dbUrl);
+
+    if (isLocal) {
+      console.info('🔌 Detected local/CI database, using node-postgres driver...');
+      const pool = new Pool({ connectionString: dbUrl });
+      const db = drizzlePg(pool);
+      await migratePg(db, { migrationsFolder: './drizzle' });
+      await pool.end();
+    } else {
+      console.info('🔌 Detected Neon database, using neon-http driver...');
+      const sql = neon(dbUrl);
+      const db = drizzleNeon(sql);
+      await migrateNeon(db, { migrationsFolder: './drizzle' });
+    }
     
     console.info('✅ Migrations completed successfully!');
   } catch (error) {

@@ -6,10 +6,28 @@ on:
   pull_request:
     branches: [main, dev-hl]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
-    name: Lint, TypeCheck & Unit Test
+    name: Lint, TypeCheck, Unit Test & Coverage
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: placeholder
+          POSTGRES_PASSWORD: placeholder
+          POSTGRES_DB: placeholder
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -24,17 +42,48 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Run Type Check & Lint
+      - name: Run Lint
+        run: pnpm lint
+
+      - name: Run Type Check
         run: pnpm check
 
-      - name: Check Database Migrations
-        run: pnpm drizzle-kit check
+      - name: Run Tests with Coverage
+        run: pnpm test:coverage
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
 
-  e2e:
-    name: E2E Playwright Tests
+      - name: Check Database Migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
+      - name: Upload Coverage Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  build_and_e2e:
+    name: Build & E2E Tests
     runs-on: ubuntu-latest
+    needs: [check]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: placeholder
+          POSTGRES_PASSWORD: placeholder
+          POSTGRES_DB: placeholder
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -49,33 +98,35 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: pnpm exec playwright install --with-deps
+
+      - name: Build Next.js App
+        run: pnpm build
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          BETTER_AUTH_SECRET: ci-only-secret-min-32-characters-long!!
+          BETTER_AUTH_URL: http://localhost:3000
 
       - name: Run Playwright Tests
-        run: npx playwright test
+        run: pnpm exec playwright test
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+          BETTER_AUTH_SECRET: ci-only-secret-min-32-characters-long!!
+          BETTER_AUTH_URL: http://localhost:3000
+          CI: true
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [check, e2e]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
+      - name: Upload Playwright Report
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm build
-        env:
-          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
