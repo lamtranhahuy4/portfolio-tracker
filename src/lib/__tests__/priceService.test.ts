@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { vi as vitest } from 'vitest';
 
 vi.mock('@/db/index', () => {
@@ -15,7 +15,7 @@ vi.mock('@/db/index', () => {
     limit: vitest.fn().mockImplementation(() => chainable),
     orderBy: vitest.fn().mockImplementation(() => chainable),
     onConflictDoUpdate: vitest.fn().mockImplementation(() => chainable),
-    then: function(resolve: any) { resolve([]); }
+    then: function(resolve: (value: never[]) => void) { resolve([]); }
   };
   return { db: chainable };
 });
@@ -102,6 +102,7 @@ describe('Price Service - TTL Configuration', () => {
 });
 
 import { db } from '@/db/index';
+import type { Mock } from 'vitest';
 import {
   getCachedPrice,
   getCachedPrices,
@@ -113,6 +114,14 @@ import {
   getFreshnessStats
 } from '@/lib/priceService';
 
+interface DbChainableMock {
+  limit: Mock;
+  where: Mock;
+  from: Mock;
+  onConflictDoUpdate: Mock;
+}
+const mockDb = db as unknown as DbChainableMock;
+
 describe('Price Service - Database Operations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -120,14 +129,14 @@ describe('Price Service - Database Operations', () => {
 
   describe('getCachedPrice', () => {
     it('should return null if no price is found', async () => {
-      (db.limit as any).mockResolvedValueOnce([]);
+      mockDb.limit.mockResolvedValueOnce([]);
       const result = await getCachedPrice('HPG');
       expect(result).toBeNull();
     });
 
     it('should return formatted price data if found', async () => {
       const mockDate = new Date();
-      (db.limit as any).mockResolvedValueOnce([{
+      mockDb.limit.mockResolvedValueOnce([{
         ticker: 'HPG',
         assetClass: 'STOCK',
         price: '35000',
@@ -153,7 +162,7 @@ describe('Price Service - Database Operations', () => {
 
     it('should return mapped prices', async () => {
       const mockDate = new Date();
-      (db.where as any).mockResolvedValueOnce([{
+      mockDb.where.mockResolvedValueOnce([{
         ticker: 'HPG',
         assetClass: 'STOCK',
         price: '35000',
@@ -170,7 +179,7 @@ describe('Price Service - Database Operations', () => {
 
   describe('cachePrice', () => {
     it('should cache price and history', async () => {
-      (db.onConflictDoUpdate as any).mockResolvedValueOnce({});
+      mockDb.onConflictDoUpdate.mockResolvedValueOnce({});
       
       const result = await cachePrice('HPG', 35000, 'STOCK', 'VND', 'MOCK');
       expect(result.ticker).toBe('HPG');
@@ -182,7 +191,7 @@ describe('Price Service - Database Operations', () => {
 
   describe('setManualPrice', () => {
     it('should set manual price override', async () => {
-      (db.onConflictDoUpdate as any).mockResolvedValueOnce({});
+      mockDb.onConflictDoUpdate.mockResolvedValueOnce({});
       
       const result = await setManualPrice('HPG', 36000, 'STOCK', 'VND', 'Manual check', 'user1');
       expect(result.ticker).toBe('HPG');
@@ -194,7 +203,7 @@ describe('Price Service - Database Operations', () => {
   describe('getPriceHistory', () => {
     it('should return formatted history', async () => {
       const mockDate = new Date();
-      (db.limit as any).mockResolvedValueOnce([{
+      mockDb.limit.mockResolvedValueOnce([{
         price: '35000',
         currency: 'VND',
         source: 'TEST',
@@ -212,7 +221,7 @@ describe('Price Service - Database Operations', () => {
 
   describe('cleanupExpiredPrices', () => {
     it('should delete expired prices and return count', async () => {
-      (db.where as any).mockResolvedValueOnce({ rowCount: 5 });
+      mockDb.where.mockResolvedValueOnce({ rowCount: 5 });
       const count = await cleanupExpiredPrices();
       expect(count).toBe(5);
       expect(db.delete).toHaveBeenCalled();
@@ -221,7 +230,7 @@ describe('Price Service - Database Operations', () => {
 
   describe('getStalePricesCount', () => {
     it('should return stale count', async () => {
-      (db.where as any).mockResolvedValueOnce([{ count: 10 }]);
+      mockDb.where.mockResolvedValueOnce([{ count: 10 }]);
       const count = await getStalePricesCount();
       expect(count).toBe(10);
     });
@@ -232,7 +241,7 @@ describe('Price Service - Database Operations', () => {
       const freshDate = new Date();
       const staleDate = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
       
-      (db.from as any).mockResolvedValueOnce([
+      mockDb.from.mockResolvedValueOnce([
         { assetClass: 'STOCK', fetchedAt: freshDate, isManualOverride: false },
         { assetClass: 'STOCK', fetchedAt: staleDate, isManualOverride: false },
         { assetClass: 'STOCK', fetchedAt: freshDate, isManualOverride: true },

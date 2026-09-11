@@ -1,12 +1,12 @@
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'node:crypto';
 import { transactions } from '../db/schema';
 
 type Transaction = typeof transactions.$inferSelect;
 
 export function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
   return {
-    id: uuidv4(),
-    userId: uuidv4(),
+    id: crypto.randomUUID(),
+    userId: crypto.randomUUID(),
     batchId: null,
     assetClass: 'STOCK',
     asset: 'FPT',
