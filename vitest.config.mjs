@@ -18,6 +18,12 @@ export default defineConfig({
     exclude: ['node_modules', '.next', 'dist'],
     testTimeout: 10000,
     hookTimeout: 10000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/lib/**/*.ts', 'src/services/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/test/**/*'],
+    },
   },
   resolve: {
     alias: {
