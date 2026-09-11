@@ -5,6 +5,7 @@ import { db } from '@/db/index';
 import { users } from '@/db/schema';
 import { hashPassword, invalidateAllSessionsForUser } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/apiRateLimiter';
+import { authLogger } from '@/lib/logger';
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
 
     await invalidateAllSessionsForUser(user.id);
 
-    console.log(`[ADMIN] Password reset for ${normalizedEmail} from IP ${ip}`);
+    authLogger.info({ email: normalizedEmail, ip }, 'Password reset completed');
 
     return NextResponse.json({
       success: true,

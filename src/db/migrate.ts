@@ -8,7 +8,7 @@ config({ path: '.env.local' });
 config(); // fallback to .env if .env.local doesn't exist
 
 async function runMigrations() {
-  console.log('⏳ Running database migrations...');
+  console.info('⏳ Running database migrations...');
   
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
@@ -22,7 +22,7 @@ async function runMigrations() {
     // Thư mục chứa các file SQL do Drizzle sinh ra
     await migrate(db, { migrationsFolder: './drizzle' });
     
-    console.log('✅ Migrations completed successfully!');
+    console.info('✅ Migrations completed successfully!');
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);

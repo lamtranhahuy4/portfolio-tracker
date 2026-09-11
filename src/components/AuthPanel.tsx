@@ -229,7 +229,7 @@ export default function AuthPanel() {
   };
 
   const handleSuccess = () => {
-    console.log('[AUTH PANEL] Login success, refreshing page');
+    console.info('[AUTH PANEL] Login success, refreshing page');
     router.refresh();
   };
 
