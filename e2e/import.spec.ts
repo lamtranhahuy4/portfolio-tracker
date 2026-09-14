@@ -29,9 +29,13 @@ test('Authenticated user imports a DNSE trade file end-to-end', async ({ page })
   await page.locator('button[type="submit"]').click();
 
   // After sign-up, router.refresh() re-renders the page with DashboardClient,
-  // which mounts CsvUploaderServerImport (file input becomes visible).
+  // which mounts CsvUploaderServerImport. Its static extension hint is always
+  // visible; the actual <input type="file"> is display:none (Tailwind 'hidden')
+  // so it must NOT be asserted with toBeVisible() — setInputFiles works on
+  // hidden inputs.
+  await expect(page.getByText('.CSV, .XLSX, .XLS').first()).toBeVisible();
   const fileInput = page.locator('input[type="file"]');
-  await expect(fileInput).toBeVisible();
+  await expect(fileInput).toBeAttached();
 
   // Upload the DNSE trade xlsx fixture.
   await fileInput.setInputFiles({
@@ -42,6 +46,6 @@ test('Authenticated user imports a DNSE trade file end-to-end', async ({ page })
 
   // On success the uploader fires toast.success and persists the parsed transaction
   // in the portfolio store, which renders in GroupedTransactionHistoryTable.
-  await expect(page.locator('[data-sonner-toast]')).toBeVisible();
-  await expect(page.getByText('HPG')).toBeVisible();
+  await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
+  await expect(page.getByText('HPG').first()).toBeVisible();
 });
