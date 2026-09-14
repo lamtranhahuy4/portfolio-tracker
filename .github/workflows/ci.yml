@@ -113,6 +113,10 @@ jobs:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
           BETTER_AUTH_SECRET: ci-only-secret-min-32-characters-long!!
           BETTER_AUTH_URL: http://localhost:3000
+          # Custom session system (src/lib/auth.ts) reads AUTH_SECRET, NOT
+          # BETTER_AUTH_SECRET. Without it, getAuthSecret() throws in
+          # production mode and signUpAction cannot create sessions.
+          AUTH_SECRET: ci-only-secret-min-32-characters-long!!
 
       - name: Run Playwright Tests
         run: pnpm exec playwright test
@@ -121,6 +125,9 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           BETTER_AUTH_SECRET: ci-only-secret-min-32-characters-long!!
           BETTER_AUTH_URL: http://localhost:3000
+          # Required at runtime by the import E2E spec (sign-up path hashes
+          # session tokens with AUTH_SECRET via getAuthSecret()).
+          AUTH_SECRET: ci-only-secret-min-32-characters-long!!
           CI: true
 
       - name: Upload Playwright Report
