@@ -5,11 +5,15 @@ import * as XLSX from 'xlsx';
 const DNSE_TOP_HEADER = ['Ngày GD', 'Loại Lệnh', 'Mã', 'Chi tiết giao dịch', '', '', '', '', 'Thuế'];
 const DNSE_BOTTOM_HEADER = ['', '', '', 'KHỐI LƯỢNG', 'GIÁ KHỚP', 'GIÁ TRỊ KHỚP', 'PHÍ TRẢ SỐ', 'PHÍ DNSE', ''];
 
+// PNJ is deliberately absent from src/lib/mockData.ts so the assertion below
+// can only be satisfied by THIS spec's imported file, never by demo data.
+const IMPORT_TICKER = 'PNJ';
+
 function createDnseTradeXlsx(): Buffer {
   const rows = [
     DNSE_TOP_HEADER,
     DNSE_BOTTOM_HEADER,
-    ['15/05/2026', 'MUA', 'HPG', '100', '28500', '28500000', '5000', '0', '0'],
+    ['15/05/2026', 'MUA', IMPORT_TICKER, '100', '28500', '28500000', '5000', '0', '0'],
   ];
   const sheet = XLSX.utils.aoa_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
@@ -28,11 +32,15 @@ test('Authenticated user imports a DNSE trade file end-to-end', async ({ page })
   await page.locator('input[name="confirmPassword"]').fill('e2e-import-password-123!');
   await page.locator('button[type="submit"]').click();
 
-  // After sign-up, router.refresh() re-renders the page with DashboardClient,
-  // which mounts CsvUploaderServerImport. Its static extension hint is always
-  // visible; the actual <input type="file"> is display:none (Tailwind 'hidden')
-  // so it must NOT be asserted with toBeVisible() — setInputFiles works on
-  // hidden inputs.
+  // A brand-new user hits the OnboardingWizard gate (DashboardClient renders
+  // ONLY the wizard while transactions.length === 0 and no cutoff date).
+  // The wizard has no file input - clear it via the demo-data shortcut, which
+  // populates the store client-side (no DB write) so the dashboard mounts.
+  const demoButton = page.getByRole('button', { name: 'Tải Dữ Liệu Demo' });
+  await expect(demoButton).toBeVisible();
+  await demoButton.click();
+
+  // Full dashboard (with CsvUploaderServerImport) renders once the gate passes.
   await expect(page.getByText('.CSV, .XLSX, .XLS').first()).toBeVisible();
   const fileInput = page.locator('input[type="file"]');
   await expect(fileInput).toBeAttached();
@@ -44,8 +52,8 @@ test('Authenticated user imports a DNSE trade file end-to-end', async ({ page })
     buffer: createDnseTradeXlsx(),
   });
 
-  // On success the uploader fires toast.success and persists the parsed transaction
-  // in the portfolio store, which renders in GroupedTransactionHistoryTable.
+  // On success the uploader fires toast.success and persists the parsed
+  // transaction in the portfolio store, which renders in the history table.
   await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
-  await expect(page.getByText('HPG').first()).toBeVisible();
+  await expect(page.getByText(IMPORT_TICKER).first()).toBeVisible();
 });
