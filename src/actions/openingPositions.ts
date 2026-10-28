@@ -8,6 +8,7 @@ import { openingPositions } from '@/db/schema';
 import { toPrice, toQuantity } from '@/domain/portfolio/primitives';
 import { requireUser } from '@/lib/auth';
 import { OpeningPositionSnapshot } from '@/types/portfolio';
+import { openingPositionsSchema, parseActionInput } from '@/lib/validation/actionSchemas';
 
 type OpeningPositionInput = {
   ticker: string;
@@ -38,8 +39,9 @@ export async function fetchOpeningPositionSnapshot(): Promise<OpeningPositionSna
   };
 }
 
-export async function saveOpeningPositionSnapshot(positions: OpeningPositionInput[]) {
+export async function saveOpeningPositionSnapshot(input: OpeningPositionInput[]) {
   const user = await requireUser();
+  const positions = parseActionInput(openingPositionsSchema, input);
 
   const sanitized = positions
     .map((item) => ({

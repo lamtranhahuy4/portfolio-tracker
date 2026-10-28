@@ -1,6 +1,7 @@
-'use server';
-
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
+import { getCurrentUser } from '@/lib/auth';
+import { addRateLimitHeaders, checkRateLimit } from '@/lib/apiRateLimiter';
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
 const MARKETAUX_BASE_URL = 'https://api.marketaux.com/v1/news/all';
@@ -18,6 +19,9 @@ const MAX_NEWS_PER_TICKER = 6;
 const LOOKBACK_DAYS = 7;
 const PROVIDER_TIMEOUT_MS = 6000;
 const POLYGON_LIMIT_PER_TICKER = 10;
+const MAX_TICKERS_PER_REQUEST = 20;
+// Provider quotas are tiny (Alpha Vantage free tier: 25 req/day), so results are shared via the data cache.
+const NEWS_CACHE_SECONDS = 15 * 60;
 
 const providerWarnedKeys = new Set<string>();
 
@@ -507,35 +511,10 @@ const fetchVietnameseNews = async (
   return result;
 };
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const tickers = searchParams.get('tickers');
-
-  if (!tickers) {
-    return NextResponse.json({ error: 'Missing tickers parameter' }, { status: 400 });
-  }
-
-  const tickerList = Array.from(new Set(
-    tickers
-      .split(',')
-      .map((value) => normalizeTicker(value))
-      .filter(Boolean)
-  ));
-
-  if (tickerList.length === 0) {
-    return NextResponse.json({ news: {} });
-  }
-
+async function fetchMergedNews(tickerList: string[]): Promise<Record<string, NewsItem[]>> {
   const alphaVantageApiKey = process.env.ALPHA_VANTAGE_API_KEY;
   const marketauxApiKey = process.env.MARKETAUX_API_KEY;
   const polygonApiKey = process.env.POLYGON_API_KEY;
-
-  if (!alphaVantageApiKey && !marketauxApiKey && !polygonApiKey) {
-    return NextResponse.json(
-      { error: 'Missing news API keys (ALPHA_VANTAGE_API_KEY, MARKETAUX_API_KEY, POLYGON_API_KEY)' },
-      { status: 500 }
-    );
-  }
 
   const now = new Date();
   const fromDate = new Date(now);
@@ -581,23 +560,75 @@ export async function GET(request: Request) {
     })
   );
 
-  try {
-    const sourceResults = await Promise.all(sourceCalls);
-    const merged: Record<string, NewsItem[]> = Object.fromEntries(
-      tickerList.map((ticker) => [ticker, []])
-    );
+  const sourceResults = await Promise.all(sourceCalls);
+  const merged: Record<string, NewsItem[]> = Object.fromEntries(
+    tickerList.map((ticker) => [ticker, []])
+  );
 
-    for (const sourceMap of sourceResults) {
-      for (const ticker of tickerList) {
-        merged[ticker].push(...(sourceMap[ticker] || []));
-      }
-    }
-
+  for (const sourceMap of sourceResults) {
     for (const ticker of tickerList) {
-      merged[ticker] = dedupeAndSort(merged[ticker]);
+      merged[ticker].push(...(sourceMap[ticker] || []));
     }
+  }
 
-    return NextResponse.json({ news: merged });
+  for (const ticker of tickerList) {
+    merged[ticker] = dedupeAndSort(merged[ticker]);
+  }
+
+  return merged;
+}
+
+// Cache key = sorted ticker list, so every user asking for the same tickers shares one provider call.
+const getCachedNews = unstable_cache(
+  async (tickersKey: string) => fetchMergedNews(tickersKey.split(',')),
+  ['stock-news'],
+  { revalidate: NEWS_CACHE_SECONDS }
+);
+
+export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit(`stock-news:${user.id}`, { maxRequests: 20, windowMs: 60000 });
+  if (!rateLimit.allowed) {
+    const response = NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    addRateLimitHeaders(response, rateLimit.remaining, rateLimit.resetTime);
+    return response;
+  }
+
+  const { searchParams } = new URL(request.url);
+  const tickers = searchParams.get('tickers');
+
+  if (!tickers) {
+    return NextResponse.json({ error: 'Missing tickers parameter' }, { status: 400 });
+  }
+
+  // Truncate rather than reject so large portfolios still get news for their first tickers.
+  const tickerList = Array.from(new Set(
+    tickers
+      .split(',')
+      .map((value) => normalizeTicker(value))
+      .filter(Boolean)
+  )).slice(0, MAX_TICKERS_PER_REQUEST).sort();
+
+  if (tickerList.length === 0) {
+    return NextResponse.json({ news: {} });
+  }
+
+  if (!process.env.ALPHA_VANTAGE_API_KEY && !process.env.MARKETAUX_API_KEY && !process.env.POLYGON_API_KEY) {
+    return NextResponse.json(
+      { error: 'Missing news API keys (ALPHA_VANTAGE_API_KEY, MARKETAUX_API_KEY, POLYGON_API_KEY)' },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const news = await getCachedNews(tickerList.join(','));
+    const response = NextResponse.json({ news });
+    addRateLimitHeaders(response, rateLimit.remaining, rateLimit.resetTime);
+    return response;
   } catch (error) {
     console.error('Error fetching stock news:', error);
     return NextResponse.json({ error: 'Failed to fetch news' }, { status: 500 });

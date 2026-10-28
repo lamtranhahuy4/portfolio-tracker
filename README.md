@@ -5,6 +5,7 @@ Một hệ thống quản lý danh mục đầu tư toàn diện (Full-stack), h
 ## 🌟 Tính năng nổi bật
 
 * **Xử lý Dữ liệu Nhanh chóng (Client-side Parsing):** Đọc và chuẩn hóa hàng ngàn dòng lịch sử giao dịch từ file CSV ngay trên trình duyệt với PapaParse, loại bỏ hoàn toàn độ trễ mạng.
+* **Validate đầu vào Server Actions:** Mọi action ghi dữ liệu parse input bằng Zod (`src/lib/validation/actionSchemas.ts`) trước khi chạm DB.
 * **Hệ thống Xác thực "Dual-core" (Better-Auth):** Hỗ trợ đăng nhập linh hoạt bằng tài khoản mạng xã hội (Google/GitHub OAuth) song song với hệ thống Custom Session (tích hợp Rate Limiting & chống Brute-force).
 * **Tự động hóa Bất tử (Inngest Background Jobs):** Tự động quét và cập nhật thị giá, lịch sử ngoại tệ mỗi đêm. Các tác vụ nặng được Inngest tự động phân lô (batching) và retry khi có lỗi, loại bỏ hoàn toàn giới hạn 15s Timeout của Serverless.
 * **Trạng thái Đồng bộ (Zustand & RSC):** Quản lý state mượt mà với Zustand (sử dụng memoizeOne cho các phép tính PnL phức tạp), kết hợp Server Actions để xử lý logic lưu trữ an toàn.
@@ -70,8 +71,16 @@ POLYGON_API_KEY="your_polygon_api_key"
 # 5. Security nội bộ
 CRON_SECRET="your_super_secret_cron_key"
 ADMIN_SECRET="your_admin_secret"
+ADMIN_EMAILS="admin@your-domain.com"   # Email (đã xác minh qua OAuth) được chạy action admin, vd. ghi đè giá thị trường
 ENABLE_DEBUG_ROUTES="false"
+
+# 6. Email đặt lại mật khẩu (Resend HTTP API)
+RESEND_API_KEY="re_xxx"
+EMAIL_FROM="Portfolio Tracker <no-reply@your-domain.com>"
+NEXT_PUBLIC_APP_URL="https://your-domain.com"   # Dùng để dựng link reset
 ```
+
+> Thiếu `RESEND_API_KEY` / `EMAIL_FROM` / `NEXT_PUBLIC_APP_URL` ở production thì trang "Quên mật khẩu" sẽ báo tính năng chưa bật, thay vì giả vờ đã gửi email.
 
 ### 4. Khởi tạo Database Schema
 Dự án sử dụng luồng Migration an toàn để không làm mất dữ liệu:

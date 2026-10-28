@@ -49,7 +49,7 @@ describe('transaction actions', () => {
 
     const data: NormalizedTransaction[] = [
       {
-        id: 'tx-1',
+        id: '11111111-1111-4111-8111-111111111111',
         assetClass: 'STOCK',
         ticker: 'VND',
         type: 'BUY',
@@ -66,6 +66,28 @@ describe('transaction actions', () => {
     expect(result.batchId).toBe('batch-1');
     expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(revalidatePath).toHaveBeenCalledWith('/');
+  });
+
+  it('saveTransactionsBatch should reject malformed rows before touching the DB', async () => {
+    vi.mocked(requireUser).mockResolvedValue({ id: 'user-1' } as never);
+
+    const data = [
+      {
+        id: 'not-a-uuid',
+        assetClass: 'STOCK',
+        ticker: 'VND',
+        type: 'BUY',
+        quantity: -100,
+        price: 10,
+        fee: 0,
+        tax: 0,
+        date: new Date('2026-09-01'),
+        totalValue: 1000,
+      },
+    ] as unknown as NormalizedTransaction[];
+
+    await expect(saveTransactionsBatch(data)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(db.transaction).not.toHaveBeenCalled();
   });
 
   it('saveTransactionsBatch should throw error if requireUser fails', async () => {

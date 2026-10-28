@@ -239,6 +239,45 @@ export async function requireUser() {
   return user;
 }
 
+export class ForbiddenError extends AppError {
+  constructor(message = 'Forbidden') {
+    super(message, 'FORBIDDEN', 403);
+    this.name = 'ForbiddenError';
+  }
+}
+
+function getAdminEmails(): Set<string> {
+  return new Set(
+    (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+/**
+ * Requires the current user to be listed in ADMIN_EMAILS (comma-separated) with a verified email.
+ * Email/password sign-up does not verify ownership, so only OAuth-verified accounts qualify.
+ * Used for actions that mutate data shared across all users (e.g. global market prices).
+ */
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!getAdminEmails().has(user.email.toLowerCase())) {
+    throw new ForbiddenError();
+  }
+
+  const [record] = await db
+    .select({ emailVerified: users.emailVerified })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+  if (!record?.emailVerified) {
+    throw new ForbiddenError();
+  }
+
+  return user;
+}
+
 export class CsrfError extends Error {
   constructor(message = 'CSRF validation failed') {
     super(message);

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { connection } from 'next/server';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'sonner';
@@ -67,11 +68,15 @@ export const viewport: Viewport = {
   colorScheme: 'light dark',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // The CSP uses a per-request nonce (src/middleware.ts). Prerendered pages would ship
+  // build-time scripts without that nonce and get blocked, so every page renders per request.
+  await connection();
+
   return (
     <html lang="en">
       <head>

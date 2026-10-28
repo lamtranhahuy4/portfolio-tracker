@@ -36,12 +36,6 @@ const copy = {
   },
 };
 
-interface RequestPasswordResetResponse {
-  success: boolean;
-  message?: string;
-  devPreview?: string;
-}
-
 export default function ForgotPassword() {
   const [language, setLanguage] = useState<DashboardLanguage>('vi');
   const [email, setEmail] = useState('');
@@ -57,7 +51,7 @@ export default function ForgotPassword() {
     setMessage('');
 
     try {
-      const result = await requestPasswordResetAction(email) as RequestPasswordResetResponse;
+      const result = await requestPasswordResetAction(email);
       
       if (result.success) {
         setStatus('success');
@@ -65,6 +59,9 @@ export default function ForgotPassword() {
         if (result.devPreview) {
           setDevUrl(result.devPreview);
         }
+      } else {
+        setStatus('error');
+        setMessage(result.message || t.error);
       }
     } catch {
       setStatus('error');

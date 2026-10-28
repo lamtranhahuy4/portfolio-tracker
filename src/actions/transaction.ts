@@ -10,8 +10,14 @@ import { withErrorHandler } from '@/lib/errorHandler';
 import { NormalizedTransaction } from '@/types/portfolio';
 import { ImportBatchInput } from '@/types/importAudit';
 import { toMoney, toPrice, toQuantity } from '@/domain/portfolio/primitives';
+import {
+  importBatchInputSchema,
+  parseActionInput,
+  transactionBatchSchema,
+  transactionInputSchema,
+} from '@/lib/validation/actionSchemas';
 
-function toLegacyImportInput(data: NormalizedTransaction[]): ImportBatchInput {
+function toLegacyImportInput(data: Pick<NormalizedTransaction, 'source'>[]): ImportBatchInput {
   return {
     fileName: 'legacy-transaction-import',
     fileChecksum: crypto.randomUUID(),
@@ -32,7 +38,8 @@ export const saveTransactionsBatch = withErrorHandler(async function saveTransac
   importInput?: ImportBatchInput
 ) {
   const user = await requireUser();
-  const input = importInput ?? toLegacyImportInput(data);
+  const rows = parseActionInput(transactionBatchSchema, data);
+  const input = parseActionInput(importBatchInputSchema, importInput ?? toLegacyImportInput(rows));
 
   return await db.transaction(async (tx) => {
     // 1. Check for active duplicate within the same transaction lock
@@ -78,7 +85,7 @@ export const saveTransactionsBatch = withErrorHandler(async function saveTransac
       });
 
     // 3. Insert transaction rows referencing the new batchId
-    const mappedData = data.map((txItem) => ({
+    const mappedData = rows.map((txItem) => ({
       id: txItem.id,
       userId: user.id,
       batchId: batchRecord.id,
@@ -118,8 +125,9 @@ export const saveTransactionsBatch = withErrorHandler(async function saveTransac
 });
 
 
-export async function saveManualTransaction(tx: NormalizedTransaction) {
+export async function saveManualTransaction(input: NormalizedTransaction) {
   const user = await requireUser();
+  const tx = parseActionInput(transactionInputSchema, input);
 
   await db.insert(transactions).values({
     id: tx.id,

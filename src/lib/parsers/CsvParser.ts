@@ -17,7 +17,7 @@ const csvRowSchema = z.object({
   price: z.number().positive('Giá giao dịch phải lớn hơn 0'),
   fee: z.number().min(0, 'Phí giao dịch không được âm'),
   tax: z.number().min(0, 'Thuế không được âm'),
-  date: z.date({ invalid_type_error: 'Ngày không hợp lệ' }),
+  date: z.date({ error: 'Ngày không hợp lệ' }),
   notes: z.string().optional(),
 });
 
@@ -63,7 +63,7 @@ export async function parseCsv(file: File): Promise<ImportParseResult> {
 
           const validation = csvRowSchema.safeParse(parsedData);
           if (!validation.success) {
-            const errorMessages = validation.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
+            const errorMessages = validation.error.issues.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
             warnings.push({
               row: rowNumber,
               message: `Lỗi dữ liệu: ${errorMessages}`,

@@ -49,7 +49,7 @@ describe('cashLedger actions', () => {
 
     const data: CashLedgerEvent[] = [
       {
-        id: 'evt-1',
+        id: '22222222-2222-4222-8222-222222222222',
         date: new Date('2026-09-01'),
         direction: 'INFLOW',
         eventType: 'DEPOSIT',
@@ -64,6 +64,26 @@ describe('cashLedger actions', () => {
     expect(result.batchId).toBe('batch-1');
     expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(revalidatePath).toHaveBeenCalledWith('/');
+  });
+
+  it('saveCashEventsBatch should reject unknown event types before touching the DB', async () => {
+    vi.mocked(requireUser).mockResolvedValue({ id: 'user-1' } as never);
+
+    const data = [
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        date: new Date('2026-09-01'),
+        direction: 'INFLOW',
+        eventType: 'FREE_MONEY',
+        amount: 1000,
+        balanceAfter: 1000,
+        description: 'Deposit',
+        source: 'manual',
+      },
+    ] as unknown as CashLedgerEvent[];
+
+    await expect(saveCashEventsBatch(data)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(db.transaction).not.toHaveBeenCalled();
   });
 
   it('saveCashEventsBatch should throw error if requireUser fails', async () => {

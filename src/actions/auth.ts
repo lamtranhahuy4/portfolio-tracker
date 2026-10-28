@@ -9,6 +9,9 @@ import { db } from '@/db/index';
 import { users, passwordResets } from '@/db/schema';
 import { clearSession, hashPassword, setDbSession, verifyPassword, getUserSessions, invalidateAllSessionsForUser } from '@/lib/auth';
 import { authRateLimiter } from '@/lib/rateLimiter';
+import { checkRateLimit } from '@/lib/apiRateLimiter';
+import { buildPasswordResetEmail, isEmailDeliveryConfigured, sendEmail } from '@/lib/email';
+import { authLogger } from '@/lib/logger';
 import { ActionState } from '@/types/action';
 
 function normalizeEmail(email: string) {
@@ -256,7 +259,24 @@ function getResetTokenExpiry(): Date {
   return new Date(Date.now() + RESET_TOKEN_TTL_MS);
 }
 
-export async function requestPasswordResetAction(email: string) {
+const RESET_GENERIC_MESSAGE = 'Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi.';
+// Per-instance throttle against using the form to spam someone's inbox.
+const RESET_RATE_LIMIT = { maxRequests: 3, windowMs: 15 * 60 * 1000 };
+
+function getAppBaseUrl(): string | null {
+  const url = process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL;
+  if (url) return url.replace(/\/$/, '');
+  return process.env.NODE_ENV === 'production' ? null : 'http://localhost:3000';
+}
+
+export interface RequestPasswordResetResult {
+  success: boolean;
+  code?: 'EMAIL_UNAVAILABLE' | 'RATE_LIMITED';
+  message: string;
+  devPreview?: string;
+}
+
+export async function requestPasswordResetAction(email: string): Promise<RequestPasswordResetResult> {
   const normalizedEmail = normalizeEmail(email);
   
   if (!normalizedEmail) {
@@ -268,6 +288,30 @@ export async function requestPasswordResetAction(email: string) {
     throw new Error('Định dạng email không hợp lệ.');
   }
 
+  const isProduction = process.env.NODE_ENV === 'production';
+  const baseUrl = getAppBaseUrl();
+
+  // Checked before the user lookup so the response never reveals whether the email exists.
+  if (isProduction && (!isEmailDeliveryConfigured() || !baseUrl)) {
+    authLogger.error('Password reset requested but RESEND_API_KEY / EMAIL_FROM / NEXT_PUBLIC_APP_URL are not configured');
+    return {
+      success: false,
+      code: 'EMAIL_UNAVAILABLE',
+      message: 'Tính năng gửi email đặt lại mật khẩu chưa được bật. Vui lòng liên hệ quản trị viên.',
+    };
+  }
+
+  const ipAddress = await getClientIP();
+  const emailLimit = checkRateLimit(`password-reset:email:${normalizedEmail}`, RESET_RATE_LIMIT);
+  const ipLimit = checkRateLimit(`password-reset:ip:${ipAddress}`, { ...RESET_RATE_LIMIT, maxRequests: 10 });
+  if (!emailLimit.allowed || !ipLimit.allowed) {
+    return {
+      success: false,
+      code: 'RATE_LIMITED',
+      message: 'Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+    };
+  }
+
   const [user] = await db
     .select({ id: users.id })
     .from(users)
@@ -275,7 +319,7 @@ export async function requestPasswordResetAction(email: string) {
     .limit(1);
 
   if (!user) {
-    return { success: true, message: 'Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi.' };
+    return { success: true, message: RESET_GENERIC_MESSAGE };
   }
 
   await db.delete(passwordResets)
@@ -290,9 +334,14 @@ export async function requestPasswordResetAction(email: string) {
     expiresAt,
   });
 
-  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
-  
-  if (process.env.NODE_ENV !== 'production') {
+  const resetUrl = `${baseUrl ?? 'http://localhost:3000'}/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+
+  if (isEmailDeliveryConfigured()) {
+    // Delivery failures are logged but not surfaced, to keep the response identical for unknown emails.
+    await sendEmail(buildPasswordResetEmail(normalizedEmail, resetUrl, RESET_TOKEN_TTL_MS / 60000));
+  }
+
+  if (!isProduction) {
     console.info(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║              PASSWORD RESET LINK (DEV ONLY)                   ║
@@ -306,8 +355,8 @@ export async function requestPasswordResetAction(email: string) {
 
   return { 
     success: true, 
-    message: 'Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi.',
-    devPreview: process.env.NODE_ENV !== 'production' ? resetUrl : undefined
+    message: RESET_GENERIC_MESSAGE,
+    devPreview: isProduction ? undefined : resetUrl,
   };
 }
 

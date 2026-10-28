@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db/index';
 import { portfolioSettings, transactions } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
+import { cutoffSettingsSchema, parseActionInput } from '@/lib/validation/actionSchemas';
 
 export interface TaxCalculationResult {
   ticker: string;
@@ -212,12 +213,9 @@ export async function saveFeeDebtSetting(feeDebtRaw: number) {
   return { feeDebt };
 }
 
-export async function saveCutoffSettings(payload: { globalCutoffDate: Date | null, initialNetContributions: number, initialCashBalance: number }) {
+export async function saveCutoffSettings(input: { globalCutoffDate: Date | null, initialNetContributions: number, initialCashBalance: number }) {
   const user = await requireUser();
-
-  if (payload.initialNetContributions < 0 || payload.initialCashBalance < 0) {
-    throw new Error('Số dư đầu kỳ không hợp lệ.');
-  }
+  const payload = parseActionInput(cutoffSettingsSchema, input);
 
   const [existing] = await db.select({ id: portfolioSettings.id })
     .from(portfolioSettings)

@@ -10,8 +10,14 @@ import { CashLedgerEvent } from '@/types/portfolio';
 import { getErrorMessage } from '@/lib/types';
 import { ImportBatchInput } from '@/types/importAudit';
 import { toMoney, toQuantity } from '@/domain/portfolio/primitives';
+import {
+  cashLedgerBatchSchema,
+  cashLedgerEventInputSchema,
+  importBatchInputSchema,
+  parseActionInput,
+} from '@/lib/validation/actionSchemas';
 
-function toLegacyImportInput(data: CashLedgerEvent[]): ImportBatchInput {
+function toLegacyImportInput(data: Pick<CashLedgerEvent, 'source'>[]): ImportBatchInput {
   return {
     fileName: 'legacy-cash-import',
     fileChecksum: crypto.randomUUID(),
@@ -30,7 +36,8 @@ import { ImportBatchRecord } from '@/types/importAudit';
 export const saveCashEventsBatch = withErrorHandler(
 async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: ImportBatchInput) {
   const user = await requireUser();
-  const input = importInput ?? toLegacyImportInput(data);
+  const rows = parseActionInput(cashLedgerBatchSchema, data);
+  const input = parseActionInput(importBatchInputSchema, importInput ?? toLegacyImportInput(rows));
 
   return await db.transaction(async (tx) => {
     // 1. Concurrency-safe duplicate check
@@ -76,7 +83,7 @@ async function saveCashEventsBatch(data: CashLedgerEvent[], importInput?: Import
       });
 
     // 3. Insert cash ledger events
-    const mappedData = data.map((evt) => ({
+    const mappedData = rows.map((evt) => ({
       id: evt.id,
       userId: user.id,
       batchId: batchRecord.id,
@@ -144,8 +151,9 @@ export async function fetchCashEvents(): Promise<CashLedgerEvent[]> {
   }
 }
 
-export async function saveManualDeposit(event: CashLedgerEvent) {
+export async function saveManualDeposit(input: CashLedgerEvent) {
   const user = await requireUser();
+  const event = parseActionInput(cashLedgerEventInputSchema, input);
 
   await db.insert(cashLedgerEvents).values({
     id: event.id,
